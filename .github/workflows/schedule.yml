@@ -1,0 +1,28 @@
+name: Schedules (daily)
+on:
+  schedule:
+    - cron: "0 10 * * *"        # 05:00 America/Chicago (CDT); 04:00 in CST
+  workflow_dispatch:
+concurrency: { group: data-write, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  schedules:
+    runs-on: ubuntu-latest
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+      ODDS_PLAN: ${{ vars.ODDS_PLAN || 'free' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: NFL schedules + results
+        run: python -m pipeline.jobs.ingest_schedules --league NFL --trigger cron
+      - name: CFB schedules + results (current week -1..+1)
+        run: |
+          WK=$(python -c "import pandas as pd,config; from pipeline import storage
+          g=storage.read_table(storage.games_path('CFB',config.SEASON))
+          print(1 if g.empty else int(g[g.status=='SCHEDULED'].week.min()))")
+          python -m pipeline.jobs.ingest_schedules --league CFB --weeks $((WK>0?WK-1:0)) $WK $((WK+1)) --trigger cron
+      - uses: ./.github/actions/commit
+        with: { message: "data: schedules ${{ github.run_id }}" }
