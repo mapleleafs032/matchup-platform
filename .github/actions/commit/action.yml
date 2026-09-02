@@ -1,0 +1,19 @@
+name: commit-data
+description: Commit data/ and site/ changes with rebase-retry
+inputs:
+  message: { required: true }
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        git config user.name "matchup-bot"
+        git config user.email "matchup-bot@users.noreply.github.com"
+        git add -A data site
+        if git diff --cached --quiet; then echo "no data changes"; exit 0; fi
+        git commit -m "${{ inputs.message }}"
+        for i in 1 2 3 4 5; do
+          git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+          echo "push race, retry $i"; sleep $((i*5))
+        done
+        exit 1
