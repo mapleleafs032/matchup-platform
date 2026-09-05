@@ -102,7 +102,9 @@ def normalize_games(payload: list[dict], season: int, resolver: ids.AliasResolve
         st = config.CFBD_SEASON_TYPE.get(_g(g, "seasonType"), None)
         if st is None:
             continue
-# a team can be FBS now but FCS in an earlier season: the game's own classification wins
+        home, home_fcs = _team_or_fcs(resolver, _g(g, "homeTeam"), _g(g, "homeId"), _g(g, "homeClassification"))
+        away, away_fcs = _team_or_fcs(resolver, _g(g, "awayTeam"), _g(g, "awayId"), _g(g, "awayClassification"))
+        # a team can be FBS now but FCS in an earlier season: the game's own classification wins
         home_fcs = home_fcs or (str(_g(g, "homeClassification") or "fbs").lower() != "fbs")
         away_fcs = away_fcs or (str(_g(g, "awayClassification") or "fbs").lower() != "fbs")
         if home_fcs and away_fcs:
