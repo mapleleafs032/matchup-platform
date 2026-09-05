@@ -19,9 +19,9 @@ BACKTEST_SEASONS = [2021, 2022, 2023, 2024, 2025]   # post-COVID only; 2020 and 
 MIN_ALLOWED_SEASON = 2021
 
 # ---- Provider keys (env only) -------------------------------------------------
-CFBD_API_KEY = os.environ.get("CFBD_API_KEY", "")
-ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+CFBD_API_KEY = os.environ.get("CFBD_API_KEY", "").strip()
+ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "").strip()
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 
 # ---- Odds routing (decision #2: free now, paid is a config flip) --------------
 ODDS_PLAN = os.environ.get("ODDS_PLAN", "free")          # "free" | "paid"
