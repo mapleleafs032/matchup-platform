@@ -1,0 +1,38 @@
+name: Backfill (historical seasons)
+on:
+  workflow_dispatch:
+    inputs:
+      league:  { description: "NFL or CFB", default: "NFL", required: true }
+      seasons: { description: "seasons, space separated (2021-2025 only)", default: "2025", required: true }
+      cfb_weeks: { description: "CFB only: weeks to load (blank = 0-15)", default: "", required: false }
+concurrency: { group: data-write, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Schedules + results, then stats, per season
+        run: |
+          for S in ${{ github.event.inputs.seasons }}; do
+            echo "=== ${{ github.event.inputs.league }} $S ==="
+            if [ "${{ github.event.inputs.league }}" = "NFL" ]; then
+              python -m pipeline.jobs.ingest_schedules --league NFL --season $S --trigger backfill
+              python -m pipeline.jobs.ingest_stats --league NFL --season $S --trigger backfill
+            else
+              W="${{ github.event.inputs.cfb_weeks }}"; [ -z "$W" ] && W="0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"
+              python -m pipeline.jobs.ingest_schedules --league CFB --season $S --weeks $W --trigger backfill
+              python -m pipeline.jobs.ingest_schedules --league CFB --season $S --season-type postseason --weeks 1 --trigger backfill || true
+              python -m pipeline.jobs.ingest_stats --league CFB --season $S --weeks $W --trigger backfill
+            fi
+          done
+      - name: Summary
+        run: python -m pipeline.jobs.report_status
+      - uses: ./.github/actions/commit
+        with: { message: "data: backfill ${{ github.event.inputs.league }} ${{ github.event.inputs.seasons }}" }
