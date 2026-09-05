@@ -79,7 +79,7 @@ def run_nfl(season: int, job: JobRun) -> None:
     print(f"NFL {season}: games inserted={r['inserted']} updated={r['updated']} closes={len(closes)} results={len(results)}")
 
 
-def run_cfb(season: int, weeks: list[int], season_type: str, job: JobRun) -> None:
+def run_cfb(season: int, weeks: list[int], season_type: str, job: JobRun, force: bool = False) -> None:
     rm = RequestManager("cfbd", job.job_run_id)
     resolver = ids.AliasResolver.load()
     if resolver.aliases[resolver.aliases.provider == "cfbd"].empty:
@@ -87,7 +87,14 @@ def run_cfb(season: int, weeks: list[int], season_type: str, job: JobRun) -> Non
         print(f"seeded {n} FBS teams")
     vlog = ValidationLog(job.job_run_id, "games")
     total_ins = total_upd = 0
+    existing = storage.read_table(storage.games_path("CFB", season))
+    st_code = "REG" if season_type == "regular" else "POST"
     for wk in weeks:
+        if not force and not existing.empty and "week" in existing.columns:
+            have = existing[(existing.week == wk) & (existing.season_type == st_code)]
+            if len(have) and (have.status == "FINAL").all() and season < config.SEASON:
+                print(f"CFB {season} W{wk}: already loaded and final; skipping (use --force to refetch)")
+                continue
         try:
             res = cfbd.fetch_games(rm, season, wk, season_type)
         except BudgetExceeded as e:
@@ -138,6 +145,7 @@ def main(argv=None):
     p.add_argument("--season-type", default="regular", choices=["regular", "postseason"])
     p.add_argument("--trigger", default="manual")
     p.add_argument("--verify", action="store_true", help="print first-pull field checklist (CFB)")
+    p.add_argument("--force", action="store_true", help="refetch weeks that are already loaded and final")
     a = p.parse_args(argv)
     if a.season < config.MIN_ALLOWED_SEASON:
         sys.exit(f"season {a.season} is before MIN_ALLOWED_SEASON {config.MIN_ALLOWED_SEASON}; refusing")
@@ -146,7 +154,7 @@ def main(argv=None):
             run_nfl(a.season, job)
         else:
             weeks = a.weeks or list(range(0, 16))
-            run_cfb(a.season, weeks, a.season_type, job)
+            run_cfb(a.season, weeks, a.season_type, job, a.force)
 
 
 if __name__ == "__main__":

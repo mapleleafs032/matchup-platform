@@ -36,7 +36,7 @@ ODDS_BOOK_PRIORITY = ["consensus", "draftkings", "fanduel", "betmgm", "caesars",
 
 # ---- API budgets (§50). Hard stops; jobs skip rather than exceed. ------------
 API_BUDGET = {
-    "cfbd":     {"monthly": 1000 if os.environ.get("CFBD_TIER", "free") == "free" else 5000, "daily_soft": 60},
+    "cfbd":     {"monthly": 1000 if os.environ.get("CFBD_TIER", "free") == "free" else 5000, "daily_soft": 250},
     "odds_api": {"monthly": 500 if ODDS_PLAN == "free" else 20000, "daily_soft": 25},
     "open_meteo": {"monthly": 200000, "daily_soft": 5000},
     "nflverse": {"monthly": 10**9, "daily_soft": 10**9},

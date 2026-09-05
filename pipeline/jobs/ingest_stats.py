@@ -116,15 +116,21 @@ def run_nfl(season: int, weeks: list[int] | None, job: JobRun) -> None:
 
 
 # ---- CFB --------------------------------------------------------------------------
-def run_cfb(season: int, weeks: list[int], season_type: str, verify: bool, job: JobRun) -> None:
+def run_cfb(season: int, weeks: list[int], season_type: str, verify: bool, job: JobRun, force: bool = False) -> None:
     rm = RequestManager("cfbd", job.job_run_id)
     resolver = ids.AliasResolver.load()
     games = storage.read_table(storage.games_path("CFB", season))
+    if games.empty or "week" not in games.columns:
+        job.status = "SKIPPED"; job.message = f"no games table for CFB {season}; run ingest_schedules first"; return
+    have_adv = storage.read_table(STATS / "team_game_advanced" / "CFB" / f"{season}.parquet")
+    have_ids = set(have_adv.game_id) if not have_adv.empty else set()
     vlog = ValidationLog(job.job_run_id, "stats")
     for wk in weeks:
         wk_games = games[(games.week == wk) & (games.status == "FINAL") & (games.season_type == ("REG" if season_type == "regular" else "POST"))]
         if wk_games.empty:
             print(f"CFB {season} W{wk}: no FINAL games; skipping"); continue
+        if not force and set(wk_games.game_id) <= have_ids:
+            print(f"CFB {season} W{wk}: stats already ingested for all {len(wk_games)} games; skipping (use --force)"); continue
         if rm.remaining_monthly() < config.CFBD_STATS_CALLS_PER_WEEK + 20:
             job.status = "PARTIAL"; job.message += f" budget stop before week {wk};"; break
         missing: set[str] = set()
@@ -186,6 +192,7 @@ def main(argv=None):
     p.add_argument("--weeks", type=int, nargs="*")
     p.add_argument("--season-type", default="regular", choices=["regular", "postseason"])
     p.add_argument("--verify", action="store_true")
+    p.add_argument("--force", action="store_true", help="re-ingest weeks that already have stats")
     p.add_argument("--trigger", default="manual")
     a = p.parse_args(argv)
     if a.season < config.MIN_ALLOWED_SEASON:
@@ -198,7 +205,7 @@ def main(argv=None):
                 games = storage.read_table(storage.games_path("CFB", a.season))
                 done = games[games.status == "FINAL"].week.unique().tolist() if not games.empty else []
                 a.weeks = sorted(done)[-2:]   # default: the two most recent completed weeks
-            run_cfb(a.season, a.weeks, a.season_type, a.verify, job)
+            run_cfb(a.season, a.weeks, a.season_type, a.verify, job, a.force)
 
 
 if __name__ == "__main__":
