@@ -162,9 +162,15 @@ def run_cfb(season: int, weeks: list[int], season_type: str, verify: bool, job: 
             adv = adv.set_index(["game_id", "team_id", "is_garbage_filtered"])
             nat = adv_native.set_index(["game_id", "team_id", "is_garbage_filtered"])
             cols = [c for c in nat.columns if c in adv.columns and c != "opponent_id"]
-            adv.loc[nat.index.intersection(adv.index), cols] = nat.loc[nat.index.intersection(adv.index), cols]
+            nat = nat[cols].apply(pd.to_numeric, errors="coerce")
+            cols = [c for c in cols if nat[c].notna().any()]      # a native column with no values never overlays
+            common = nat.index.intersection(adv.index)
+            for c in cols:
+                adv[c] = adv[c].astype(float)
+                adv.loc[common, c] = nat.loc[common, c].astype(float)
             adv = adv.reset_index()
             adv["overlay_source"] = "cfbd_advanced"
+            adv["overlay_cols"] = ",".join(cols)
         for m in sorted(missing):
             vlog.warn("FIELD_MISSING", f"{season}_W{wk}", m, "", "present")
         _store_all("CFB", season, plays, drives, box, adv, qb, job)
