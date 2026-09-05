@@ -3,17 +3,19 @@
 Data-accuracy-first matchup research platform. Architecture: Python jobs in GitHub Actions → Parquet/CSV
 tables in this repo (DuckDB for queries) → prebuilt JSON → static site on GitHub Pages.
 
-Phase status: **Phase 4 in progress** — schedules, results, closing lines (NFL 2021–2026 loaded), odds snapshots.
+Phase status: **Phase 4B** — schedules, results, closing lines, odds snapshots, and game-level stats
+(plays, drives, box, advanced metrics, QB game stats) for both leagues.
 
 ## Layout
 ```
 config.py                  every tunable + budgets; secrets via env only
 providers/                 one adapter per source (nflverse, cfbd, odds_api); all HTTP via providers/base.py
 pipeline/                  ids, storage (append-only guard), validate, log, ci_immutability
-pipeline/jobs/             ingest_schedules, ingest_odds, report_status
+pipeline/jobs/             ingest_schedules, ingest_odds, ingest_stats, report_status
+pipeline/metrics_game.py   game-level metric engine (one implementation, both leagues)
 data/tables/               the database (see schema.sql / phase3_data_model.md)
 data/raw/                  archived keyed-API payloads (sha256-named, gzip)
-.github/workflows/         ci, schedules (daily), odds (2/day + dispatch), first_run
+.github/workflows/         ci, schedules (daily), odds (2/day + dispatch), stats (daily), backfill, first_run
 apps_script/OddsTimer.gs   hourly game-day dispatcher
 ```
 

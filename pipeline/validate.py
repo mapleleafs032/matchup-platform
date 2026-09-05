@@ -64,7 +64,11 @@ def validate_market(df: pd.DataFrame, known_game_ids: set[str], vlog: Validation
             vlog.reject("RANGE", key, "total", r["total"], tr); ok = False
         for col in ("ml_home", "ml_away"):
             v = r[col]
-            if not _in_range(v, *mr) or (pd.notna(v) and -100 < v < 100):
+            if pd.notna(v) and not (mr[0] <= v <= mr[1]):
+                # books post placeholder prices like -100000 on huge favorites; not a real market -> unavailable
+                vlog.warn("ML_PLACEHOLDER", key, col, v, f"|v|<={mr[1]} -> set NULL")
+                df.loc[i, col] = None
+            elif pd.notna(v) and -100 < v < 100:
                 vlog.reject("RANGE", key, col, v, "American odds, |v|>=100"); ok = False
         if pd.notna(r["spread_home"]) and (abs(r["spread_home"] * 2) % 1 != 0):
             vlog.reject("RANGE", key, "spread_home", r["spread_home"], "multiple of 0.5"); ok = False

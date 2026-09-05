@@ -75,7 +75,14 @@ class RequestManager:
         return int(d[d.day.str.startswith(month)].credits.fillna(0).sum())
 
     def remaining_monthly(self) -> int:
-        return config.API_BUDGET[self.provider]["monthly"] - self._used("month")
+        ours = config.API_BUDGET[self.provider]["monthly"] - self._used("month")
+        d = self._budget[self._budget.provider == self.provider]
+        if not d.empty:
+            month = date.today().isoformat()[:7]
+            rep = d[d.day.str.startswith(month)].sort_values("day").remaining_reported.dropna()
+            if not rep.empty:
+                return min(ours, int(rep.iloc[-1]))   # provider's own count wins when lower (e.g., usage outside this pipeline)
+        return ours
 
     def _check_budget(self, cost: int) -> None:
         lim = config.API_BUDGET[self.provider]
@@ -105,7 +112,8 @@ class RequestManager:
 
     # ---- fetch -----------------------------------------------------------------
     def get(self, url: str, params: dict | None = None, headers: dict | None = None,
-            cost: int = 1, timeout: int = 30, max_retries: int = 3, expect_json: bool = True) -> FetchResult:
+            cost: int = 1, timeout: int = 30, max_retries: int = 3, expect_json: bool = True,
+            raw_bytes: bool = False) -> FetchResult:
         self._check_budget(cost)
         last_err: Exception | None = None
         for attempt in range(max_retries):
@@ -130,7 +138,7 @@ class RequestManager:
                 self._record(cost, failed=True, remaining=remaining)
                 raise ProviderError(f"{self.provider} HTTP {resp.status_code}: {resp.text[:200]}")
             body = resp.content
-            payload = resp.json() if expect_json else body.decode("utf-8", errors="replace")
+            payload = body if raw_bytes else (resp.json() if expect_json else body.decode("utf-8", errors="replace"))
             retrieved_at = datetime.now(timezone.utc)
             raw_id = self._archive(url, params, body, retrieved_at, resp.status_code)
             self._record(cost, failed=False, remaining=remaining)

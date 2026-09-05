@@ -66,6 +66,21 @@ NFL_GAME_TYPE_TO_SEASON_TYPE = {"REG": "REG", "WC": "POST", "DIV": "POST", "CON"
 CFBD_SEASON_TYPE = {"regular": "REG", "postseason": "POST", "both": None}
 NFL_TIMEZONE = "America/New_York"   # nflverse gametime is Eastern
 
+# ---- Game-level metric definitions (pipeline/metrics_game.py) ------------------
+EXPLOSIVE_RUSH_YDS = 10
+EXPLOSIVE_PASS_YDS = 20
+# Garbage time. CFB: CFBD's published rule (lead >= threshold by period). NFL: pre-snap vegas win prob band.
+CFB_GARBAGE_LEAD_BY_PERIOD = {2: 38, 3: 28, 4: 22}
+NFL_GARBAGE_WP_BAND = (0.05, 0.95)
+# Which upstream stats files to pull per league (nflverse release assets)
+NFLVERSE_ASSETS = {
+    "pbp": "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.parquet",
+    "ftn": "https://github.com/nflverse/nflverse-data/releases/download/ftn_charting/ftn_charting_{season}.parquet",
+    "pfr_pass": "https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_week_pass_{season}.parquet",
+    "pfr_def": "https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_week_def_{season}.parquet",
+}
+CFBD_STATS_CALLS_PER_WEEK = 5     # games/teams, stats/game/advanced, plays, drives, games/players
+
 # ---- Storage --------------------------------------------------------------------
 APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to repo root
     "data/tables/market/snapshots",

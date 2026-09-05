@@ -28,7 +28,11 @@ def main():
                       ("results NFL", "results/NFL/*.csv"), ("results CFB", "results/CFB/*.csv"),
                       ("closing_lines NFL", "market/closing_lines/NFL/*.parquet"),
                       ("market_snapshots NFL", "market/snapshots/NFL/**/*.csv"),
-                      ("market_snapshots CFB", "market/snapshots/CFB/**/*.csv")]:
+                      ("market_snapshots CFB", "market/snapshots/CFB/**/*.csv"),
+                      ("plays NFL", "stats/plays/NFL/**/*.parquet"), ("plays CFB", "stats/plays/CFB/**/*.parquet"),
+                      ("team_game_advanced NFL", "stats/team_game_advanced/NFL/*.parquet"),
+                      ("team_game_advanced CFB", "stats/team_game_advanced/CFB/*.parquet"),
+                      ("player_game_stats CFB", "stats/player_game_stats/CFB/*.parquet")]:
         print(f"  {name:24s} {_count(pat):>7d}")
     teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
     if not teams.empty:
@@ -52,6 +56,12 @@ def main():
         for prov, r in m.iterrows():
             lim = config.API_BUDGET.get(prov, {}).get("monthly")
             print(f"  {prov:12s} calls={int(r.requests):4d} credits={int(r.credits):5d}/{lim}  failures={int(r.failures)}  provider_reports_remaining={r.remaining_reported}")
+    print("\nCFB advanced sample (garbage-filtered rows; overlay_source = cfbd_advanced when native values applied)")
+    for p in sorted(glob.glob(str(config.TABLES / "stats/team_game_advanced/CFB/*.parquet")))[-1:]:
+        a = pd.read_parquet(p)
+        a = a[a.is_garbage_filtered == True]
+        cols = [c for c in ["game_id", "team_id", "off_plays", "off_ppa_play", "off_success_rate", "off_explosiveness", "off_line_yards", "def_havoc", "off_pts_per_scoring_opp", "off_sec_per_play", "overlay_source"] if c in a.columns]
+        print(a[cols].tail(6).round(3).to_string(index=False))
     print("\nCFB market snapshot sample (sign check: negative spread_home = home favored)")
     for p in sorted(glob.glob(str(config.TABLES / "market/snapshots/CFB/**/*.csv"), recursive=True))[-1:]:
         s = pd.read_csv(p)
