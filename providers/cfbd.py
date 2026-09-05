@@ -80,6 +80,10 @@ def normalize_teams(payload: list[dict], retrieved_at: datetime) -> tuple[pd.Dat
 
 
 # ---- games -----------------------------------------------------------------------
+def fetch_games(rm: RequestManager, season: int, week: int, season_type: str = "regular"):
+    return rm.get(f"{BASE}/games", params={"year": season, "week": week, "seasonType": season_type}, headers=_headers())
+
+
 def _team_or_fcs(resolver: ids.AliasResolver, name: str, cfbd_id, classification: str | None) -> tuple[str, bool]:
     """FBS teams must resolve. Any team not labeled 'fbs' (FCS, D2, D3, NAIA, or unlabeled) is a
     non-FBS opponent: it gets a synthetic tagged id and the game is flagged is_fcs_game."""
