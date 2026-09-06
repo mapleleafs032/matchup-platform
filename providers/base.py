@@ -46,11 +46,15 @@ class RequestManager:
     BUDGET_PATH = config.TABLES / "ops" / "api_budget.csv"
     RAW_INDEX_PATH = config.TABLES / "ops" / "raw_responses.csv"
 
-    def __init__(self, provider: str, job_run_id: str, session: Optional[requests.Session] = None):
+    def __init__(self, provider: str, job_run_id: str, session: Optional[requests.Session] = None,
+                 enforce_daily: bool = False):
+        """enforce_daily: the daily soft limit is a backfill guardrail; routine jobs are small and bounded,
+        so they respect only the monthly cap. Backfill jobs pass enforce_daily=True."""
         if provider not in config.API_BUDGET:
             raise ValueError(f"Unknown provider {provider}; add it to config.API_BUDGET")
         self.provider = provider
         self.job_run_id = job_run_id
+        self.enforce_daily = enforce_daily
         self.session = session or requests.Session()
         self.calls_this_run = 0
         self._budget = self._load_budget()
@@ -88,7 +92,7 @@ class RequestManager:
         lim = config.API_BUDGET[self.provider]
         if self._used("month") + cost > lim["monthly"]:
             raise BudgetExceeded(f"{self.provider}: monthly budget {lim['monthly']} would be exceeded")
-        if self._used("day") + cost > lim["daily_soft"]:
+        if self.enforce_daily and self._used("day") + cost > lim["daily_soft"]:
             raise BudgetExceeded(f"{self.provider}: daily soft limit {lim['daily_soft']} would be exceeded")
 
     def _record(self, cost: int, failed: bool, remaining: Optional[int]) -> None:
