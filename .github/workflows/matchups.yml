@@ -1,0 +1,38 @@
+name: Matchups (daily)
+on:
+  schedule:
+    - cron: "0 12 * * *"         # 07:00 CT, after metrics (06:45)
+  workflow_dispatch:
+    inputs:
+      league: { description: "NFL, CFB, or BOTH", default: "BOTH", required: true }
+      season: { description: "season (blank = current)", default: "", required: false }
+      weeks:  { description: "weeks, space separated, or 'all' (blank = current + next)", default: "", required: false }
+concurrency: { group: data-write, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  matchups:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: NFL
+        if: ${{ github.event.inputs.league == 'NFL' || github.event.inputs.league == 'BOTH' || github.event.inputs.league == '' }}
+        run: |
+          python -m pipeline.jobs.build_matchups --league NFL \
+            ${{ github.event.inputs.season != '' && format('--season {0}', github.event.inputs.season) || '' }} \
+            ${{ github.event.inputs.weeks != '' && format('--weeks {0}', github.event.inputs.weeks) || '' }} \
+            --trigger ${{ github.event_name == 'schedule' && 'cron' || 'manual' }}
+      - name: CFB
+        if: ${{ github.event.inputs.league == 'CFB' || github.event.inputs.league == 'BOTH' || github.event.inputs.league == '' }}
+        run: |
+          python -m pipeline.jobs.build_matchups --league CFB \
+            ${{ github.event.inputs.season != '' && format('--season {0}', github.event.inputs.season) || '' }} \
+            ${{ github.event.inputs.weeks != '' && format('--weeks {0}', github.event.inputs.weeks) || '' }} \
+            --trigger ${{ github.event_name == 'schedule' && 'cron' || 'manual' }}
+      - name: Summary
+        run: python -m pipeline.jobs.report_status
+      - uses: ./.github/actions/commit
+        with: { message: "data: matchups ${{ github.run_id }}" }
