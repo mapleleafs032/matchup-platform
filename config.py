@@ -104,6 +104,19 @@ CONTINUITY_WEIGHTS = {"CFB": {"rp_total": 0.45, "qb": 0.25, "hc": 0.15, "portal_
 PORTAL_CHURN_FULL = 25                         # incoming transfers at which churn penalty saturates
 CFBD_ROSTER_CALLS_PER_SEASON = 8
 
+# ---- Matchup engine (pipeline/matchup_engine.py). Weights = points per league-SD of edge_raw. PRIORS; fit in Phase 8. ----
+MATCHUP_MODEL_VERSION = "MATCHUP_v0.7_prelim"
+_W_NFL = {"OVERALL_OFF": 1.5, "OVERALL_DEF": 1.5, "PASS_OFF": 1.0, "PASS_DEF": 1.0, "RUSH_OFF": 0.5, "RUSH_DEF": 0.5, "QB": 1.5,
+          "OFFENSIVE_LINE": 0.6, "DEFENSIVE_FRONT": 0.6, "EXPLOSIVE": 0.6, "SUCCESS": 0.5, "THIRD_DOWN": 0.3, "RED_ZONE": 0.3,
+          "TURNOVER": 0.3, "SPECIAL_TEAMS": 0.3, "COACHING": 0.5, "TALENT": 0.0, "RETURNING_PROD": 0.5, "RECENT_FORM": 0.4,
+          "SOS": 0.0, "HOME_FIELD": 1.0, "STYLE_FIT": 0.5, "INJURY": 1.0, "WEATHER": 0.3, "REST": 0.6}
+MATCHUP_WEIGHTS_INIT = {"NFL": _W_NFL, "CFB": {**{k: v * 1.6 for k, v in _W_NFL.items()}, "TALENT": 1.0, "RETURNING_PROD": 0.8, "COACHING": 0.6, "HOME_FIELD": 1.0}}
+HFA_DEFAULT_POINTS = {"NFL": 1.5, "CFB": 2.5}     # used only when no fitted ratings exist for the week
+INJURY_POSITION_WEIGHTS = {"QB": 3.0, "OL": 0.6, "RB": 0.5, "WR": 0.6, "TE": 0.4, "EDGE": 0.7, "DL": 0.5, "LB": 0.4, "CB": 0.6, "S": 0.4, "K": 0.3, "P": 0.1, "LS": 0.05, "UNK": 0.2}
+INJURY_SD_POINTS = 1.5            # injury burden units per league-SD (QB out alone = 2 SD)
+TURNOVER_REGRESSION = 0.4         # turnover margin is mostly noise; shrink toward zero
+WIND_PASS_THRESHOLD_MPH = 12
+
 # ---- Storage --------------------------------------------------------------------
 APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to repo root
     "data/tables/market/snapshots",

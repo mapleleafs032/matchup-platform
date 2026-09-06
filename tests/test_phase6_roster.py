@@ -108,7 +108,8 @@ def test_projected_depth_chart_ordering_and_slots():
     roster_now = pd.DataFrame([{"team_id": "T", "player_id": p, "position": pos, "years_exp": y} for p, pos, y in
                                (("P2", "RB", 3), ("RB2", "RB", 1), ("P3", "WR", 3), ("WR2", "WR", 2), ("WR3", "WR", 1), ("WR4", "WR", 1),
                                 ("NEWQB", "QB", 2), ("BACKUP", "QB", 1), ("P6", "OL", 4), ("OL2", "OL", 2), ("OL3", "OL", 1), ("OL4", "OL", 1), ("OL5", "OL", 1), ("OL6", "OL", 1))])
-    transfers = pd.DataFrame([{"transfer_id": "x", "player_id": "NEWQB", "rating": 0.93, "to_team_id": "T"}])
+    transfers = pd.DataFrame([{"transfer_id": "x", "player_id": "NEWQB", "rating": 0.93, "to_team_id": "T"},
+                              {"transfer_id": "y", "player_id": "NEWQB", "rating": 0.91, "to_team_id": "T"}])   # entered the portal twice
     recruits = pd.DataFrame([{"athlete_id": 999, "rating": 0.95}])   # -> CFB_P_999 not on roster; ignored
     dc = eng.project_depth_chart_cfb(2026, 1, roster_now, prior, None, transfers, recruits)
     qb1 = dc[(dc.slot == "QB1") & (dc.rank_in_slot == 1)].iloc[0]

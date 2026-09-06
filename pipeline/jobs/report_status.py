@@ -45,7 +45,8 @@ def main():
                       ("team_ratings", "analytics/team_ratings/**/*.parquet"),
                       ("player_season_usage NFL", "roster/player_season_usage/NFL/*.parquet"), ("player_season_usage CFB", "roster/player_season_usage/CFB/*.parquet"),
                       ("returning_production", "roster/returning_production/**/*.parquet"), ("transfers CFB", "roster/transfers/*.parquet"),
-                      ("qb_status", "roster/qb_status/**/*.parquet"), ("continuity", "roster/continuity/**/*.parquet")]:
+                      ("qb_status", "roster/qb_status/**/*.parquet"), ("continuity", "roster/continuity/**/*.parquet"),
+                      ("matchup_edges", "analytics/matchup_edges/**/*.parquet")]:
         print(f"  {name:24s} {_count(pat):>7d}")
     teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
     if not teams.empty:
@@ -69,6 +70,14 @@ def main():
         for prov, r in m.iterrows():
             lim = config.API_BUDGET.get(prov, {}).get("monthly")
             print(f"  {prov:12s} calls={int(r.requests):4d} credits={int(r.credits):5d}/{lim}  failures={int(r.failures)}  provider_reports_remaining={r.remaining_reported}")
+    print("\nMATCHUP EDGES (latest week per league; prelim weighted advantage, home perspective, points)")
+    for lg in ("NFL", "CFB"):
+        files = sorted(glob.glob(str(config.TABLES / f"analytics/matchup_edges/{lg}/*/W*.parquet")))
+        if files:
+            e = pd.read_parquet(files[-1]); g = e.drop_duplicates("game_id")[["game_id", "prelim_margin_home"]].sort_values("prelim_margin_home")
+            un = e[e.is_unavailable].category.value_counts().to_dict()
+            print(f"  {lg} {files[-1].split('/')[-2]} {files[-1].split('/')[-1][:-8]}: {len(g)} games | unavailable categories: {un}")
+            print("   " + " | ".join(f"{r.game_id.split('_',3)[3]} {r.prelim_margin_home:+.1f}" for _, r in pd.concat([g.head(3), g.tail(3)]).iterrows()))
     print("\nROSTER ENGINE (latest season per league)")
     for lg in ("NFL", "CFB"):
         for p in sorted(glob.glob(str(config.TABLES / f"roster/continuity/{lg}/*.parquet")))[-1:]:
