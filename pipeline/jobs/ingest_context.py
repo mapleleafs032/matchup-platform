@@ -94,6 +94,25 @@ def nfl(what: set[str], season: int, job: JobRun):
             n = storage.append_csv(ROSTER / "injuries" / "NFL" / f"{season}.csv", inj, ["injury_row_id"], on_duplicate="skip")
             job.rows_written += n
             print(f"NFL injuries: {n} new rows ({len(inj)} in file)")
+    if "coaches" in what:
+        from providers import nflverse as nv
+        raw = nv.fetch_schedules(rm)
+        d = raw[(raw.season == season) & (raw.game_type == "REG")]
+        pairs = pd.concat([d[["home_team", "home_coach"]].rename(columns={"home_team": "team", "home_coach": "coach"}),
+                           d[["away_team", "away_coach"]].rename(columns={"away_team": "team", "away_coach": "coach"})]).dropna()
+        rows = []
+        for team, g in pairs.groupby("team"):
+            tid = resolver.resolve("nflverse", alias=team)
+            for coach, n in g.coach.value_counts().items():     # a mid-season change yields two rows; manual dates refine
+                cid = str(coach).lower().replace(" ", "_").replace(".", "")
+                rows.append({"team_id": tid, "season": season, "role": "HC", "coach_name": coach, "coach_id": cid, "effective_from": f"{season}-01-01",
+                             "effective_to": None, "is_first_season_in_role": None, "source": "nflverse", "entered_by": None,
+                             "retrieved_at": raw.attrs["retrieved_at"].isoformat(), "games": int(n), "wins": None, "losses": None,
+                             "needs_manual_dates": len(g.coach.unique()) > 1, "coach_row_id": f"{tid}_{season}_HC_{cid}"})
+        if rows:
+            n = storage.append_csv(ROSTER / "coaches.csv", pd.DataFrame(rows), ["coach_row_id"], on_duplicate="skip")
+            job.rows_written += n
+            print(f"NFL head coaches {season}: {n} new rows")
     if "qbr" in what:
         raw = nflverse_context.fetch_asset(rm, "qbr")
         pa = storage.read_table(REF / "player_aliases.parquet")
@@ -287,7 +306,7 @@ def main(argv=None):
         vlog = ValidationLog(job.job_run_id, "context")
         if "manual" in what:
             load_manual(job, vlog)
-        if "NFL" in leagues and what & {"players", "rosters", "injuries", "qbr"}:
+        if "NFL" in leagues and what & {"players", "rosters", "injuries", "qbr", "coaches"}:
             nfl(what, a.season, job)
         if "CFB" in leagues and what & {"rosters", "rankings", "coaches", "venues"}:
             cfb(what, a.season, job, vlog)

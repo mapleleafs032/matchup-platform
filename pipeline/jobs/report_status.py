@@ -42,7 +42,10 @@ def main():
                       ("weather_snapshots", "context/weather_snapshots/**/*.csv"),
                       ("team_metrics_asof NFL", "analytics/team_metrics_asof/NFL/**/*.parquet"),
                       ("team_metrics_asof CFB", "analytics/team_metrics_asof/CFB/**/*.parquet"),
-                      ("team_ratings", "analytics/team_ratings/**/*.parquet")]:
+                      ("team_ratings", "analytics/team_ratings/**/*.parquet"),
+                      ("player_season_usage NFL", "roster/player_season_usage/NFL/*.parquet"), ("player_season_usage CFB", "roster/player_season_usage/CFB/*.parquet"),
+                      ("returning_production", "roster/returning_production/**/*.parquet"), ("transfers CFB", "roster/transfers/*.parquet"),
+                      ("qb_status", "roster/qb_status/**/*.parquet"), ("continuity", "roster/continuity/**/*.parquet")]:
         print(f"  {name:24s} {_count(pat):>7d}")
     teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
     if not teams.empty:
@@ -66,6 +69,15 @@ def main():
         for prov, r in m.iterrows():
             lim = config.API_BUDGET.get(prov, {}).get("monthly")
             print(f"  {prov:12s} calls={int(r.requests):4d} credits={int(r.credits):5d}/{lim}  failures={int(r.failures)}  provider_reports_remaining={r.remaining_reported}")
+    print("\nROSTER ENGINE (latest season per league)")
+    for lg in ("NFL", "CFB"):
+        for p in sorted(glob.glob(str(config.TABLES / f"roster/continuity/{lg}/*.parquet")))[-1:]:
+            c = pd.read_parquet(p)
+            print(f"  {lg} {p.split('/')[-1][:-8]}: continuity median={c.continuity_index.median():.2f}  lowest: " + ", ".join(f"{t}={v:.2f}" for t, v in c.sort_values('continuity_index').head(4)[['team_id','continuity_index']].values))
+        qbs = sorted(glob.glob(str(config.TABLES / f"roster/qb_status/{lg}/*/*.parquet")))
+        if qbs:
+            q = pd.read_parquet(qbs[-1])
+            print(f"  {lg} QB status {qbs[-1].split('/')[-2]} {qbs[-1].split('/')[-1][:-8]}: basis {q.projection_basis.value_counts().to_dict()} | flags {q['flags'].value_counts().head(4).to_dict()}")
     print("\nTEAM RATINGS (latest week per league, top 8 by overall)")
     for lg in ("NFL", "CFB"):
         for p in sorted(glob.glob(str(config.TABLES / f"analytics/team_ratings/{lg}/*.parquet")))[-1:]:

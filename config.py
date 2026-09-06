@@ -94,6 +94,16 @@ PRIOR_WEIGHT_BY_WEEK = {             # weight on previous-season OPP_ADJ values 
 LOW_SAMPLE_GAMES = {"CFB": 4, "NFL": 4}
 QUALITY_TARGET_GAMES = {"CFB": 6, "NFL": 5}
 
+# ---- Roster engine (pipeline/roster_engine.py) ----------------------------------------
+RP_POSITION_WEIGHTS = {"passing": 0.30, "ol": 0.20, "receiving": 0.15, "rushing": 0.10, "defense": 0.25}   # §12; tuned in Phase 8
+OL_STARTS_FULL = {"NFL": 85, "CFB": 5}        # NFL: 17 games x 5 starters; CFB proxy: 5 retained OL = "full"
+DEF_PRODUCTION_WEIGHTS = {"tackles": 1.0, "tfl": 2.0, "sacks": 3.0, "ints": 3.0, "pbu": 2.0, "qb_hurries": 1.5, "pressures": 1.5, "ff": 2.0}
+RECRUIT_CLASS_WEIGHTS = {0: 0.15, 1: 0.35, 2: 0.30, 3: 0.20}   # years ago -> weight (current class matters least in-season)
+CONTINUITY_WEIGHTS = {"CFB": {"rp_total": 0.45, "qb": 0.25, "hc": 0.15, "portal_churn": 0.15},
+                      "NFL": {"rp_total": 0.50, "qb": 0.30, "hc": 0.20}}
+PORTAL_CHURN_FULL = 25                         # incoming transfers at which churn penalty saturates
+CFBD_ROSTER_CALLS_PER_SEASON = 8
+
 # ---- Storage --------------------------------------------------------------------
 APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to repo root
     "data/tables/market/snapshots",
