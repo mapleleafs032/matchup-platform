@@ -4,7 +4,7 @@ on:
     inputs:
       league:  { description: "NFL or CFB", default: "NFL", required: true }
       seasons: { description: "seasons, space separated (2021-2025 only)", default: "2025", required: true }
-      cfb_weeks: { description: "CFB only: weeks to load (blank = 0-15)", default: "", required: false }
+      cfb_weeks: { description: "CFB only: weeks to load (blank = 1-15)", default: "", required: false }
 concurrency: { group: data-write, cancel-in-progress: false }
 permissions: { contents: write }
 jobs:
@@ -26,10 +26,11 @@ jobs:
               python -m pipeline.jobs.ingest_schedules --league NFL --season $S --trigger backfill
               python -m pipeline.jobs.ingest_stats --league NFL --season $S --trigger backfill
             else
-              W="${{ github.event.inputs.cfb_weeks }}"; [ -z "$W" ] && W="0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"
+              W="${{ github.event.inputs.cfb_weeks }}"; [ -z "$W" ] && W="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"
               python -m pipeline.jobs.ingest_schedules --league CFB --season $S --weeks $W --trigger backfill
               python -m pipeline.jobs.ingest_schedules --league CFB --season $S --season-type postseason --weeks 1 --trigger backfill || true
               python -m pipeline.jobs.ingest_stats --league CFB --season $S --weeks $W --trigger backfill
+              python -m pipeline.jobs.ingest_stats --league CFB --season $S --season-type postseason --weeks 1 --trigger backfill || true
             fi
           done
       - name: Summary
