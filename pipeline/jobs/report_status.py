@@ -39,7 +39,10 @@ def main():
                       ("depth_charts NFL", "roster/depth_charts/NFL/**/*.parquet"),
                       ("injuries NFL", "roster/injuries/NFL/*.csv"), ("injuries CFB", "roster/injuries/CFB/*.csv"),
                       ("coaches", "roster/coaches.csv"), ("rankings CFB", "context/rankings/*.parquet"),
-                      ("weather_snapshots", "context/weather_snapshots/**/*.csv")]:
+                      ("weather_snapshots", "context/weather_snapshots/**/*.csv"),
+                      ("team_metrics_asof NFL", "analytics/team_metrics_asof/NFL/**/*.parquet"),
+                      ("team_metrics_asof CFB", "analytics/team_metrics_asof/CFB/**/*.parquet"),
+                      ("team_ratings", "analytics/team_ratings/**/*.parquet")]:
         print(f"  {name:24s} {_count(pat):>7d}")
     teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
     if not teams.empty:
@@ -63,6 +66,12 @@ def main():
         for prov, r in m.iterrows():
             lim = config.API_BUDGET.get(prov, {}).get("monthly")
             print(f"  {prov:12s} calls={int(r.requests):4d} credits={int(r.credits):5d}/{lim}  failures={int(r.failures)}  provider_reports_remaining={r.remaining_reported}")
+    print("\nTEAM RATINGS (latest week per league, top 8 by overall)")
+    for lg in ("NFL", "CFB"):
+        for p in sorted(glob.glob(str(config.TABLES / f"analytics/team_ratings/{lg}/*.parquet")))[-1:]:
+            r = pd.read_parquet(p); r = r[r.as_of_week == r.as_of_week.max()]
+            print(f"  {lg} season {p.split('/')[-1][:-8]} as of week {int(r.as_of_week.iloc[0])}  HFA={r.hfa_league.iloc[0]:.2f}")
+            print(r.sort_values("rating_overall", ascending=False)[["team_id", "rating_overall", "rating_off", "rating_def", "sos", "sos_rank", "games_in_fit"]].head(8).round(2).to_string(index=False))
     print("\nWEATHER sample (latest rows)")
     for p in sorted(glob.glob(str(config.TABLES / "context/weather_snapshots/**/*.csv"), recursive=True))[-1:]:
         w = pd.read_csv(p)

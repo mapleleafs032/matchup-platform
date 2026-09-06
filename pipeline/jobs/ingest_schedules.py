@@ -80,7 +80,7 @@ def run_nfl(season: int, job: JobRun) -> None:
 
 
 def run_cfb(season: int, weeks: list[int], season_type: str, job: JobRun, force: bool = False) -> None:
-    rm = RequestManager("cfbd", job.job_run_id)
+    rm = RequestManager("cfbd", job.job_run_id, enforce_daily=(job.trigger == "backfill"))
     resolver = ids.AliasResolver.load()
     if resolver.aliases[resolver.aliases.provider == "cfbd"].empty:
         n = seed_cfb(rm, resolver, season, job)

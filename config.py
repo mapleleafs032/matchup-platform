@@ -81,6 +81,19 @@ NFLVERSE_ASSETS = {
 }
 CFBD_STATS_CALLS_PER_WEEK = 5     # games/teams, stats/game/advanced, plays, drives, games/players
 
+# ---- Analytics layer (pipeline/asof.py, pipeline/ratings.py) -----------------------
+USE_GARBAGE_FILTERED = True          # which team_game_advanced variant feeds the model
+FCS_GAME_WEIGHT = 0.5                # CFB: weight of FBS-vs-FCS games in windows and ridge fits
+NIGHT_GAME_LOCAL_HOUR = 18           # local kickoff hour >= this -> NIGHT window
+RIDGE_LAMBDA = {"CFB": 3.0, "NFL": 2.0}          # opponent-adjustment shrinkage; tuned in Phase 8 backtest
+RECENCY_WEIGHTS = {"SEASON": 0.5, "LAST5": 0.3, "LAST3": 0.2}   # starting framework (§17); tuned in Phase 8
+PRIOR_WEIGHT_BY_WEEK = {             # weight on previous-season OPP_ADJ values (§40); tuned in Phase 8
+    "CFB": {1: 0.85, 2: 0.75, 3: 0.65, 4: 0.50, 5: 0.40, 6: 0.30, 7: 0.20, 8: 0.10, "default": 0.05},
+    "NFL": {1: 0.70, 2: 0.55, 3: 0.40, 4: 0.30, 5: 0.20, 6: 0.10, "default": 0.05},
+}
+LOW_SAMPLE_GAMES = {"CFB": 4, "NFL": 4}
+QUALITY_TARGET_GAMES = {"CFB": 6, "NFL": 5}
+
 # ---- Storage --------------------------------------------------------------------
 APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to repo root
     "data/tables/market/snapshots",

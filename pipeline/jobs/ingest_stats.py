@@ -117,7 +117,7 @@ def run_nfl(season: int, weeks: list[int] | None, job: JobRun) -> None:
 
 # ---- CFB --------------------------------------------------------------------------
 def run_cfb(season: int, weeks: list[int], season_type: str, verify: bool, job: JobRun, force: bool = False) -> None:
-    rm = RequestManager("cfbd", job.job_run_id)
+    rm = RequestManager("cfbd", job.job_run_id, enforce_daily=(job.trigger == "backfill"))
     resolver = ids.AliasResolver.load()
     games = storage.read_table(storage.games_path("CFB", season))
     if games.empty or "week" not in games.columns:
