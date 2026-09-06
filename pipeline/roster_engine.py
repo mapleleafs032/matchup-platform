@@ -267,12 +267,16 @@ def project_depth_chart_cfb(season: int, week: int, roster_now: pd.DataFrame, us
     if roster_now.empty:
         return pd.DataFrame()
     ros = roster_now.copy()
-    uc = usage_cur.set_index("player_id").usage_overall if usage_cur is not None and not usage_cur.empty else pd.Series(dtype=float)
+    # every lookup is collapsed to one value per player: portal and recruit feeds can list a player twice
+    uc = usage_cur.groupby("player_id").usage_overall.max() if usage_cur is not None and not usage_cur.empty else pd.Series(dtype=float)
     up = usage_prior.groupby("player_id").usage_overall.max() if not usage_prior.empty and "usage_overall" in usage_prior.columns else pd.Series(dtype=float)
-    tr = transfers.dropna(subset=["player_id"]).set_index("player_id").rating if transfers is not None and not transfers.empty and "player_id" in transfers.columns else pd.Series(dtype=float)
+    tr = (transfers.dropna(subset=["player_id"]).groupby("player_id").rating.max()
+          if transfers is not None and not transfers.empty and "player_id" in transfers.columns else pd.Series(dtype=float))
     rc = pd.Series(dtype=float)
     if recruits is not None and not recruits.empty and "athlete_id" in recruits.columns:
-        r = recruits.dropna(subset=["athlete_id"]); rc = pd.Series(r.rating.values, index="CFB_P_" + r.athlete_id.astype(int).astype(str))
+        r = recruits.dropna(subset=["athlete_id"]).copy()
+        r["pid"] = "CFB_P_" + r.athlete_id.astype(int).astype(str)
+        rc = r.groupby("pid").rating.max()
     ros["u_cur"] = ros.player_id.map(uc); ros["u_prior"] = ros.player_id.map(up); ros["portal"] = ros.player_id.map(tr); ros["recruit"] = ros.player_id.map(rc)
     rows = []
     for tid, team in ros.groupby("team_id"):
