@@ -1,0 +1,5 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
+2026_CFB_W01_WSU_WASH,2026-09-06T21:14:58.980667+00:00,2026-09-06T20:00:00+00:00,-1.2,False,False,open_meteo,69.8,69.2,6.6,8.1,350.0,0.0,0.0,50.0,0.0
+2026_CFB_W01_LOU_MISS,2026-09-06T21:14:58.981161+00:00,2026-09-06T23:30:00+00:00,2.3,False,False,open_meteo,91.9,92.1,10.7,16.8,10.0,0.0,0.0,39.0,0.0
+2026_CFB_W01_WIS_ND,2026-09-06T21:14:59.125993+00:00,2026-09-06T23:30:00+00:00,2.3,False,False,open_meteo,73.0,74.8,2.9,5.4,94.0,0.0,0.0,62.0,1.0
+2026_CFB_W01_SMU_FSU,2026-09-06T21:14:59.270291+00:00,2026-09-07T23:30:00+00:00,26.3,False,False,open_meteo,81.1,91.0,1.9,3.8,69.0,0.33,0.0,81.0,2.0
