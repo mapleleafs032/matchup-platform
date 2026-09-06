@@ -18,6 +18,8 @@ def _in_range(v, lo, hi) -> bool:
 
 
 def validate_games(df: pd.DataFrame, league: str, season: int, vlog: ValidationLog) -> pd.DataFrame:
+    if df.empty or "game_id" not in df.columns:
+        return pd.DataFrame(columns=["game_id"])
     keep = []
     seen = set()
     for _, r in df.iterrows():

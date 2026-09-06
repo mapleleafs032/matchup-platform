@@ -1,0 +1,42 @@
+venue_id,name,city,state,country,latitude,longitude,timezone,roof,source
+V_NFL_ATL97,Mercedes-Benz Stadium,Atlanta,GA,US,33.7554,-84.4009,America/New_York,retractable,manual
+V_NFL_BAL00,M&T Bank Stadium,Baltimore,MD,US,39.2780,-76.6227,America/New_York,outdoors,manual
+V_NFL_BOS00,Gillette Stadium,Foxborough,MA,US,42.0909,-71.2643,America/New_York,outdoors,manual
+V_NFL_BUF00,Highmark Stadium,Orchard Park,NY,US,42.7738,-78.7870,America/New_York,outdoors,manual
+V_NFL_CAR00,Bank of America Stadium,Charlotte,NC,US,35.2258,-80.8528,America/New_York,outdoors,manual
+V_NFL_CHI98,Soldier Field,Chicago,IL,US,41.8623,-87.6167,America/Chicago,outdoors,manual
+V_NFL_CIN00,Paycor Stadium,Cincinnati,OH,US,39.0955,-84.5161,America/New_York,outdoors,manual
+V_NFL_CLE00,Huntington Bank Field,Cleveland,OH,US,41.5061,-81.6995,America/New_York,outdoors,manual
+V_NFL_DAL00,AT&T Stadium,Arlington,TX,US,32.7473,-97.0945,America/Chicago,retractable,manual
+V_NFL_DEN00,Empower Field at Mile High,Denver,CO,US,39.7439,-105.0201,America/Denver,outdoors,manual
+V_NFL_DET00,Ford Field,Detroit,MI,US,42.3400,-83.0456,America/New_York,dome,manual
+V_NFL_FRA00,Deutsche Bank Park,Frankfurt,,DE,50.0686,8.6455,Europe/Berlin,outdoors,manual
+V_NFL_GER00,Allianz Arena,Munich,,DE,48.2188,11.6247,Europe/Berlin,outdoors,manual
+V_NFL_GNB00,Lambeau Field,Green Bay,WI,US,44.5013,-88.0622,America/Chicago,outdoors,manual
+V_NFL_HOU00,NRG Stadium,Houston,TX,US,29.6847,-95.4107,America/Chicago,retractable,manual
+V_NFL_IND00,Lucas Oil Stadium,Indianapolis,IN,US,39.7601,-86.1639,America/Indiana/Indianapolis,retractable,manual
+V_NFL_JAX00,EverBank Stadium,Jacksonville,FL,US,30.3239,-81.6373,America/New_York,outdoors,manual
+V_NFL_KAN00,GEHA Field at Arrowhead Stadium,Kansas City,MO,US,39.0489,-94.4839,America/Chicago,outdoors,manual
+V_NFL_LAX01,SoFi Stadium,Inglewood,CA,US,33.9535,-118.3392,America/Los_Angeles,dome,manual
+V_NFL_LON00,Wembley Stadium,London,,GB,51.5560,-0.2796,Europe/London,outdoors,manual
+V_NFL_LON02,Tottenham Hotspur Stadium,London,,GB,51.6043,-0.0664,Europe/London,outdoors,manual
+V_NFL_MAD01,Estadio Santiago Bernabeu,Madrid,,ES,40.4531,-3.6883,Europe/Madrid,retractable,manual
+V_NFL_MEL00,Melbourne Cricket Ground,Melbourne,,AU,-37.8200,144.9834,Australia/Melbourne,outdoors,manual
+V_NFL_MEX00,Estadio Banorte (Azteca),Mexico City,,MX,19.3029,-99.1505,America/Mexico_City,outdoors,manual
+V_NFL_MIA00,Hard Rock Stadium,Miami Gardens,FL,US,25.9580,-80.2389,America/New_York,outdoors,manual
+V_NFL_MIN01,U.S. Bank Stadium,Minneapolis,MN,US,44.9735,-93.2575,America/Chicago,dome,manual
+V_NFL_MUN01,Allianz Arena,Munich,,DE,48.2188,11.6247,Europe/Berlin,outdoors,manual
+V_NFL_NAS00,Nissan Stadium,Nashville,TN,US,36.1665,-86.7713,America/Chicago,outdoors,manual
+V_NFL_NOR00,Caesars Superdome,New Orleans,LA,US,29.9511,-90.0812,America/Chicago,dome,manual
+V_NFL_NYC01,MetLife Stadium,East Rutherford,NJ,US,40.8135,-74.0745,America/New_York,outdoors,manual
+V_NFL_PAR00,Stade de France,Saint-Denis,,FR,48.9245,2.3601,Europe/Paris,outdoors,manual
+V_NFL_PHI00,Lincoln Financial Field,Philadelphia,PA,US,39.9008,-75.1675,America/New_York,outdoors,manual
+V_NFL_PHO00,State Farm Stadium,Glendale,AZ,US,33.5276,-112.2626,America/Phoenix,retractable,manual
+V_NFL_PIT00,Acrisure Stadium,Pittsburgh,PA,US,40.4468,-80.0158,America/New_York,outdoors,manual
+V_NFL_RIO00,Maracana Stadium,Rio de Janeiro,,BR,-22.9122,-43.2302,America/Sao_Paulo,outdoors,manual
+V_NFL_SAO00,Arena Corinthians,Sao Paulo,,BR,-23.5453,-46.4742,America/Sao_Paulo,outdoors,manual
+V_NFL_SEA00,Lumen Field,Seattle,WA,US,47.5952,-122.3316,America/Los_Angeles,outdoors,manual
+V_NFL_SFO01,Levi's Stadium,Santa Clara,CA,US,37.4030,-121.9700,America/Los_Angeles,outdoors,manual
+V_NFL_TAM00,Raymond James Stadium,Tampa,FL,US,27.9759,-82.5033,America/New_York,outdoors,manual
+V_NFL_VEG00,Allegiant Stadium,Las Vegas,NV,US,36.0909,-115.1833,America/Los_Angeles,dome,manual
+V_NFL_WAS00,Northwest Stadium,Landover,MD,US,38.9076,-76.8645,America/New_York,outdoors,manual

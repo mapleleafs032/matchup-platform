@@ -57,7 +57,7 @@ VALIDATION_RANGES = {
     "total": (20.0, 110.0),
     "moneyline": (-10000, 10000),
     "points": (0, 120),
-    "week_cfb": (0, 16),
+    "week_cfb": (1, 16),      # CFBD week numbering starts at 1 (no week 0)
     "week_nfl": (1, 22),
 }
 

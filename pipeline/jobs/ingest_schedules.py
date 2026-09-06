@@ -111,6 +111,8 @@ def run_cfb(season: int, weeks: list[int], season_type: str, job: JobRun, force:
             vlog.flush()
             raise
         games = validate.validate_games(games, "CFB", season, vlog)
+        if games.empty:
+            print(f"CFB {season} W{wk} ({season_type}): provider returned no games"); continue
         r = storage.upsert_games("CFB", season, games)
         for w in r["warnings"]:
             print("WARN", w)
@@ -153,7 +155,7 @@ def main(argv=None):
         if a.league == "NFL":
             run_nfl(a.season, job)
         else:
-            weeks = a.weeks or list(range(0, 16))
+            weeks = a.weeks or list(range(1, 16))   # CFBD has no week 0 (late-August games are its week 1)
             run_cfb(a.season, weeks, a.season_type, job, a.force)
 
 

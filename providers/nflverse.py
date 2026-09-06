@@ -98,7 +98,8 @@ def normalize_schedules(raw: pd.DataFrame, season: int, resolver: ids.AliasResol
         kick, tba = _kickoff_utc(r.gameday, r.gametime)
         completed = pd.notna(r.home_score) and pd.notna(r.away_score)
         roof = r.roof if isinstance(r.roof, str) and r.roof in ("outdoors", "dome", "closed", "open") else None
-        roof_norm = {"outdoors": "outdoors", "dome": "dome", "closed": "retractable", "open": "retractable"}.get(roof) if roof else None
+        # nflverse records a retractable roof's actual state for the game; keep it (weather treats closed as indoor)
+        roof_norm = {"outdoors": "outdoors", "dome": "dome", "closed": "retractable_closed", "open": "retractable_open"}.get(roof) if roof else None
         games.append({
             "game_id": gid, "league": "NFL", "season": season, "season_type": season_type, "week": int(r.week),
             "away_team_id": away, "home_team_id": home,

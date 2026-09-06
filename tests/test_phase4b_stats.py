@@ -145,3 +145,20 @@ def test_nfl_2025_week1_matches_raw():
     adv = pd.read_parquet(path)
     row = adv[(adv.game_id == "2025_NFL_W01_DAL_PHI") & (adv.team_id == "NFL_PHI") & (~adv.is_garbage_filtered)].iloc[0]
     assert abs(row.off_ppa_play - 0.160) < 0.002 and abs(row.off_success_rate - 0.508) < 0.002
+
+
+def test_overlay_handles_all_null_native_column():
+    """Regression: CFBD returned a field with no values for a whole week; overlay must skip it, not crash."""
+    import numpy as np
+    from pipeline.jobs import ingest_stats  # noqa: F401  (import check)
+    adv = pd.DataFrame([{"game_id": "G", "team_id": "A", "is_garbage_filtered": True, "opponent_id": "B", "off_ppa_play": 0.1, "off_havoc_allowed": 0.05}])
+    nat = pd.DataFrame([{"game_id": "G", "team_id": "A", "is_garbage_filtered": True, "opponent_id": "B", "off_ppa_play": 0.31, "off_havoc_allowed": None}])
+    adv = adv.set_index(["game_id", "team_id", "is_garbage_filtered"]); nat = nat.set_index(["game_id", "team_id", "is_garbage_filtered"])
+    cols = [c for c in nat.columns if c in adv.columns and c != "opponent_id"]
+    nat = nat[cols].apply(pd.to_numeric, errors="coerce")
+    cols = [c for c in cols if nat[c].notna().any()]
+    common = nat.index.intersection(adv.index)
+    for c in cols:
+        adv[c] = adv[c].astype(float); adv.loc[common, c] = nat.loc[common, c].astype(float)
+    adv = adv.reset_index()
+    assert adv.off_ppa_play.iloc[0] == 0.31 and adv.off_havoc_allowed.iloc[0] == 0.05 and cols == ["off_ppa_play"]

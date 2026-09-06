@@ -32,7 +32,14 @@ def main():
                       ("plays NFL", "stats/plays/NFL/**/*.parquet"), ("plays CFB", "stats/plays/CFB/**/*.parquet"),
                       ("team_game_advanced NFL", "stats/team_game_advanced/NFL/*.parquet"),
                       ("team_game_advanced CFB", "stats/team_game_advanced/CFB/*.parquet"),
-                      ("player_game_stats CFB", "stats/player_game_stats/CFB/*.parquet")]:
+                      ("player_game_stats CFB", "stats/player_game_stats/CFB/*.parquet"),
+                      ("players NFL", "ref/players/NFL.parquet"), ("players CFB", "ref/players/CFB.parquet"),
+                      ("venues", "ref/venues.parquet"),
+                      ("roster_snapshots NFL", "roster/roster_snapshots/NFL/**/*.parquet"), ("roster_snapshots CFB", "roster/roster_snapshots/CFB/**/*.parquet"),
+                      ("depth_charts NFL", "roster/depth_charts/NFL/**/*.parquet"),
+                      ("injuries NFL", "roster/injuries/NFL/*.csv"), ("injuries CFB", "roster/injuries/CFB/*.csv"),
+                      ("coaches", "roster/coaches.csv"), ("rankings CFB", "context/rankings/*.parquet"),
+                      ("weather_snapshots", "context/weather_snapshots/**/*.csv")]:
         print(f"  {name:24s} {_count(pat):>7d}")
     teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
     if not teams.empty:
@@ -56,6 +63,10 @@ def main():
         for prov, r in m.iterrows():
             lim = config.API_BUDGET.get(prov, {}).get("monthly")
             print(f"  {prov:12s} calls={int(r.requests):4d} credits={int(r.credits):5d}/{lim}  failures={int(r.failures)}  provider_reports_remaining={r.remaining_reported}")
+    print("\nWEATHER sample (latest rows)")
+    for p in sorted(glob.glob(str(config.TABLES / "context/weather_snapshots/**/*.csv"), recursive=True))[-1:]:
+        w = pd.read_csv(p)
+        print(w[["game_id", "hours_to_kickoff", "is_indoor", "temp_f", "wind_mph", "wind_gust_mph", "precip_prob"]].tail(6).to_string(index=False))
     print("\nCFB advanced sample (garbage-filtered rows; overlay_source = cfbd_advanced when native values applied)")
     for p in sorted(glob.glob(str(config.TABLES / "stats/team_game_advanced/CFB/*.parquet")))[-1:]:
         a = pd.read_parquet(p)
