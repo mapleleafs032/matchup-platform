@@ -1,0 +1,27 @@
+name: Backtest + fit model
+on:
+  workflow_dispatch:
+    inputs:
+      league:   { description: "NFL, CFB, or BOTH", default: "BOTH", required: true }
+      activate: { description: "make the fitted model the active one (true/false)", default: "true", required: true }
+concurrency: { group: data-write, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: NFL
+        if: ${{ github.event.inputs.league == 'NFL' || github.event.inputs.league == 'BOTH' }}
+        run: python -m pipeline.jobs.backtest --league NFL ${{ github.event.inputs.activate == 'true' && '--activate' || '' }}
+      - name: CFB
+        if: ${{ github.event.inputs.league == 'CFB' || github.event.inputs.league == 'BOTH' }}
+        run: python -m pipeline.jobs.backtest --league CFB ${{ github.event.inputs.activate == 'true' && '--activate' || '' }}
+      - name: Reports
+        run: for f in data/tables/model/backtest/*/report_*.md; do echo "=================== $f"; cat "$f"; done
+      - uses: ./.github/actions/commit
+        with: { message: "model: backtest ${{ github.run_id }}" }
