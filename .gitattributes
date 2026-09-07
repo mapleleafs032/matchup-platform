@@ -1,0 +1,14 @@
+# Append-only tables: concurrent commits are always "keep both lines"
+data/tables/ops/job_log.csv merge=union
+data/tables/ops/validation_log.csv merge=union
+data/tables/ops/raw_responses.csv merge=union
+data/tables/market/snapshots/**/*.csv merge=union
+data/tables/model/predictions/**/*.csv merge=union
+data/tables/model/model_evaluation/**/*.csv merge=union
+data/tables/model/pregame_final_flags.csv merge=union
+data/tables/model/pregame_snapshots_index.csv merge=union
+data/tables/model/ai_analyses_index.csv merge=union
+data/tables/results/**/*.csv merge=union
+data/tables/roster/injuries/**/*.csv merge=union
+data/tables/roster/coaches.csv merge=union
+data/tables/context/weather_snapshots/**/*.csv merge=union
