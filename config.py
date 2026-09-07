@@ -116,11 +116,20 @@ INJURY_POSITION_WEIGHTS = {"QB": 3.0, "OL": 0.6, "RB": 0.5, "WR": 0.6, "TE": 0.4
 INJURY_SD_POINTS = 1.5            # injury burden units per league-SD (QB out alone = 2 SD)
 TURNOVER_REGRESSION = 0.4         # turnover margin is mostly noise; shrink toward zero
 WIND_PASS_THRESHOLD_MPH = 12
+QB_MIN_CAREER_ATT = 80         # attempts in our 2021+ tables before career evidence is used for the QB index
+
+# ---- Prediction model (pipeline/model.py, jobs/backtest.py, jobs/predict.py) ----------------
+LEAGUE_AVG_TOTAL = {"NFL": 44.0, "CFB": 54.0}
+TOTAL_FLOOR = 20.0
+ATS_EDGE_THRESHOLD = {"NFL": 2.0, "CFB": 3.0}      # points of model-vs-market disagreement to count as an "edge" pick
+CLOSING_BOOK_PRIORITY = ["nflverse_close", "consensus", "draftkings", "fanduel", "bovada", "betmgm", "espnbet"]
+HFA_SHRINK_GAMES = {"NFL": 120, "CFB": 400}         # games of fit needed before the fitted HFA fully replaces the league prior
 
 # ---- Storage --------------------------------------------------------------------
 APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to repo root
     "data/tables/market/snapshots",
     "data/tables/model/predictions",
+    "data/tables/model/pregame_final_flags.csv",
     "data/tables/model/pregame_snapshots_index.csv",
     "data/tables/model/model_evaluation",
     "data/tables/results",

@@ -135,30 +135,44 @@ def unit_vs_unit(w: Week, g, off_keys: list[str], allowed_keys: list[str]) -> tu
     return home_edge, away_edge, inputs
 
 
+def _qb_index(r) -> tuple[float | None, str]:
+    """QB quality in ~SD units from whatever career evidence exists (2021+ tables only).
+    EPA/dropback when present (NFL, or CFB once per-player PPA is ingested); otherwise a box composite."""
+    if pd.notna(r.career_ppa_dropback) and r.career_att >= config.QB_MIN_CAREER_ATT:
+        return float(r.career_ppa_dropback) / 0.10, "career_epa"
+    if pd.notna(r.career_ypa) and r.career_att >= config.QB_MIN_CAREER_ATT:
+        ypa = (float(r.career_ypa) - 7.2) / 0.8
+        cmp = ((float(r.career_cmp_pct) if pd.notna(r.career_cmp_pct) else 0.62) - 0.62) / 0.05
+        int_rate = (float(r.career_int) / float(r.career_att)) if pd.notna(r.career_int) and r.career_att else 0.025
+        ir = -(int_rate - 0.025) / 0.01
+        return float((ypa + cmp * 0.6 + ir * 0.5) / 2.1), "career_box"
+    return None, "no_career_evidence"
+
+
 def cat_qb(w: Week, g) -> tuple[float | None, dict, bool]:
     if w.qb.empty:
         return None, {}, True
     q = w.qb.set_index("team_id")
-    def qb_val(t):
+    def side(t):
         if t not in q.index:
-            return None, {}
+            return None, {"missing": True}, "none"
         r = q.loc[t]
-        parts = [x for x in (r.career_ppa_dropback, ) if pd.notna(x)]
-        base = float(parts[0]) if parts else None
+        idx, basis = _qb_index(r)
         info = {"player": r.player_name, "basis": r.projection_basis, "confidence": float(r.confidence), "flags": r["flags"],
-                "career_games": int(r.career_games_10att), "career_ypa": None if pd.isna(r.career_ypa) else round(float(r.career_ypa), 2),
-                "career_ppa_dropback": None if base is None else round(base, 3), "season_att": float(r.season_att)}
-        return base, info
-    hv, hi = qb_val(g.home_team_id); av, ai = qb_val(g.away_team_id)
+                "career_games": int(r.career_games_10att), "career_att": float(r.career_att),
+                "career_ypa": None if pd.isna(r.career_ypa) else round(float(r.career_ypa), 2),
+                "career_ppa_dropback": None if pd.isna(r.career_ppa_dropback) else round(float(r.career_ppa_dropback), 3),
+                "qb_index": None if idx is None else round(idx, 2), "qb_index_basis": basis, "season_att": float(r.season_att)}
+        return idx, info, basis
+    hv, hi, hb = side(g.home_team_id); av, ai, ab = side(g.away_team_id)
     inputs = {"home": hi, "away": ai}
     if hv is None or av is None:
-        # no career EPA for one side (rookie / unknown starter): use the team's passing EPA as the only evidence, flag it
-        h = w.z(g.home_team_id, g.game_id, "off_ppa_dropback"); a = w.z(g.away_team_id, g.game_id, "off_ppa_dropback")
-        inputs["fallback"] = "team_pass_epa"
+        # a side without career evidence (true freshman / unknown starter): fall back to the TEAM's passing EPA, and say so
+        h = w.z(g.home_team_id, g.game_id, "off_ppa_pass"); a = w.z(g.away_team_id, g.game_id, "off_ppa_pass")
+        inputs["fallback"] = "team_pass_epa"; inputs["fallback_reason"] = {"home": hb, "away": ab}
         return _sub(h, a), inputs, (h is None or a is None)
-    # scale: 0.10 EPA/dropback ~ one SD of QB quality
     conf = min(hi.get("confidence", 0.5), ai.get("confidence", 0.5))
-    return (hv - av) / 0.10 * (0.5 + 0.5 * conf), inputs, False
+    return (hv - av) * (0.5 + 0.5 * conf), inputs, False
 
 
 def cat_line(w: Week, g, offense_home: bool) -> tuple[float | None, dict]:
@@ -180,10 +194,10 @@ def cat_line(w: Week, g, offense_home: bool) -> tuple[float | None, dict]:
 def cat_style_fit(w: Week, g) -> tuple[float | None, dict]:
     """Does each offense attack what the other defense does badly? Product of tendency and weakness, netted."""
     def fit(off, deff):
-        pr = w.z(off, g.game_id, "off_pass_rate", "SEASON", "RAW")                 # + = passes more than average
+        pr = w.z(off, g.game_id, "off_pass_rate")                                   # + = passes more than average (prior-blended early)
         pass_weak = w.z(deff, g.game_id, "def_ppa_pass")                            # + = good pass D -> weakness = -z
         rush_weak = w.z(deff, g.game_id, "def_ppa_rush")
-        expl_t = w.z(off, g.game_id, "off_explosive_play_rate", "SEASON", "RAW")
+        expl_t = w.z(off, g.game_id, "off_explosive_play_rate")
         expl_weak = w.z(deff, g.game_id, "def_explosive_play_rate_allowed")
         terms = {}
         if pr is not None and pass_weak is not None and rush_weak is not None:
@@ -192,7 +206,7 @@ def cat_style_fit(w: Week, g) -> tuple[float | None, dict]:
         if expl_t is not None and expl_weak is not None:
             terms["explosive_vs_explosive_d"] = expl_t * (-expl_weak)
         if w.league == "NFL":
-            pa = w.z(off, g.game_id, "off_play_action_rate", "SEASON", "RAW"); nb = w.z(deff, g.game_id, "def_pressure_no_blitz_rate")
+            pa = w.z(off, g.game_id, "off_play_action_rate"); nb = w.z(deff, g.game_id, "def_pressure_no_blitz_rate")
             if pa is not None and nb is not None:
                 terms["play_action_vs_no_blitz_pressure"] = pa * (-nb)
         return (float(np.mean(list(terms.values()))) if terms else None), terms
@@ -241,7 +255,7 @@ def cat_weather(w: Week, g) -> tuple[float | None, dict, bool]:
         return None, {"forecast_missing": True}, True
     # wind mainly suppresses passing; the run-heavier team gains a little. Margin effect small by design; totals handled in Phase 8.
     wind_factor = max(0.0, (wind - config.WIND_PASS_THRESHOLD_MPH) / 10.0)
-    h_pr = w.z(g.home_team_id, g.game_id, "off_pass_rate", "SEASON", "RAW"); a_pr = w.z(g.away_team_id, g.game_id, "off_pass_rate", "SEASON", "RAW")
+    h_pr = w.z(g.home_team_id, g.game_id, "off_pass_rate"); a_pr = w.z(g.away_team_id, g.game_id, "off_pass_rate")
     raw = 0.0 if (h_pr is None or a_pr is None) else wind_factor * (a_pr - h_pr) * 0.5
     return raw, {"wind_mph": wind, "gust_mph": None if pd.isna(r.wind_gust_mph) else float(r.wind_gust_mph), "temp_f": None if pd.isna(r.temp_f) else float(r.temp_f),
                  "precip_prob": None if pd.isna(r.precip_prob) else float(r.precip_prob), "hours_to_kickoff": float(r.hours_to_kickoff), "wind_factor": wind_factor}, False
@@ -284,7 +298,7 @@ def build_game(w: Week, g, weights: dict) -> list[dict]:
         rows.append({"game_id": g.game_id, "category": cat, "edge_score": _score(raw_f) if raw_f is not None else 0, "edge_raw": raw_f,
                      "weight": weights.get(cat, 0.0), "margin_contribution": None if raw_f is None else round(weights.get(cat, 0.0) * raw_f, 3),
                      "inputs": json.dumps(inputs, default=str), "data_quality": quality, "is_unavailable": bool(unavailable or raw_f is None),
-                     "model_version": config.MATCHUP_MODEL_VERSION, "built_at": built_at})
+                     "model_version": weights.get("_model_version", config.MATCHUP_MODEL_VERSION), "built_at": built_at})
     gid = g.game_id; H, A = g.home_team_id, g.away_team_id
     # overall efficiency (interaction)
     ho, ao, inp = unit_vs_unit(w, g, ["off_ppa_play", "off_success_rate"], ["def_ppa_play", "def_success_rate"])
@@ -302,8 +316,8 @@ def build_game(w: Week, g, weights: dict) -> list[dict]:
     add("SUCCESS", _sub(hs, as_), inp)
     h3, a3, inp = unit_vs_unit(w, g, ["third_down_pct_off"], ["third_down_pct_def"]); add("THIRD_DOWN", _sub(h3, a3), inp)
     hz, az, inp = unit_vs_unit(w, g, ["off_rz_td_rate", "off_pts_per_scoring_opp"], ["def_rz_td_rate_allowed", "def_pts_per_scoring_opp_allowed"]); add("RED_ZONE", _sub(hz, az), inp)
-    tm = _sub(w.z(H, gid, "turnover_margin", "SEASON", "RAW"), w.z(A, gid, "turnover_margin", "SEASON", "RAW"))
-    add("TURNOVER", None if tm is None else tm * config.TURNOVER_REGRESSION, {"home": w.val(H, gid, "turnover_margin", "SEASON", "RAW"), "away": w.val(A, gid, "turnover_margin", "SEASON", "RAW"), "regression": config.TURNOVER_REGRESSION})
+    tm = _sub(w.z(H, gid, "turnover_margin"), w.z(A, gid, "turnover_margin"))
+    add("TURNOVER", None if tm is None else tm * config.TURNOVER_REGRESSION, {"home": w.val(H, gid, "turnover_margin"), "away": w.val(A, gid, "turnover_margin"), "regression": config.TURNOVER_REGRESSION})
     add("SPECIAL_TEAMS", None, {"note": "special-teams metrics not yet ingested (Phase 4D)"}, unavailable=True)
     # coaching / roster / talent
     cont = w.cont.set_index("team_id") if not w.cont.empty else pd.DataFrame()
@@ -345,7 +359,17 @@ def build_week(league: str, season: int, week: int) -> pd.DataFrame:
         return pd.DataFrame()
     wk = w.games[(w.games.week == week) & (w.games.season_type == "REG") & w.games.kickoff_utc.notna()]
     wk = wk[~wk.home_team_id.str.startswith("CFB_FCS") & ~wk.away_team_id.str.startswith("CFB_FCS")]
-    weights = config.MATCHUP_WEIGHTS_INIT[league]
+    weights = dict(config.MATCHUP_WEIGHTS_INIT[league])
+    # once a model has been fit (Phase 8), the displayed per-category points ARE its fitted coefficients (§35)
+    try:
+        from pipeline import model as M
+        mv, models = M.load_active_model(league)
+        if models is not None:
+            fitted = models["margin"].coef_per_raw_unit()
+            weights.update({k: v for k, v in fitted.items() if k in weights})
+            weights["_model_version"] = mv
+    except Exception:
+        pass
     rows = []
     for _, g in wk.iterrows():
         rows.extend(build_game(w, g, weights))

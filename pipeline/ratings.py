@@ -67,6 +67,10 @@ def build_ratings(tg_all: pd.DataFrame, league: str, season: int, as_of_week: in
     pts = fits.get("points", {})
     if not pts.get("off"):
         return pd.DataFrame(), fits
+    # HFA: fitted value is meaningless with few games (one game per team gave +10 pts in CFB week 2); shrink toward the league prior
+    k = config.HFA_SHRINK_GAMES[league]
+    n_fit = pts.get("n", 0)
+    hfa_used = (n_fit * pts["hfa"] + k * config.HFA_DEFAULT_POINTS[league]) / (n_fit + k)
     rows = []
     teams = sorted(pts["off"].keys())
     for t in teams:
@@ -79,7 +83,7 @@ def build_ratings(tg_all: pd.DataFrame, league: str, season: int, as_of_week: in
                      "rating_rush_off": fits.get("off_ppa_rush", {}).get("off", {}).get(t),
                      "rating_rush_def": -fits.get("off_ppa_rush", {}).get("def", {}).get(t, 0.0) if fits.get("off_ppa_rush", {}).get("def") else None,
                      "rating_st": None, "sos": None, "sos_rank": None, "hfa_team": None,
-                     "hfa_league": pts["hfa"], "games_in_fit": int((d.team_id == t).sum()),
+                     "hfa_league": hfa_used, "hfa_fitted_raw": pts["hfa"], "games_in_fit": int((d.team_id == t).sum()),
                      "method": "ridge_v1", "build_version": config.PIPELINE_VERSION, "built_at": pd.Timestamp.now(tz="UTC").isoformat()})
     out = pd.DataFrame(rows)
     # strength of schedule: mean opponent overall rating faced so far (as-of), rank descending

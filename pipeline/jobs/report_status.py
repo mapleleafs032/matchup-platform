@@ -46,7 +46,9 @@ def main():
                       ("player_season_usage NFL", "roster/player_season_usage/NFL/*.parquet"), ("player_season_usage CFB", "roster/player_season_usage/CFB/*.parquet"),
                       ("returning_production", "roster/returning_production/**/*.parquet"), ("transfers CFB", "roster/transfers/*.parquet"),
                       ("qb_status", "roster/qb_status/**/*.parquet"), ("continuity", "roster/continuity/**/*.parquet"),
-                      ("matchup_edges", "analytics/matchup_edges/**/*.parquet")]:
+                      ("matchup_edges", "analytics/matchup_edges/**/*.parquet"),
+                      ("predictions (live)", "model/predictions/**/*.csv"), ("pregame snapshots", "model/pregame_snapshots_index.csv"),
+                      ("model_evaluation (live)", "model/model_evaluation/**/*.csv")]:
         print(f"  {name:24s} {_count(pat):>7d}")
     teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
     if not teams.empty:
@@ -70,6 +72,20 @@ def main():
         for prov, r in m.iterrows():
             lim = config.API_BUDGET.get(prov, {}).get("monthly")
             print(f"  {prov:12s} calls={int(r.requests):4d} credits={int(r.credits):5d}/{lim}  failures={int(r.failures)}  provider_reports_remaining={r.remaining_reported}")
+    print("\nMODEL")
+    mvp = config.TABLES / "model" / "model_versions.json"
+    if mvp.exists():
+        import json as _j
+        for k, v in _j.loads(mvp.read_text()).items():
+            if v.get("is_active"):
+                o = (v.get("backtest_summary") or {}).get("overall", {})
+                print(f"  {k}: trained on {v['trained_on_seasons']} n={v['n_train']} | OOS MAE={o.get('mae_margin')} winner={o.get('winner_acc')} market MAE={o.get('market_mae_margin')} ATS edge={o.get('ats_edge' + str(config.ATS_EDGE_THRESHOLD[v['league']]) + '_pct')} (n={o.get('ats_edge_n')})")
+    for lg in ("NFL", "CFB"):
+        files = sorted(glob.glob(str(config.TABLES / f"model/predictions/{lg}/*.csv")))
+        if files:
+            pr = pd.read_csv(files[-1]).sort_values("predicted_at").drop_duplicates("game_id", keep="last")
+            up = pr.sort_values("proj_margin_home")
+            print(f"  {lg} latest predictions ({len(pr)} games): " + " | ".join(f"{r.game_id.split('_',3)[3]} {r.proj_away_pts:.0f}-{r.proj_home_pts:.0f} wp={r.win_prob_home:.2f} mkt={r.market_spread_home}" for _, r in pd.concat([up.head(2), up.tail(2)]).iterrows()))
     print("\nMATCHUP EDGES (latest week per league; prelim weighted advantage, home perspective, points)")
     for lg in ("NFL", "CFB"):
         files = sorted(glob.glob(str(config.TABLES / f"analytics/matchup_edges/{lg}/*/W*.parquet")))
