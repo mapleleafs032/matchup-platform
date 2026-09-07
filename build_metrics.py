@@ -1,382 +1,370 @@
 """
-Matchup engine (master prompt §7-9, §20-22, §34-35).
+python -m pipeline.jobs.ingest_context --league NFL --what rosters injuries qbr
+python -m pipeline.jobs.ingest_context --league CFB --what rosters rankings coaches venues
+python -m pipeline.jobs.ingest_context --league BOTH --what weather manual        (weather needs venues first)
+python -m pipeline.jobs.ingest_context --league BOTH --what all
 
-Every category produces edge_raw in league standard-deviation units from the HOME team's perspective
-(+ = home advantage), an integer edge_score in -3..+3 for display, and a preliminary points contribution
-= weight * edge_raw using config.MATCHUP_WEIGHTS_INIT (stated priors). Phase 8 fits the weights on
-2021-2025 and replaces the prelim contributions; the edge_raw definitions here are the model's features.
-
-Interaction principle: a unit-vs-unit category is
-    z(home unit) + z(opponent's allowed metric)         (for the home unit)
-  - z(away unit) - z(home's allowed metric)              (for the away unit)
-so a strong offense facing a strong defense nets toward zero instead of "both are good".
-
-Inputs (all as-of the game, produced by earlier phases):
-  team_metrics_asof  windows BLEND (efficiency, OPP_ADJ) and SEASON (style, RAW); ranks/pct per league
-  team_ratings       overall/off/def ratings, sos, league HFA (as-of week)
-  qb_status, continuity, talent_scores, injuries, weather_snapshots, depth_charts, games (rest/travel)
-Unavailable inputs produce is_unavailable=True for that category, never a silent zero.
+Storage (Phase 3 layout):
+  ref/players/{league}.parquet, ref/player_aliases.parquet, ref/venues.parquet         REBUILDABLE
+  roster/roster_snapshots/{league}/{season}/W{ww}.parquet, roster/depth_charts/...     APPEND by week (rewritten per week)
+  roster/injuries/{league}/{season}.csv                                                 APPEND-ONLY
+  roster/coaches.csv (provider + manual rows)                                          APPEND-ONLY
+  context/rankings/{season}.parquet                                                    REBUILDABLE per week
+  context/weather_snapshots/{league}/{season}/W{ww}.csv                                APPEND-ONLY
+  ops/manual_lists.csv, ops/kickoff_overrides.csv                                      from data/manual/
 """
 from __future__ import annotations
-import json
+import argparse
+import glob
+import sys
 from datetime import datetime, timezone
 
-import numpy as np
 import pandas as pd
 
 import config
-from pipeline import storage
+from pipeline import ids, storage
+from pipeline.log import JobRun, ValidationLog
+from providers import cfbd_context, nflverse_context, open_meteo
+from providers.base import RequestManager, BudgetExceeded, ProviderError
 
-AN = config.TABLES / "analytics"
+REF = config.TABLES / "ref"
 ROSTER = config.TABLES / "roster"
-
-CATEGORIES = ["OVERALL_OFF", "OVERALL_DEF", "PASS_OFF", "PASS_DEF", "RUSH_OFF", "RUSH_DEF", "QB", "OFFENSIVE_LINE", "DEFENSIVE_FRONT",
-              "EXPLOSIVE", "SUCCESS", "THIRD_DOWN", "RED_ZONE", "TURNOVER", "SPECIAL_TEAMS", "COACHING", "TALENT", "RETURNING_PROD",
-              "RECENT_FORM", "SOS", "HOME_FIELD", "STYLE_FIT", "INJURY", "WEATHER", "REST"]
-
-# metric_key -> sign so that "higher = better for the team it describes" (registry higher_is_better)
-def _score(raw: float | None) -> int | None:
-    if raw is None or (isinstance(raw, float) and np.isnan(raw)):
-        return None
-    a = abs(raw)
-    s = 0 if a < 0.25 else 1 if a < 0.75 else 2 if a < 1.5 else 3
-    return int(np.sign(raw) * s)
+CONTEXT = config.TABLES / "context"
+MANUAL = config.DATA / "manual"
 
 
-class Week:
-    """Loads everything for one league-week once; z-scores computed across the teams in that build."""
-
-    def __init__(self, league: str, season: int, week: int):
-        self.league, self.season, self.week = league, season, week
-        m = storage.read_table(AN / "team_metrics_asof" / league / str(season) / f"W{week:02d}.parquet")
-        self.metrics = m
-        self.reg = storage.read_table(config.TABLES / "ref" / "metric_definitions.csv")
-        self.hib = dict(zip(self.reg.metric_key, self.reg.higher_is_better)) if not self.reg.empty else {}
-        rat = storage.read_table(AN / "team_ratings" / league / f"{season}.parquet")
-        self.rat = rat[rat.as_of_week == week].set_index("team_id") if not rat.empty and (rat.as_of_week == week).any() else pd.DataFrame()
-        self.qb = _latest(ROSTER / "qb_status" / league / str(season), week)
-        self.cont = storage.read_table(ROSTER / "continuity" / league / f"{season}.parquet")
-        self.talent = storage.read_table(ROSTER / "talent_scores.parquet") if league == "CFB" else pd.DataFrame()
-        self.inj = storage.read_table(ROSTER / "injuries" / league / f"{season}.csv")
-        self.depth = _latest(ROSTER / "depth_charts" / league / str(season), week)
-        self.games = storage.read_table(storage.games_path(league, season))
-        self.venues = storage.read_table(config.TABLES / "ref" / "venues.parquet")
-        wdir = config.TABLES / "context" / "weather_snapshots" / league / str(season)
-        self.weather = pd.read_csv(wdir / f"W{week:02d}.csv") if (wdir / f"W{week:02d}.csv").exists() else pd.DataFrame()
-        self._z_cache: dict = {}
-
-    # ---- metric access ----------------------------------------------------------------
-    def _table(self, window: str, adj: str) -> pd.DataFrame:
-        key = (window, adj)
-        if key in self._z_cache:
-            return self._z_cache[key]
-        sub = self.metrics[(self.metrics.window == window) & (self.metrics.adjustment == adj)]
-        rows = {}
-        for _, r in sub.iterrows():
-            d = json.loads(r.metrics)
-            rows[(r.team_id, r.as_of_game_id)] = {k: (v["v"] if v else None) for k, v in d.items()}
-        df = pd.DataFrame.from_dict(rows, orient="index")
-        # one row per team for z-scoring (a team appears once per week)
-        df.index = pd.MultiIndex.from_tuples(df.index, names=["team_id", "game_id"])
-        self._z_cache[key] = df
-        return df
-
-    def z(self, team_id: str, game_id: str, key: str, window: str = "BLEND", adj: str = "OPP_ADJ") -> float | None:
-        """Standardized value; sign flipped so that + is good for the team described."""
-        df = self._table(window, adj)
-        if key not in df.columns or (team_id, game_id) not in df.index:
-            return None
-        col = df[key].astype(float)
-        v = col.loc[(team_id, game_id)]
-        if pd.isna(v):
-            return None
-        mu, sd = col.mean(), col.std(ddof=0)
-        if not sd or np.isnan(sd):
-            return None
-        zv = (v - mu) / sd
-        return float(zv if self.hib.get(key, True) else -zv)
-
-    def val(self, team_id: str, game_id: str, key: str, window: str = "BLEND", adj: str = "OPP_ADJ"):
-        df = self._table(window, adj)
-        if key not in df.columns or (team_id, game_id) not in df.index:
-            return None
-        v = df[key].loc[(team_id, game_id)]
-        return None if pd.isna(v) else float(v)
+def _now():
+    return datetime.now(timezone.utc)
 
 
-def _latest(d, week: int) -> pd.DataFrame:
-    """Most recent weekly file at or before `week`."""
-    if not d.exists():
-        return pd.DataFrame()
-    files = sorted(p for p in d.glob("W*.parquet") if int(p.stem[1:]) <= week)
-    return pd.read_parquet(files[-1]) if files else pd.DataFrame()
+def _merge_by_key(path, new: pd.DataFrame, keys: list[str]):
+    cur = storage.read_table(path)
+    if not cur.empty and not new.empty:
+        k_new = new[keys].astype(str).agg("|".join, axis=1)
+        k_cur = cur[keys].astype(str).agg("|".join, axis=1)
+        cur = cur[~k_cur.isin(set(k_new))]
+        new = pd.concat([cur, new], ignore_index=True)
+    if not new.empty:
+        storage.write_parquet(path, new)
+    return len(new)
 
 
-def _mean(vals: list[float | None]) -> float | None:
-    v = [x for x in vals if x is not None]
-    return float(np.mean(v)) if v else None
+def _current_week(games: pd.DataFrame) -> int:
+    sched = games[(games.status == "SCHEDULED") & games.kickoff_utc.notna()]
+    return int(sched.week.min()) if not sched.empty else int(games.week.max())
 
 
-def _sub(a: float | None, b: float | None) -> float | None:
-    return None if a is None or b is None else a - b
+# ---- NFL --------------------------------------------------------------------------
+def nfl(what: set[str], season: int, job: JobRun):
+    rm = RequestManager("nflverse", job.job_run_id)
+    resolver = ids.AliasResolver.load()
+    games = storage.read_table(storage.games_path("NFL", season))
+    if "players" in what or "rosters" in what or "qbr" in what:
+        raw = nflverse_context.fetch_asset(rm, "players")
+        players, aliases = nflverse_context.normalize_players(raw)
+        storage.write_parquet(REF / "players" / "NFL.parquet", players)
+        cur = storage.read_table(REF / "player_aliases.parquet")
+        cur = cur[~cur.player_id.str.startswith("NFL_P_")] if not cur.empty else cur
+        storage.write_parquet(REF / "player_aliases.parquet", pd.concat([cur, aliases], ignore_index=True))
+        job.rows_written += len(players)
+        print(f"NFL players: {len(players)}")
+    if "rosters" in what:
+        raw = nflverse_context.fetch_asset(rm, "rosters", season)
+        if raw is not None:
+            prior_files = sorted(glob.glob(str(ROSTER / "roster_snapshots" / "NFL" / str(season - 1) / "*.parquet")))
+            prior = pd.read_parquet(prior_files[-1]) if prior_files else None
+            ros = nflverse_context.normalize_rosters(raw, season, resolver, prior)
+            for wk, part in ros.groupby("week"):
+                storage.write_parquet(ROSTER / "roster_snapshots" / "NFL" / str(season) / f"W{int(wk):02d}.parquet", part)
+            job.rows_written += len(ros)
+            print(f"NFL rosters: {len(ros)} rows, weeks {sorted(ros.week.unique().tolist())}")
+        raw = nflverse_context.fetch_asset(rm, "depth", season)
+        if raw is not None and not games.empty:
+            dc = nflverse_context.normalize_depth_charts(raw, season, games, resolver)
+            for wk, part in dc.groupby("week"):
+                storage.write_parquet(ROSTER / "depth_charts" / "NFL" / str(season) / f"W{int(wk):02d}.parquet", part)
+            job.rows_written += len(dc)
+            print(f"NFL depth charts: {len(dc)} rows, weeks {sorted(dc.week.unique().tolist())}")
+    if "injuries" in what:
+        raw = nflverse_context.fetch_asset(rm, "injuries", season)
+        if raw is None:
+            print(f"NFL injuries {season}: not published yet")
+        else:
+            inj = nflverse_context.normalize_injuries(raw, season, games, resolver)
+            n = storage.append_csv(ROSTER / "injuries" / "NFL" / f"{season}.csv", inj, ["injury_row_id"], on_duplicate="skip")
+            job.rows_written += n
+            print(f"NFL injuries: {n} new rows ({len(inj)} in file)")
+    if "coaches" in what:
+        from providers import nflverse as nv
+        raw = nv.fetch_schedules(rm)
+        d = raw[(raw.season == season) & (raw.game_type == "REG")]
+        pairs = pd.concat([d[["home_team", "home_coach"]].rename(columns={"home_team": "team", "home_coach": "coach"}),
+                           d[["away_team", "away_coach"]].rename(columns={"away_team": "team", "away_coach": "coach"})]).dropna()
+        rows = []
+        for team, g in pairs.groupby("team"):
+            tid = resolver.resolve("nflverse", alias=team)
+            for coach, n in g.coach.value_counts().items():     # a mid-season change yields two rows; manual dates refine
+                cid = str(coach).lower().replace(" ", "_").replace(".", "")
+                rows.append({"team_id": tid, "season": season, "role": "HC", "coach_name": coach, "coach_id": cid, "effective_from": f"{season}-01-01",
+                             "effective_to": None, "is_first_season_in_role": None, "source": "nflverse", "entered_by": None,
+                             "retrieved_at": raw.attrs["retrieved_at"].isoformat(), "games": int(n), "wins": None, "losses": None,
+                             "needs_manual_dates": len(g.coach.unique()) > 1, "coach_row_id": f"{tid}_{season}_HC_{cid}"})
+        if rows:
+            n = storage.append_csv(ROSTER / "coaches.csv", pd.DataFrame(rows), ["coach_row_id"], on_duplicate="skip")
+            job.rows_written += n
+            print(f"NFL head coaches {season}: {n} new rows")
+    if "qbr" in what:
+        raw = nflverse_context.fetch_asset(rm, "qbr")
+        pa = storage.read_table(REF / "player_aliases.parquet")
+        q = nflverse_context.normalize_qbr(raw, season, games, pa)
+        path = config.TABLES / "stats" / "player_game_stats" / "NFL" / f"{season}.parquet"
+        pgs = storage.read_table(path)
+        if not pgs.empty and not q.empty:
+            pgs = pgs.drop(columns=["qbr"]).merge(q, on=["game_id", "player_id"], how="left")
+            storage.write_parquet(path, pgs)
+            print(f"NFL QBR: {int(pgs.qbr.notna().sum())} of {len(pgs)} QB game rows now carry QBR")
+    job.api_calls = rm.calls_this_run
 
 
-# ---- category builders -------------------------------------------------------------------
-def unit_vs_unit(w: Week, g, off_keys: list[str], allowed_keys: list[str]) -> tuple[float | None, float | None, dict]:
-    """Returns (home unit edge, away unit edge, inputs). Each = z(unit) + z(opponent allowed)."""
-    h, a = g.home_team_id, g.away_team_id
-    h_off = _mean([w.z(h, g.game_id, k) for k in off_keys]); a_def = _mean([w.z(a, g.game_id, k) for k in allowed_keys])
-    a_off = _mean([w.z(a, g.game_id, k) for k in off_keys]); h_def = _mean([w.z(h, g.game_id, k) for k in allowed_keys])
-    # allowed metrics are "higher_is_better=False" so z already means "+ = good defense"; opponent weakness = -z
-    home_edge = None if h_off is None or a_def is None else h_off - a_def
-    away_edge = None if a_off is None or h_def is None else a_off - h_def
-    inputs = {"home_off_z": h_off, "away_def_z": a_def, "away_off_z": a_off, "home_def_z": h_def,
-              "home_vals": {k: w.val(h, g.game_id, k) for k in off_keys + allowed_keys}, "away_vals": {k: w.val(a, g.game_id, k) for k in off_keys + allowed_keys}}
-    return home_edge, away_edge, inputs
+# ---- CFB --------------------------------------------------------------------------
+def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
+    rm = RequestManager("cfbd", job.job_run_id)
+    resolver = ids.AliasResolver.load()
+    games = storage.read_table(storage.games_path("CFB", season))
+    week = _current_week(games) if not games.empty else 1
+    unmatched: set[str] = set()
+    if "rosters" in what:
+        try:
+            res = cfbd_context.fetch_roster(rm, season)
+            payloads = [res.payload]
+            ts = res.retrieved_at
+        except ProviderError as e:
+            if "400" not in str(e):
+                raise
+            teams = storage.read_table(REF / "teams.parquet"); teams = teams[teams.league == "CFB"]
+            payloads, ts = [], _now()
+            for _, t in teams.iterrows():
+                payloads.append(cfbd_context.fetch_roster(rm, season, t.school_or_city).payload)
+        prior_files = sorted(glob.glob(str(ROSTER / "roster_snapshots" / "CFB" / str(season - 1) / "*.parquet")))
+        prior = pd.read_parquet(prior_files[-1]) if prior_files else None
+        ros_all, pl_all = [], []
+        for pl in payloads:
+            ros, players = cfbd_context.normalize_roster(pl, season, week, resolver, ts, prior, unmatched)
+            ros_all.append(ros); pl_all.append(players)
+        ros = pd.concat(ros_all, ignore_index=True); players = pd.concat(pl_all, ignore_index=True)
+        storage.write_parquet(ROSTER / "roster_snapshots" / "CFB" / str(season) / f"W{week:02d}.parquet", ros)
+        _merge_by_key(REF / "players" / "CFB.parquet", players.drop_duplicates("player_id"), ["player_id"])
+        job.rows_written += len(ros)
+        print(f"CFB rosters: {len(ros)} players on {ros.team_id.nunique()} teams as of week {week}")
+    if "rankings" in what:
+        res = cfbd_context.fetch_rankings(rm, season, week)
+        rk = cfbd_context.normalize_rankings(res.payload, resolver, res.retrieved_at, unmatched)
+        if not rk.empty:
+            _merge_by_key(CONTEXT / "rankings" / f"{season}.parquet", rk, ["season", "week", "poll", "team_id"])
+            job.rows_written += len(rk)
+        print(f"CFB rankings week {week}: {len(rk)} rows, polls {sorted(rk.poll.unique().tolist()) if not rk.empty else []}")
+    if "coaches" in what:
+        res = cfbd_context.fetch_coaches(rm, season)
+        co = cfbd_context.normalize_coaches(res.payload, season, resolver, res.retrieved_at, unmatched)
+        if not co.empty:
+            co["coach_row_id"] = co.team_id + "_" + co.season.astype(str) + "_" + co.role + "_" + co.coach_id
+            n = storage.append_csv(ROSTER / "coaches.csv", co, ["coach_row_id"], on_duplicate="skip")
+            job.rows_written += n
+            print(f"CFB head coaches {season}: {n} new rows; {int(co.needs_manual_dates.sum())} teams with mid-season change need manual dates")
+    if "venues" in what:
+        res = cfbd_context.fetch_venues(rm)
+        v = cfbd_context.normalize_venues(res.payload, res.retrieved_at)
+        _merge_by_key(REF / "venues.parquet", v, ["venue_id"])
+        job.rows_written += len(v)
+        print(f"CFB venues: {len(v)}")
+    for u in sorted(unmatched):
+        vlog.warn("ALIAS_UNMATCHED", u, "team", u, "team_aliases row (non-FBS teams expected)")
+    job.api_calls = rm.calls_this_run
 
 
-def _qb_index(r) -> tuple[float | None, str]:
-    """QB quality in ~SD units from whatever career evidence exists (2021+ tables only).
-    EPA/dropback when present (NFL, or CFB once per-player PPA is ingested); otherwise a box composite."""
-    if pd.notna(r.career_ppa_dropback) and r.career_att >= config.QB_MIN_CAREER_ATT:
-        return float(r.career_ppa_dropback) / 0.10, "career_epa"
-    if pd.notna(r.career_ypa) and r.career_att >= config.QB_MIN_CAREER_ATT:
-        ypa = (float(r.career_ypa) - 7.2) / 0.8
-        cmp = ((float(r.career_cmp_pct) if pd.notna(r.career_cmp_pct) else 0.62) - 0.62) / 0.05
-        int_rate = (float(r.career_int) / float(r.career_att)) if pd.notna(r.career_int) and r.career_att else 0.025
-        ir = -(int_rate - 0.025) / 0.01
-        return float((ypa + cmp * 0.6 + ir * 0.5) / 2.1), "career_box"
-    return None, "no_career_evidence"
-
-
-def cat_qb(w: Week, g) -> tuple[float | None, dict, bool]:
-    if w.qb.empty:
-        return None, {}, True
-    q = w.qb.set_index("team_id")
-    def side(t):
-        if t not in q.index:
-            return None, {"missing": True}, "none"
-        r = q.loc[t]
-        idx, basis = _qb_index(r)
-        info = {"player": r.player_name, "basis": r.projection_basis, "confidence": float(r.confidence), "flags": r["flags"],
-                "career_games": int(r.career_games_10att), "career_att": float(r.career_att),
-                "career_ypa": None if pd.isna(r.career_ypa) else round(float(r.career_ypa), 2),
-                "career_ppa_dropback": None if pd.isna(r.career_ppa_dropback) else round(float(r.career_ppa_dropback), 3),
-                "qb_index": None if idx is None else round(idx, 2), "qb_index_basis": basis, "season_att": float(r.season_att)}
-        return idx, info, basis
-    hv, hi, hb = side(g.home_team_id); av, ai, ab = side(g.away_team_id)
-    inputs = {"home": hi, "away": ai}
-    if hv is None or av is None:
-        # a side without career evidence (true freshman / unknown starter): fall back to the TEAM's passing EPA, and say so
-        h = w.z(g.home_team_id, g.game_id, "off_ppa_pass"); a = w.z(g.away_team_id, g.game_id, "off_ppa_pass")
-        inputs["fallback"] = "team_pass_epa"; inputs["fallback_reason"] = {"home": hb, "away": ab}
-        return _sub(h, a), inputs, (h is None or a is None)
-    conf = min(hi.get("confidence", 0.5), ai.get("confidence", 0.5))
-    return (hv - av) * (0.5 + 0.5 * conf), inputs, False
-
-
-def cat_line(w: Week, g, offense_home: bool) -> tuple[float | None, dict]:
-    """OFFENSIVE_LINE (home OL vs away front) or DEFENSIVE_FRONT (home front vs away OL)."""
-    ol_team, front_team = (g.home_team_id, g.away_team_id) if offense_home else (g.away_team_id, g.home_team_id)
-    prot = _mean([w.z(ol_team, g.game_id, k) for k in ("sack_rate_allowed", "off_pressure_rate_allowed", "off_havoc_allowed")])
-    run_block = _mean([w.z(ol_team, g.game_id, k) for k in ("off_line_yards", "off_opportunity_rate", "off_stuff_rate_allowed", "off_power_success")])
-    rush = _mean([w.z(front_team, g.game_id, k) for k in ("sack_rate", "def_pressure_rate", "def_havoc_front")])
-    run_def = _mean([w.z(front_team, g.game_id, k) for k in ("def_line_yards_allowed", "def_stuff_rate")])
-    pass_pro_edge = _sub(prot, rush); run_edge = _sub(run_block, run_def)
-    edge = _mean([pass_pro_edge, run_edge])
-    if edge is None:
-        return None, {}
-    signed = edge if offense_home else -edge
-    return signed, {"pass_protection_vs_rush": pass_pro_edge, "run_blocking_vs_run_defense": run_edge, "ol_team": ol_team, "front_team": front_team,
-                    "protection_z": prot, "pass_rush_z": rush, "run_block_z": run_block, "run_def_z": run_def}
-
-
-def cat_style_fit(w: Week, g) -> tuple[float | None, dict]:
-    """Does each offense attack what the other defense does badly? Product of tendency and weakness, netted."""
-    def fit(off, deff):
-        pr = w.z(off, g.game_id, "off_pass_rate")                                   # + = passes more than average (prior-blended early)
-        pass_weak = w.z(deff, g.game_id, "def_ppa_pass")                            # + = good pass D -> weakness = -z
-        rush_weak = w.z(deff, g.game_id, "def_ppa_rush")
-        expl_t = w.z(off, g.game_id, "off_explosive_play_rate")
-        expl_weak = w.z(deff, g.game_id, "def_explosive_play_rate_allowed")
-        terms = {}
-        if pr is not None and pass_weak is not None and rush_weak is not None:
-            terms["pass_lean_vs_pass_d"] = pr * (-pass_weak)
-            terms["rush_lean_vs_run_d"] = (-pr) * (-rush_weak)
-        if expl_t is not None and expl_weak is not None:
-            terms["explosive_vs_explosive_d"] = expl_t * (-expl_weak)
-        if w.league == "NFL":
-            pa = w.z(off, g.game_id, "off_play_action_rate"); nb = w.z(deff, g.game_id, "def_pressure_no_blitz_rate")
-            if pa is not None and nb is not None:
-                terms["play_action_vs_no_blitz_pressure"] = pa * (-nb)
-        return (float(np.mean(list(terms.values()))) if terms else None), terms
-    hf, ht = fit(g.home_team_id, g.away_team_id); af, at = fit(g.away_team_id, g.home_team_id)
-    return _sub(hf, af), {"home_fit": hf, "away_fit": af, "home_terms": ht, "away_terms": at}
-
-
-def cat_injury(w: Week, g) -> tuple[float | None, dict, bool]:
-    """Position-weighted OUT/DOUBTFUL starters, per team, from injuries + depth charts. Net = away burden - home burden."""
-    if w.inj.empty:
-        return None, {}, True
-    inj = w.inj[(w.inj.season == w.season) & (w.inj.week == w.week) & w.inj.status.isin(["OUT", "DOUBTFUL", "IR"])]
-    if inj.empty:
-        return 0.0, {"home": [], "away": []}, False
-    depth = w.depth
-    starters = set()
-    if not depth.empty:
-        starters = set(zip(depth[depth.rank_in_slot == 1].team_id, depth[depth.rank_in_slot == 1].player_id))
-    def burden(t):
-        rows = inj[inj.team_id == t]
-        tot, items = 0.0, []
-        for _, r in rows.iterrows():
-            pos = str(r.position) if pd.notna(r.position) else "UNK"
-            wgt = config.INJURY_POSITION_WEIGHTS.get(pos, 0.2)
-            is_starter = (t, r.player_id) in starters if pd.notna(r.get("player_id")) else True   # manual CFB rows are entered for starters
-            mult = 1.0 if is_starter else 0.35
-            sev = 1.0 if r.status in ("OUT", "IR") else 0.6
-            tot += wgt * mult * sev
-            items.append({"player": r.get("player_name") if pd.notna(r.get("player_name")) else r.get("player_id"), "pos": pos, "status": r.status, "starter": bool(is_starter), "impact": round(wgt * mult * sev, 2)})
-        return tot, sorted(items, key=lambda x: -x["impact"])[:8]
-    hb, hi = burden(g.home_team_id); ab, ai = burden(g.away_team_id)
-    return (ab - hb) / config.INJURY_SD_POINTS, {"home_burden": hb, "away_burden": ab, "home": hi, "away": ai}, False
-
-
-def cat_weather(w: Week, g) -> tuple[float | None, dict, bool]:
-    if w.weather.empty:
-        return None, {}, True
-    ws = w.weather[w.weather.game_id == g.game_id].sort_values("retrieved_at")
-    if ws.empty:
-        return None, {}, True
-    r = ws.iloc[-1]
-    if bool(r.is_indoor):
-        return 0.0, {"indoor": True}, False
-    wind = float(r.wind_mph) if pd.notna(r.wind_mph) else None
-    if wind is None:
-        return None, {"forecast_missing": True}, True
-    # wind mainly suppresses passing; the run-heavier team gains a little. Margin effect small by design; totals handled in Phase 8.
-    wind_factor = max(0.0, (wind - config.WIND_PASS_THRESHOLD_MPH) / 10.0)
-    h_pr = w.z(g.home_team_id, g.game_id, "off_pass_rate"); a_pr = w.z(g.away_team_id, g.game_id, "off_pass_rate")
-    raw = 0.0 if (h_pr is None or a_pr is None) else wind_factor * (a_pr - h_pr) * 0.5
-    return raw, {"wind_mph": wind, "gust_mph": None if pd.isna(r.wind_gust_mph) else float(r.wind_gust_mph), "temp_f": None if pd.isna(r.temp_f) else float(r.temp_f),
-                 "precip_prob": None if pd.isna(r.precip_prob) else float(r.precip_prob), "hours_to_kickoff": float(r.hours_to_kickoff), "wind_factor": wind_factor}, False
-
-
-def rest_context(w: Week, g) -> dict:
-    gm = w.games[w.games.kickoff_utc.notna()].copy(); gm["k"] = pd.to_datetime(gm.kickoff_utc, utc=True)
-    k = pd.Timestamp(g.kickoff_utc)
-    out = {}
-    for side, t in (("home", g.home_team_id), ("away", g.away_team_id)):
-        prev = gm[((gm.home_team_id == t) | (gm.away_team_id == t)) & (gm.k < k)].sort_values("k")
-        rest = int((k - prev.k.iloc[-1]).days) if not prev.empty else None
-        road_streak = 0
-        for _, p in prev.iloc[::-1].iterrows():
-            if p.away_team_id == t and not p.neutral_site:
-                road_streak += 1
-            else:
-                break
-        out[side] = {"rest_days": rest, "off_bye": bool(rest is not None and rest >= 13), "short_week": bool(rest is not None and rest <= 5),
-                     "consecutive_road_before": road_streak, "first_game": prev.empty}
-    return out
-
-
-def cat_rest(w: Week, g) -> tuple[float | None, dict]:
-    ctx = rest_context(w, g)
-    h, a = ctx["home"], ctx["away"]
-    if h["rest_days"] is None or a["rest_days"] is None:
-        return 0.0, ctx
-    diff = np.clip(h["rest_days"] - a["rest_days"], -7, 7) / 7.0
-    raw = diff + (0.15 if a["consecutive_road_before"] >= 2 else 0.0)
-    return float(raw), ctx
-
-
-# ---- assemble one game -------------------------------------------------------------------
-def build_game(w: Week, g, weights: dict) -> list[dict]:
+# ---- shared -------------------------------------------------------------------------
+def load_manual(job: JobRun, vlog: ValidationLog):
+    teams = storage.read_table(REF / "teams.parquet")
+    known = set(teams.team_id) if not teams.empty else set()
+    # NFL venues (static)
+    nv = pd.read_csv(MANUAL / "nfl_venues.csv")
+    nv["retrieved_at"] = _now().isoformat()
+    for c in ("elevation_m", "capacity", "surface"):
+        nv[c] = None
+    _merge_by_key(REF / "venues.parquet", nv, ["venue_id"])
+    # coordinators
+    co = pd.read_csv(MANUAL / "coaches_manual.csv")
+    co = co[co.coach_name.notna() & (co.coach_name.astype(str).str.strip() != "")]
     rows = []
-    built_at = datetime.now(timezone.utc).isoformat()
-    def add(cat, raw, inputs, unavailable=False, quality=1.0):
-        raw_f = None if raw is None or (isinstance(raw, float) and np.isnan(raw)) else float(np.clip(raw, -4, 4))
-        rows.append({"game_id": g.game_id, "category": cat, "edge_score": _score(raw_f) if raw_f is not None else 0, "edge_raw": raw_f,
-                     "weight": weights.get(cat, 0.0), "margin_contribution": None if raw_f is None else round(weights.get(cat, 0.0) * raw_f, 3),
-                     "inputs": json.dumps(inputs, default=str), "data_quality": quality, "is_unavailable": bool(unavailable or raw_f is None),
-                     "model_version": weights.get("_model_version", config.MATCHUP_MODEL_VERSION), "built_at": built_at})
-    gid = g.game_id; H, A = g.home_team_id, g.away_team_id
-    # overall efficiency (interaction)
-    ho, ao, inp = unit_vs_unit(w, g, ["off_ppa_play", "off_success_rate"], ["def_ppa_play", "def_success_rate"])
-    add("OVERALL_OFF", ho, inp); add("OVERALL_DEF", None if ao is None else -ao, inp)
-    hp, ap, inp = unit_vs_unit(w, g, ["off_ppa_pass", "off_success_pass"], ["def_ppa_pass", "def_success_pass"])
-    add("PASS_OFF", hp, inp); add("PASS_DEF", None if ap is None else -ap, inp)
-    hr, ar, inp = unit_vs_unit(w, g, ["off_ppa_rush", "off_success_rush"], ["def_ppa_rush", "def_success_rush"])
-    add("RUSH_OFF", hr, inp); add("RUSH_DEF", None if ar is None else -ar, inp)
-    raw, inp, un = cat_qb(w, g); add("QB", raw, inp, un)
-    raw, inp = cat_line(w, g, True); add("OFFENSIVE_LINE", raw, inp)
-    raw, inp = cat_line(w, g, False); add("DEFENSIVE_FRONT", raw, inp)
-    he, ae, inp = unit_vs_unit(w, g, ["off_explosive_play_rate", "off_explosiveness"], ["def_explosive_play_rate_allowed", "def_explosiveness"])
-    add("EXPLOSIVE", _sub(he, ae), inp)
-    hs, as_, inp = unit_vs_unit(w, g, ["off_success_std_downs", "off_success_pass_downs"], ["def_success_std_downs", "def_success_pass_downs"])
-    add("SUCCESS", _sub(hs, as_), inp)
-    h3, a3, inp = unit_vs_unit(w, g, ["third_down_pct_off"], ["third_down_pct_def"]); add("THIRD_DOWN", _sub(h3, a3), inp)
-    hz, az, inp = unit_vs_unit(w, g, ["off_rz_td_rate", "off_pts_per_scoring_opp"], ["def_rz_td_rate_allowed", "def_pts_per_scoring_opp_allowed"]); add("RED_ZONE", _sub(hz, az), inp)
-    tm = _sub(w.z(H, gid, "turnover_margin"), w.z(A, gid, "turnover_margin"))
-    add("TURNOVER", None if tm is None else tm * config.TURNOVER_REGRESSION, {"home": w.val(H, gid, "turnover_margin"), "away": w.val(A, gid, "turnover_margin"), "regression": config.TURNOVER_REGRESSION})
-    add("SPECIAL_TEAMS", None, {"note": "special-teams metrics not yet ingested (Phase 4D)"}, unavailable=True)
-    # coaching / roster / talent
-    cont = w.cont.set_index("team_id") if not w.cont.empty else pd.DataFrame()
-    hc = lambda t: (None if cont.empty or t not in cont.index or pd.isna(cont.loc[t].hc_changed) else (-1.0 if cont.loc[t].hc_changed else 0.0))
-    add("COACHING", _sub(hc(H), hc(A)), {"home_hc_changed": None if hc(H) is None else hc(H) < 0, "away_hc_changed": None if hc(A) is None else hc(A) < 0}, unavailable=(hc(H) is None or hc(A) is None))
-    if w.league == "CFB" and not w.talent.empty:
-        tl = w.talent[w.talent.season == w.season].set_index("team_id")
-        ht = tl.talent_score.get(H); at = tl.talent_score.get(A)
-        add("TALENT", None if pd.isna(ht) or pd.isna(at) else (float(ht) - float(at)) * 2.0, {"home_talent_pct": ht, "away_talent_pct": at, "home_blue_chip": tl.blue_chip_ratio_4yr.get(H), "away_blue_chip": tl.blue_chip_ratio_4yr.get(A)})
-    else:
-        add("TALENT", None, {"note": "NFL talent not modeled" if w.league == "NFL" else "talent table missing"}, unavailable=True)
-    ci = lambda t: (None if cont.empty or t not in cont.index else cont.loc[t].continuity_index)
-    add("RETURNING_PROD", None if ci(H) is None or ci(A) is None else (ci(H) - ci(A)) * 2.0, {"home_continuity": ci(H), "away_continuity": ci(A)}, unavailable=(ci(H) is None or ci(A) is None))
-    # recent form: blend vs season on net EPA
-    def form(t):
-        b = _sub(w.val(t, gid, "off_ppa_play", "BLEND"), w.val(t, gid, "def_ppa_play", "BLEND"))
-        s = _sub(w.val(t, gid, "off_ppa_play", "SEASON"), w.val(t, gid, "def_ppa_play", "SEASON"))
-        return None if b is None or s is None else (b - s) / 0.10
-    add("RECENT_FORM", _sub(form(H), form(A)), {"home_form_shift": form(H), "away_form_shift": form(A)})
-    if not w.rat.empty and H in w.rat.index and A in w.rat.index:
-        sos = w.rat.sos; sd = sos.std(ddof=0) or 1.0
-        add("SOS", float((w.rat.loc[H].sos - w.rat.loc[A].sos) / sd), {"home_sos": float(w.rat.loc[H].sos), "away_sos": float(w.rat.loc[A].sos), "home_sos_rank": int(w.rat.loc[H].sos_rank), "away_sos_rank": int(w.rat.loc[A].sos_rank)})
-        hfa = float(w.rat.hfa_league.iloc[0])
-    else:
-        add("SOS", None, {}, unavailable=True); hfa = config.HFA_DEFAULT_POINTS[w.league]
-    neutral = bool(g.neutral_site)
-    add("HOME_FIELD", 0.0 if neutral else 1.0, {"neutral_site": neutral, "hfa_points_league": hfa}, quality=1.0)
-    rows[-1]["weight"] = hfa; rows[-1]["margin_contribution"] = 0.0 if neutral else round(hfa, 3)   # HFA is in points already
-    raw, inp = cat_style_fit(w, g); add("STYLE_FIT", raw, inp)
-    raw, inp, un = cat_injury(w, g); add("INJURY", raw, inp, un)
-    raw, inp, un = cat_weather(w, g); add("WEATHER", raw, inp, un)
-    raw, inp = cat_rest(w, g); add("REST", raw, inp)
-    return rows
-
-
-def build_week(league: str, season: int, week: int) -> pd.DataFrame:
-    w = Week(league, season, week)
-    if w.metrics.empty:
-        return pd.DataFrame()
-    wk = w.games[(w.games.week == week) & (w.games.season_type == "REG") & w.games.kickoff_utc.notna()]
-    wk = wk[~wk.home_team_id.str.startswith("CFB_FCS") & ~wk.away_team_id.str.startswith("CFB_FCS")]
-    weights = dict(config.MATCHUP_WEIGHTS_INIT[league])
-    # once a model has been fit (Phase 8), the displayed per-category points ARE its fitted coefficients (§35)
-    try:
-        from pipeline import model as M
-        mv, models = M.load_active_model(league)
-        if models is not None:
-            fitted = models["margin"].coef_per_raw_unit()
-            weights.update({k: v for k, v in fitted.items() if k in weights})
-            weights["_model_version"] = mv
-    except Exception:
-        pass
+    for _, r in co.iterrows():
+        if r.team_id not in known:
+            vlog.reject("IDENTITY", f"coaches_manual:{r.team_id}", "team_id", r.team_id, "known team_id"); continue
+        if r.role not in ("OC", "DC", "HC"):
+            vlog.reject("RANGE", f"coaches_manual:{r.team_id}", "role", r.role, "OC|DC|HC"); continue
+        cid = str(r.coach_name).lower().replace(" ", "_").replace(".", "")
+        rows.append({"team_id": r.team_id, "season": int(r.season), "role": r.role, "coach_name": r.coach_name, "coach_id": cid,
+                     "effective_from": r.effective_from, "effective_to": r.effective_to if pd.notna(r.effective_to) else None,
+                     "is_first_season_in_role": None, "source": "manual", "entered_by": r.entered_by, "retrieved_at": _now().isoformat(),
+                     "coach_row_id": f"{r.team_id}_{int(r.season)}_{r.role}_{cid}"})
+    if rows:
+        job.rows_written += storage.append_csv(ROSTER / "coaches.csv", pd.DataFrame(rows), ["coach_row_id"], on_duplicate="skip")
+    # rivalries
+    rv = pd.read_csv(MANUAL / "rivalries.csv")
     rows = []
-    for _, g in wk.iterrows():
-        rows.extend(build_game(w, g, weights))
-    df = pd.DataFrame(rows)
-    if df.empty:
-        return df
-    # weighted matchup advantage per game (prelim points, HOME perspective) for the status report / UI
-    tot = df[~df.is_unavailable].groupby("game_id").margin_contribution.sum()
-    df["prelim_margin_home"] = df.game_id.map(tot)
-    return df
+    for _, r in rv.iterrows():
+        if r.team_a not in known or r.team_b not in known:
+            vlog.warn("IDENTITY", f"rivalries:{r.team_a}-{r.team_b}", "team", f"{r.team_a},{r.team_b}", "known team_ids"); continue
+        rows.append({"list_name": "RIVALRY", "league": r.league, "key_a": r.team_a, "key_b": r.team_b, "value": r.get("name"),
+                     "entered_by": r.entered_by, "entered_at": _now().isoformat()})
+    if rows:
+        out = pd.DataFrame(rows)
+        storage.write_parquet(config.TABLES / "ops" / "manual_lists.parquet", out)
+        print(f"rivalries loaded: {len(out)}")
+    # CFB injuries
+    inj = pd.read_csv(MANUAL / "injuries_cfb.csv")
+    inj = inj[inj.player_name.notna() & (inj.player_name.astype(str).str.strip() != "")]
+    rows = []
+    for _, r in inj.iterrows():
+        if r.team_id not in known:
+            vlog.reject("IDENTITY", f"injuries_cfb:{r.team_id}", "team_id", r.team_id, "known team_id"); continue
+        if r.status not in ("OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "IR"):
+            vlog.reject("RANGE", f"injuries_cfb:{r.player_name}", "status", r.status, "OUT|DOUBTFUL|QUESTIONABLE|PROBABLE|IR"); continue
+        rows.append({"injury_row_id": f"{r.team_id}_{str(r.player_name).replace(' ', '')}_{int(r.season)}W{int(r.week):02d}_{r.status}_{r.report_date}",
+                     "league": "CFB", "season": int(r.season), "week": int(r.week), "game_id": None, "team_id": r.team_id,
+                     "player_id": None, "player_name": r.player_name, "position": r.position, "depth_slot": None, "status": r.status,
+                     "practice_status": None, "injury_desc": r.injury_desc if pd.notna(r.injury_desc) else None,
+                     "report_date": r.report_date, "source": "manual", "entered_by": r.entered_by, "retrieved_at": _now().isoformat(),
+                     "effective_at": pd.Timestamp(r.report_date).isoformat()})
+    if rows:
+        job.rows_written += storage.append_csv(ROSTER / "injuries" / "CFB" / f"{config.SEASON}.csv", pd.DataFrame(rows), ["injury_row_id"], on_duplicate="skip")
+    # kickoff overrides
+    ko = pd.read_csv(MANUAL / "kickoff_overrides.csv")
+    if not ko.empty:
+        ko["entered_at"] = _now().isoformat()
+        storage.append_csv(config.TABLES / "ops" / "kickoff_overrides.csv", ko, ["game_id", "kickoff_utc"], on_duplicate="skip")
+
+
+def weather(leagues: list[str], season: int, job: JobRun, vlog: ValidationLog):
+    rm = RequestManager("open_meteo", job.job_run_id)
+    venues = storage.read_table(REF / "venues.parquet")
+    if venues.empty:
+        job.message += " no venues table; run --what venues manual first;"; return
+    vidx = venues.set_index("venue_id")
+    now = pd.Timestamp(_now())
+    horizon = now + pd.Timedelta(days=15)
+    total = 0
+    cache: dict[str, dict] = {}
+    for league in leagues:
+        games = storage.read_table(storage.games_path(league, season))
+        if games.empty:
+            continue
+        up = games[(games.status == "SCHEDULED") & games.kickoff_utc.notna()].copy()
+        up["k"] = pd.to_datetime(up.kickoff_utc, utc=True)
+        up = up[(up.k >= now - pd.Timedelta(hours=4)) & (up.k <= horizon)]
+        rows = []
+        for _, g in up.iterrows():
+            if pd.isna(g.venue_id) or g.venue_id not in vidx.index:
+                vlog.warn("VENUE_MISSING", g.game_id, "venue_id", g.venue_id, "venues row"); continue
+            v = vidx.loc[g.venue_id]
+            roof = g.venue_roof if isinstance(g.get("venue_roof"), str) else v.roof
+            if roof in open_meteo.INDOOR_ROOFS:
+                rows.append(open_meteo.snapshot_row(g.game_id, g.k, roof, None, _now())); continue
+            if pd.isna(v.latitude) or pd.isna(v.longitude):
+                vlog.warn("VENUE_NO_COORDS", g.game_id, "latitude", None, "coordinates"); continue
+            key = f"{round(float(v.latitude), 2)},{round(float(v.longitude), 2)}"
+            if key not in cache:
+                try:
+                    cache[key] = rm.get(open_meteo.FORECAST, params={"latitude": v.latitude, "longitude": v.longitude, "hourly": open_meteo.HOURLY,
+                                                                    "forecast_days": 16, **open_meteo.UNITS}).payload
+                except (ProviderError, BudgetExceeded) as e:
+                    vlog.warn("PROVIDER_FAIL", g.game_id, "open_meteo", str(e)[:80], "200"); cache[key] = None
+            payload = cache[key]
+            vals = open_meteo.pick_hour(payload, g.k) if payload else None
+            rows.append(open_meteo.snapshot_row(g.game_id, g.k, roof, vals, _now()))
+        if rows:
+            df = pd.DataFrame(rows).merge(games[["game_id", "week"]], on="game_id")
+            for wk, part in df.groupby("week"):
+                total += storage.append_csv(CONTEXT / "weather_snapshots" / league / str(season) / f"W{int(wk):02d}.csv",
+                                            part.drop(columns="week"), ["game_id", "retrieved_at"], on_duplicate="skip")
+    job.rows_written += total
+    job.api_calls += rm.calls_this_run
+    print(f"weather: {total} snapshot rows, {rm.calls_this_run} Open-Meteo calls")
+
+
+def weather_archive(leagues: list[str], season: int, job: JobRun, vlog: ValidationLog):
+    """Historical game-day weather from the Open-Meteo archive, one call per unique (venue, date).
+    Written to weather_snapshots as source=open_meteo_archive with is_actual=True (used by the backtest in place of a forecast)."""
+    rm = RequestManager("open_meteo", job.job_run_id)
+    venues = storage.read_table(REF / "venues.parquet")
+    if venues.empty:
+        job.message += " no venues;"; return
+    vidx = venues.set_index("venue_id")
+    total = 0
+    cache: dict[tuple, dict | None] = {}
+    for league in leagues:
+        games = storage.read_table(storage.games_path(league, season))
+        if games.empty:
+            continue
+        done = games[(games.status == "FINAL") & games.kickoff_utc.notna()].copy()
+        done["k"] = pd.to_datetime(done.kickoff_utc, utc=True)
+        existing = set()
+        for p in (CONTEXT / "weather_snapshots" / league / str(season)).glob("W*.csv"):
+            e = pd.read_csv(p); existing |= set(e[e.get("source", pd.Series(dtype=str)).eq("open_meteo_archive")].game_id) if "source" in e.columns else set()
+        rows = []
+        for _, g in done.iterrows():
+            if g.game_id in existing or pd.isna(g.venue_id) or g.venue_id not in vidx.index:
+                continue
+            v = vidx.loc[g.venue_id]
+            roof = g.venue_roof if isinstance(g.get("venue_roof"), str) else v.roof
+            if roof in open_meteo.INDOOR_ROOFS:
+                rows.append({**open_meteo.snapshot_row(g.game_id, g.k, roof, None, _now()), "source": "open_meteo_archive", "is_actual": True}); continue
+            if pd.isna(v.latitude) or pd.isna(v.longitude):
+                continue
+            day = g.k.strftime("%Y-%m-%d")
+            key = (round(float(v.latitude), 2), round(float(v.longitude), 2), day)
+            if key not in cache:
+                try:
+                    cache[key] = rm.get(open_meteo.ARCHIVE, params={"latitude": v.latitude, "longitude": v.longitude, "hourly": open_meteo.HOURLY_ARCHIVE,
+                                                                   "start_date": day, "end_date": day, **open_meteo.UNITS}).payload
+                except (ProviderError, BudgetExceeded) as e:
+                    vlog.warn("PROVIDER_FAIL", g.game_id, "open_meteo_archive", str(e)[:80], "200"); cache[key] = None
+            vals = open_meteo.pick_hour(cache[key], g.k) if cache[key] else None
+            rows.append({**open_meteo.snapshot_row(g.game_id, g.k, roof, vals, _now()), "source": "open_meteo_archive", "is_actual": True})
+        if rows:
+            df = pd.DataFrame(rows).merge(games[["game_id", "week"]], on="game_id")
+            for wk, part in df.groupby("week"):
+                total += storage.append_csv(CONTEXT / "weather_snapshots" / league / str(season) / f"W{int(wk):02d}.csv", part.drop(columns="week"), ["game_id", "retrieved_at"], on_duplicate="skip")
+        print(f"{league} {season} weather archive: {len(rows)} rows, {rm.calls_this_run} calls so far")
+    job.rows_written += total; job.api_calls += rm.calls_this_run
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser()
+    p.add_argument("--league", required=True, choices=["NFL", "CFB", "BOTH"])
+    p.add_argument("--season", type=int, default=config.SEASON)
+    p.add_argument("--what", nargs="+", default=["all"])
+    p.add_argument("--trigger", default="manual")
+    a = p.parse_args(argv)
+    what = set(a.what)
+    if "all" in what:
+        what = {"players", "rosters", "injuries", "qbr", "rankings", "coaches", "venues", "manual", "weather"}
+    leagues = ["NFL", "CFB"] if a.league == "BOTH" else [a.league]
+    with JobRun("CONTEXT", a.league, a.trigger) as job:
+        vlog = ValidationLog(job.job_run_id, "context")
+        if "manual" in what:
+            load_manual(job, vlog)
+        if "NFL" in leagues and what & {"players", "rosters", "injuries", "qbr", "coaches"}:
+            nfl(what, a.season, job)
+        if "CFB" in leagues and what & {"rosters", "rankings", "coaches", "venues"}:
+            cfb(what, a.season, job, vlog)
+        if "weather" in what:
+            weather(leagues, a.season, job, vlog)
+        if "weather_archive" in what:
+            weather_archive(leagues, a.season, job, vlog)
+        vlog.flush()
+        if vlog.rejects:
+            job.status = "PARTIAL"; job.message += f" {vlog.rejects} manual rows rejected;"
+
+
+if __name__ == "__main__":
+    main()

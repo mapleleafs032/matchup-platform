@@ -1,170 +1,186 @@
 """
-python -m pipeline.jobs.lock --league BOTH          # lock every SCHEDULED game whose kickoff has passed
-python -m pipeline.jobs.lock --league BOTH --evaluate   # also evaluate locked games that now have results
+Market engine (master prompt §23-26, §70). Everything here is reconstructed from our own timestamped
+market_snapshots — never from a provider's "movement" field. Language is evidence-based: the engine
+states what moved, when, and by how much, and what would have to be true for a stronger claim.
 
-Lock (§27, §76): for each game with kickoff_utc <= now and status SCHEDULED:
-  * the latest prediction row with predicted_at < kickoff becomes the pregame-final prediction
-    (recorded as an APPEND-ONLY flag row in pregame_final_flags.csv, never an update)
-  * the last market snapshot per book before kickoff becomes the closing line
-  * data/snapshots/pregame_{game_id}.json is written once with everything that existed before kickoff:
-    prediction, matchup edges, both teams' as-of metrics, QB status, injuries, weather, market history, model version
-  * games.status -> LOCKED, locked_at set. Nothing else on the game row changes, ever.
-Evaluate (§28): for LOCKED games with a results row, append one model_evaluation row and set status FINAL.
+Per game it produces:
+  open / current per book (consensus-first book priority), full history series
+  movement in points and in KEY-NUMBER units (a move -2.5 -> -3 crosses 3; -4 -> -4.5 crosses nothing)
+  steam flag: >= 1.0 pt (spread) move within STEAM_WINDOW_HOURS across >= 2 books in the same direction
+  book disagreement: spread range across books at the latest snapshot
+  no-vig implied win probabilities from the moneyline pair (§25)
+  model vs market: spread_diff, total_diff, model win prob vs market implied prob
+  public betting: UNAVAILABLE (no free structured feed) -> reverse-line-movement is explicitly not claimed
+  a list of short factual sentences for the UI / AI package
 """
 from __future__ import annotations
-import argparse
-import hashlib
 import json
 from datetime import datetime, timezone
 
+import numpy as np
 import pandas as pd
 
 import config
 from pipeline import storage
-from pipeline.log import JobRun
 
-MODEL = config.TABLES / "model"
-AN = config.TABLES / "analytics"
-ROSTER = config.TABLES / "roster"
-
-
-def _rows_json(df: pd.DataFrame) -> list[dict]:
-    return json.loads(df.to_json(orient="records", date_format="iso")) if df is not None and not df.empty else []
+KEY_NUMBERS_SPREAD = [3, 7, 10, 14, 17, 21]
+KEY_NUMBERS_TOTAL_NFL = [37, 41, 43, 44, 47, 51]
+SNAP_DIR = config.TABLES / "market" / "snapshots"
 
 
-def lock_league(league: str, season: int, job: JobRun, now: pd.Timestamp) -> int:
+def _book_priority(book: str) -> int:
+    try:
+        return config.ODDS_BOOK_PRIORITY.index(book)
+    except ValueError:
+        return 99
+
+
+def no_vig(ml_home: float | None, ml_away: float | None) -> tuple[float | None, float | None]:
+    """Implied probabilities with the overround removed (proportional method)."""
+    if ml_home is None or ml_away is None or pd.isna(ml_home) or pd.isna(ml_away):
+        return None, None
+    def imp(ml):
+        ml = float(ml)
+        return 100 / (ml + 100) if ml > 0 else -ml / (-ml + 100)
+    h, a = imp(ml_home), imp(ml_away)
+    tot = h + a
+    return (round(h / tot, 4), round(a / tot, 4)) if tot else (None, None)
+
+
+def key_numbers_crossed(a: float | None, b: float | None, keys: list[int]) -> list[int]:
+    """Key numbers k where exactly one of |a|, |b| is at or beyond k: moving onto, through, or off a key number all count."""
+    if a is None or b is None or pd.isna(a) or pd.isna(b) or a == b:
+        return []
+    return [k for k in keys if (abs(a) >= k) != (abs(b) >= k)]
+
+
+def load_history(league: str, season: int, week: int, game_id: str) -> pd.DataFrame:
+    p = SNAP_DIR / league / str(season) / f"W{week:02d}.csv"
+    if not p.exists():
+        return pd.DataFrame()
+    s = pd.read_csv(p)
+    s = s[s.game_id == game_id].copy()
+    s["retrieved_at"] = pd.to_datetime(s.retrieved_at, utc=True)
+    return s.sort_values("retrieved_at")
+
+
+def analyze_game(league: str, hist: pd.DataFrame, pred: pd.Series | None, kickoff: pd.Timestamp | None, now: pd.Timestamp) -> dict:
+    if hist.empty:
+        return {"available": False, "notes": ["No market snapshots for this game yet."], "public": None}
+    hist = hist[hist.retrieved_at <= (kickoff if kickoff is not None else now)]
+    if hist.empty:
+        return {"available": False, "notes": ["No pre-kickoff market snapshots."], "public": None}
+    books = sorted(hist.book.unique(), key=_book_priority)
+    primary = books[0]
+    h = hist[hist.book == primary]
+    first, last = h.iloc[0], h.iloc[-1]
+    latest_ts = hist.retrieved_at.max()
+    latest_all = hist[hist.retrieved_at >= latest_ts - pd.Timedelta(hours=6)].sort_values("retrieved_at").drop_duplicates("book", keep="last")
+    open_spread = first.provider_open_spread_home if pd.notna(first.get("provider_open_spread_home", np.nan)) else first.spread_home
+    open_total = first.provider_open_total if pd.notna(first.get("provider_open_total", np.nan)) else first.total
+    cur_spread, cur_total = last.spread_home, last.total
+    spread_move = None if pd.isna(open_spread) or pd.isna(cur_spread) else round(float(cur_spread - open_spread), 1)
+    total_move = None if pd.isna(open_total) or pd.isna(cur_total) else round(float(cur_total - open_total), 1)
+    keys_spread = key_numbers_crossed(open_spread, cur_spread, KEY_NUMBERS_SPREAD)
+    keys_total = key_numbers_crossed(open_total, cur_total, KEY_NUMBERS_TOTAL_NFL) if league == "NFL" else []
+    # steam: >=1pt move within window across >=2 books, same direction
+    steam = None
+    if hist.book.nunique() >= 2 and len(hist) >= 4:
+        w = hist[hist.retrieved_at >= latest_ts - pd.Timedelta(hours=config.STEAM_WINDOW_HOURS)]
+        moves = {}
+        for b, g in w.groupby("book"):
+            g = g[g.spread_home.notna()]
+            if len(g) >= 2:
+                moves[b] = float(g.spread_home.iloc[-1] - g.spread_home.iloc[0])
+        big = {b: m for b, m in moves.items() if abs(m) >= 1.0}
+        if len(big) >= 2 and len({np.sign(m) for m in big.values()}) == 1:
+            steam = {"direction": "toward_home" if list(big.values())[0] < 0 else "toward_away", "books": sorted(big), "window_hours": config.STEAM_WINDOW_HOURS,
+                     "avg_move": round(float(np.mean(list(big.values()))), 2)}
+    # disagreement across books at the latest snapshot
+    spreads_now = latest_all.spread_home.dropna()
+    disagreement = round(float(spreads_now.max() - spreads_now.min()), 1) if len(spreads_now) >= 2 else None
+    # implied probabilities
+    p_home, p_away = no_vig(last.ml_home, last.ml_away)
+    series = [{"t": r.retrieved_at.isoformat(), "book": r.book, "spread_home": None if pd.isna(r.spread_home) else float(r.spread_home),
+               "total": None if pd.isna(r.total) else float(r.total), "ml_home": None if pd.isna(r.ml_home) else int(r.ml_home),
+               "ml_away": None if pd.isna(r.ml_away) else int(r.ml_away)} for _, r in hist.iterrows()]
+    # model vs market
+    mvm = None
+    if pred is not None:
+        mm = -float(cur_spread) if pd.notna(cur_spread) else None
+        mvm = {"model_margin_home": float(pred.proj_margin_home), "market_margin_home": mm,
+               "spread_diff": None if mm is None else round(float(pred.proj_margin_home) - mm, 1),
+               "model_total": float(pred.proj_total), "market_total": None if pd.isna(cur_total) else float(cur_total),
+               "total_diff": None if pd.isna(cur_total) else round(float(pred.proj_total - cur_total), 1),
+               "model_win_prob_home": float(pred.win_prob_home), "market_win_prob_home": p_home,
+               "prob_diff": None if p_home is None else round(float(pred.win_prob_home) - p_home, 3)}
+    notes = _notes(league, primary, open_spread, cur_spread, spread_move, keys_spread, open_total, cur_total, total_move, steam, disagreement, mvm, len(hist), hist.book.nunique())
+    return {"available": True, "primary_book": primary, "books": books, "n_snapshots": int(len(hist)), "first_snapshot": hist.retrieved_at.min().isoformat(),
+            "last_snapshot": latest_ts.isoformat(),
+            "open": {"spread_home": None if pd.isna(open_spread) else float(open_spread), "total": None if pd.isna(open_total) else float(open_total),
+                     "ml_home": None if pd.isna(first.ml_home) else int(first.ml_home), "ml_away": None if pd.isna(first.ml_away) else int(first.ml_away)},
+            "current": {"spread_home": None if pd.isna(cur_spread) else float(cur_spread), "total": None if pd.isna(cur_total) else float(cur_total),
+                        "ml_home": None if pd.isna(last.ml_home) else int(last.ml_home), "ml_away": None if pd.isna(last.ml_away) else int(last.ml_away),
+                        "book": primary, "retrieved_at": last.retrieved_at.isoformat()},
+            "movement": {"spread_points": spread_move, "total_points": total_move, "key_numbers_spread": keys_spread, "key_numbers_total": keys_total},
+            "steam": steam, "book_disagreement_spread": disagreement,
+            "implied": {"home_win_prob_no_vig": p_home, "away_win_prob_no_vig": p_away},
+            "model_vs_market": mvm, "public": None, "public_note": "Ticket and money percentages are unavailable (no free structured feed); reverse-line-movement is therefore not evaluated.",
+            "series": series, "notes": notes}
+
+
+def _fmt_spread(x, home_abbr="Home"):
+    if x is None or pd.isna(x):
+        return "n/a"
+    return f"{home_abbr} {x:+.1f}".replace("+-", "-")
+
+
+def _notes(league, book, os_, cs, sm, keys, ot, ct, tm, steam, disagreement, mvm, n, nb) -> list[str]:
+    L = []
+    if pd.notna(os_) and pd.notna(cs):
+        if sm == 0:
+            L.append(f"The spread has held at home {cs:+.1f} since our first snapshot ({book}).")
+        else:
+            dirn = "toward the home team" if sm < 0 else "toward the away team"
+            L.append(f"The spread moved from home {os_:+.1f} to {cs:+.1f} ({abs(sm):.1f} points {dirn}, {book}).")
+            if keys:
+                L.append(f"That move crosses the key number{'s' if len(keys) > 1 else ''} {', '.join(str(k) for k in keys)}, which matters more than the raw half-points suggest.")
+    if pd.notna(ot) and pd.notna(ct) and tm not in (None, 0):
+        L.append(f"The total moved from {ot:.1f} to {ct:.1f} ({tm:+.1f}).")
+    if steam:
+        L.append(f"Between {', '.join(steam['books'])}, the spread moved at least a point {steam['direction'].replace('_', ' ')} within {steam['window_hours']} hours — a coordinated move, though without ticket/money data we cannot say who moved it.")
+    if disagreement is not None and disagreement >= 1.0:
+        L.append(f"Books disagree by {disagreement:.1f} points on the spread right now.")
+    if mvm and mvm.get("spread_diff") is not None:
+        d = mvm["spread_diff"]
+        side = "the home team" if d > 0 else "the away team"
+        L.append(f"The model's margin differs from the market by {abs(d):.1f} points, leaning to {side}." if abs(d) >= 1 else "The model and the market are within a point of each other on the spread.")
+    if mvm and mvm.get("total_diff") is not None and abs(mvm["total_diff"]) >= 2:
+        L.append(f"On the total the model is {abs(mvm['total_diff']):.1f} points {'over' if mvm['total_diff'] > 0 else 'under'} the market number.")
+    L.append(f"Based on {n} snapshots across {nb} book{'s' if nb != 1 else ''}. Public ticket/money percentages are unavailable, so reverse line movement is not claimed.")
+    return L
+
+
+def build_week(league: str, season: int, week: int) -> tuple[pd.DataFrame, dict[str, dict]]:
     games = storage.read_table(storage.games_path(league, season))
-    if games.empty:
-        return 0
-    due = games[(games.status == "SCHEDULED") & games.kickoff_utc.notna() & (pd.to_datetime(games.kickoff_utc, utc=True) <= now)]
-    if due.empty:
-        return 0
-    preds = storage.read_table(MODEL / "predictions" / league / f"{season}.csv")
-    flags_path = MODEL / "pregame_final_flags.csv"
-    index_path = MODEL / "pregame_snapshots_index.csv"
-    n = 0
-    for _, g in due.iterrows():
-        kick = pd.Timestamp(g.kickoff_utc)
-        gid = g.game_id
-        wk = int(g.week)
-        # 1) final prediction = latest row predicted before kickoff
-        pfinal = pd.DataFrame()
-        if not preds.empty:
-            pg = preds[(preds.game_id == gid) & (pd.to_datetime(preds.predicted_at, utc=True) < kick)]
-            if not pg.empty:
-                pfinal = pg.sort_values("predicted_at").tail(1)
-        # 2) closing lines = last snapshot per book before kickoff
-        snap_path = config.TABLES / "market" / "snapshots" / league / str(season) / f"W{wk:02d}.csv"
-        close = pd.DataFrame()
-        hist = pd.DataFrame()
-        if snap_path.exists():
-            s = pd.read_csv(snap_path); s = s[s.game_id == gid]
-            s = s[pd.to_datetime(s.retrieved_at, utc=True) < kick]
-            hist = s.sort_values("retrieved_at")
-            close = hist.sort_values("retrieved_at").drop_duplicates("book", keep="last")
-        pref = [b for b in config.ODDS_BOOK_PRIORITY if b in set(close.book)] if not close.empty else []
-        cl = close[close.book == pref[0]].iloc[0] if pref else None
-        # 3) gather everything else that existed pre-kickoff
-        edges = storage.read_table(AN / "matchup_edges" / league / str(season) / f"W{wk:02d}.parquet")
-        edges = edges[edges.game_id == gid] if not edges.empty else edges
-        metrics = storage.read_table(AN / "team_metrics_asof" / league / str(season) / f"W{wk:02d}.parquet")
-        metrics = metrics[metrics.as_of_game_id == gid] if not metrics.empty else metrics
-        qb = storage.read_table(ROSTER / "qb_status" / league / str(season) / f"W{wk:02d}.parquet")
-        qb = qb[qb.team_id.isin([g.home_team_id, g.away_team_id])] if not qb.empty else qb
-        inj = storage.read_table(ROSTER / "injuries" / league / f"{season}.csv")
-        inj = inj[(inj.week == wk) & inj.team_id.isin([g.home_team_id, g.away_team_id])] if not inj.empty else inj
-        wpath = config.TABLES / "context" / "weather_snapshots" / league / str(season) / f"W{wk:02d}.csv"
-        wx = pd.read_csv(wpath) if wpath.exists() else pd.DataFrame()
-        wx = wx[(wx.game_id == gid) & (pd.to_datetime(wx.retrieved_at, utc=True) < kick)] if not wx.empty else wx
-        snapshot = {
-            "game_id": gid, "league": league, "season": season, "week": wk, "locked_at": now.isoformat(), "kickoff_utc": kick.isoformat(),
-            "game": json.loads(g.to_json(date_format="iso")),
-            "prediction": _rows_json(pfinal)[0] if not pfinal.empty else None,
-            "closing_lines": _rows_json(close), "market_history": _rows_json(hist),
-            "matchup_edges": _rows_json(edges), "team_metrics_asof": _rows_json(metrics),
-            "qb_status": _rows_json(qb), "injuries": _rows_json(inj), "weather": _rows_json(wx.tail(1)),
-            "model_version": pfinal.model_version.iloc[0] if not pfinal.empty else None, "pipeline_version": config.PIPELINE_VERSION,
-        }
-        config.SNAPSHOTS.mkdir(parents=True, exist_ok=True)
-        spath = config.SNAPSHOTS / f"pregame_{gid}.json"
-        if spath.exists():
-            continue    # a snapshot is written once, ever
-        body = json.dumps(snapshot, default=str, indent=0)
-        spath.write_text(body)
-        sha = hashlib.sha256(body.encode()).hexdigest()
-        storage.append_csv(index_path, pd.DataFrame([{
-            "game_id": gid, "locked_at": now.isoformat(), "prediction_id": pfinal.prediction_id.iloc[0] if not pfinal.empty else None,
-            "model_version": snapshot["model_version"], "snapshot_path": str(spath.relative_to(config.ROOT)) if spath.is_relative_to(config.ROOT) else str(spath), "snapshot_sha256": sha,
-            "closing_spread_home": None if cl is None else cl.spread_home, "closing_total": None if cl is None else cl.total,
-            "closing_ml_home": None if cl is None else cl.ml_home, "closing_ml_away": None if cl is None else cl.ml_away, "closing_book": None if cl is None else cl.book,
-            "weather_snapshot_ts": wx.retrieved_at.iloc[-1] if not wx.empty else None, "injuries_as_of": inj.retrieved_at.max() if not inj.empty else None,
-            "had_prediction": not pfinal.empty}]), ["game_id"], on_duplicate="skip")
-        if not pfinal.empty:
-            storage.append_csv(flags_path, pd.DataFrame([{"prediction_id": pfinal.prediction_id.iloc[0], "game_id": gid, "model_version": snapshot["model_version"], "flagged_at": now.isoformat()}]),
-                               ["game_id", "model_version"], on_duplicate="skip")
-        games.loc[games.game_id == gid, "status"] = "LOCKED"; games.loc[games.game_id == gid, "locked_at"] = now.isoformat()
-        n += 1
-    if n:
-        storage.write_parquet(storage.games_path(league, season), games)
-    print(f"{league} {season}: locked {n} games")
-    return n
-
-
-def evaluate_league(league: str, season: int, job: JobRun) -> int:
-    games = storage.read_table(storage.games_path(league, season))
-    res = storage.read_table(config.TABLES / "results" / league / f"{season}.csv")
-    idx = storage.read_table(MODEL / "pregame_snapshots_index.csv")
-    preds = storage.read_table(MODEL / "predictions" / league / f"{season}.csv")
-    if games.empty or res.empty or idx.empty or preds.empty:
-        return 0
-    locked = games[(games.status == "LOCKED") & games.game_id.isin(res.game_id)]
-    if locked.empty:
-        return 0
-    res = res.set_index("game_id"); idx = idx.set_index("game_id"); preds = preds.set_index("prediction_id")
-    rows = []
-    for _, g in locked.iterrows():
-        gid = g.game_id
-        if gid not in idx.index or pd.isna(idx.loc[gid].prediction_id) or idx.loc[gid].prediction_id not in preds.index:
-            games.loc[games.game_id == gid, "status"] = "FINAL"; continue
-        p = preds.loc[idx.loc[gid].prediction_id]; r = res.loc[gid]
-        cs = idx.loc[gid].closing_spread_home; ct = idx.loc[gid].closing_total
-        mm = -cs if pd.notna(cs) else None
-        cover_home = r.margin_home + cs if pd.notna(cs) else None
-        side_home = (p.proj_margin_home > mm) if mm is not None else None
-        rows.append({"prediction_id": p.name, "game_id": gid, "model_version": p.model_version, "league": league, "season": season, "week": int(g.week),
-                     "is_backtest": False, "actual_margin_home": int(r.margin_home), "actual_total": int(r.total),
-                     "margin_error": round(p.proj_margin_home - r.margin_home, 2), "abs_margin_error": round(abs(p.proj_margin_home - r.margin_home), 2),
-                     "total_error": round(p.proj_total - r.total, 2), "abs_total_error": round(abs(p.proj_total - r.total), 2),
-                     "away_pts_abs_err": round(abs(p.proj_away_pts - r.away_score), 2), "home_pts_abs_err": round(abs(p.proj_home_pts - r.home_score), 2),
-                     "winner_correct": bool((p.proj_margin_home > 0) == (r.margin_home > 0)) if r.margin_home != 0 else None,
-                     "favorite_side": None if pd.isna(cs) else ("HOME" if cs < 0 else "AWAY" if cs > 0 else "PICKEM"),
-                     "favorite_correct": None if pd.isna(cs) or cs == 0 else bool((cs < 0) == (r.margin_home > 0)),
-                     "model_ats_result": None if cover_home is None else ("PUSH" if cover_home == 0 else ("WIN" if (cover_home > 0) == side_home else "LOSS")),
-                     "model_ou_result": None if pd.isna(ct) else ("PUSH" if r.total == ct else ("WIN" if (r.total > ct) == (p.proj_total > ct) else "LOSS")),
-                     "clv_spread": None, "win_prob_bin": int(min(p.win_prob_home * 10, 9)), "evaluated_at": datetime.now(timezone.utc).isoformat()})
-        games.loc[games.game_id == gid, "status"] = "FINAL"
-    if rows:
-        storage.append_csv(MODEL / "model_evaluation" / league / f"{season}.csv", pd.DataFrame(rows), ["prediction_id"], on_duplicate="skip")
-    storage.write_parquet(storage.games_path(league, season), games)
-    print(f"{league} {season}: evaluated {len(rows)} locked games -> FINAL")
-    return len(rows)
-
-
-def main(argv=None):
-    p = argparse.ArgumentParser()
-    p.add_argument("--league", default="BOTH", choices=["NFL", "CFB", "BOTH"])
-    p.add_argument("--season", type=int, default=config.SEASON)
-    p.add_argument("--evaluate", action="store_true")
-    p.add_argument("--trigger", default="manual")
-    a = p.parse_args(argv)
-    leagues = ["NFL", "CFB"] if a.league == "BOTH" else [a.league]
-    with JobRun("LOCK", a.league, a.trigger) as job:
-        now = pd.Timestamp.now(tz="UTC")
-        for lg in leagues:
-            job.rows_written += lock_league(lg, a.season, job, now)
-            if a.evaluate:
-                job.rows_written += evaluate_league(lg, a.season, job)
-
-
-if __name__ == "__main__":
-    main()
+    wk = games[(games.week == week) & (games.season_type == "REG")]
+    preds = storage.read_table(config.TABLES / "model" / "predictions" / league / f"{season}.csv")
+    latest_pred = preds.sort_values("predicted_at").drop_duplicates("game_id", keep="last").set_index("game_id") if not preds.empty else pd.DataFrame()
+    now = pd.Timestamp.now(tz="UTC")
+    rows, payloads = [], {}
+    for _, g in wk.iterrows():
+        hist = load_history(league, season, week, g.game_id)
+        pred = latest_pred.loc[g.game_id] if not latest_pred.empty and g.game_id in latest_pred.index else None
+        kick = pd.Timestamp(g.kickoff_utc) if pd.notna(g.kickoff_utc) else None
+        a = analyze_game(league, hist, pred, kick, now)
+        a.update({"game_id": g.game_id, "league": league, "season": season, "week": week, "generated_at": now.isoformat()})
+        payloads[g.game_id] = a
+        rows.append({"game_id": g.game_id, "available": a["available"], "primary_book": a.get("primary_book"), "n_snapshots": a.get("n_snapshots", 0),
+                     "open_spread_home": (a.get("open") or {}).get("spread_home"), "current_spread_home": (a.get("current") or {}).get("spread_home"),
+                     "spread_move": (a.get("movement") or {}).get("spread_points"), "key_numbers": ",".join(map(str, (a.get("movement") or {}).get("key_numbers_spread", []))),
+                     "open_total": (a.get("open") or {}).get("total"), "current_total": (a.get("current") or {}).get("total"), "total_move": (a.get("movement") or {}).get("total_points"),
+                     "steam": None if not a.get("steam") else a["steam"]["direction"], "book_disagreement": a.get("book_disagreement_spread"),
+                     "market_wp_home": (a.get("implied") or {}).get("home_win_prob_no_vig"),
+                     "model_spread_diff": (a.get("model_vs_market") or {}).get("spread_diff"), "model_total_diff": (a.get("model_vs_market") or {}).get("total_diff"),
+                     "generated_at": now.isoformat()})
+    return pd.DataFrame(rows), payloads
