@@ -86,6 +86,12 @@ def main():
             pr = pd.read_csv(files[-1]).sort_values("predicted_at").drop_duplicates("game_id", keep="last")
             up = pr.sort_values("proj_margin_home")
             print(f"  {lg} latest predictions ({len(pr)} games): " + " | ".join(f"{r.game_id.split('_',3)[3]} {r.proj_away_pts:.0f}-{r.proj_home_pts:.0f} wp={r.win_prob_home:.2f} mkt={r.market_spread_home}" for _, r in pd.concat([up.head(2), up.tail(2)]).iterrows()))
+    print("\nMARKET (latest week per league)")
+    for lg in ("NFL", "CFB"):
+        files = sorted(glob.glob(str(config.TABLES / f"analytics/market_analysis/{lg}/*/W*.parquet")))
+        if files:
+            m = pd.read_parquet(files[-1]); av = m[m.available]
+            print(f"  {lg} {files[-1].split('/')[-2]} {files[-1].split('/')[-1][:-8]}: {len(av)}/{len(m)} games with history | key-number moves={int((av.key_numbers.fillna('') != '').sum())} steam={int(av.steam.notna().sum())} | median |model-market| spread diff={av.model_spread_diff.abs().median():.1f}" if len(av) else f"  {lg}: no market history")
     print("\nMATCHUP EDGES (latest week per league; prelim weighted advantage, home perspective, points)")
     for lg in ("NFL", "CFB"):
         files = sorted(glob.glob(str(config.TABLES / f"analytics/matchup_edges/{lg}/*/W*.parquet")))

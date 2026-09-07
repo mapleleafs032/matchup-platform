@@ -4,9 +4,9 @@ nflverse context adapter (NFL): players, weekly rosters, depth charts, injuries,
 Assets (verified 2026-09-06):
   players/players.parquet                        one row per player, gsis_id, draft info, ids for other providers
   weekly_rosters/roster_weekly_{season}.parquet  one row per player per team-week incl. status (ACT/RES/...)
-  depth_charts/depth_charts_{season}.parquet     2025+: TIMESTAMPED SNAPSHOTS (dt, team, gsis_id, pos_grp, pos_abb, pos_rank);
-                                                 we keep, per team-week, the latest snapshot whose dt <= that week's kickoff.
-                                                 2021-2024: weekly rows with depth_position and depth_team (rank).
+  depth_charts/depth_charts_{season}.parquet     TIMESTAMPED SNAPSHOTS: dt, team, gsis_id, pos_grp, pos_abb, pos_rank.
+                                                 No week column. We keep, per team-week, the latest snapshot whose
+                                                 dt <= that week's kickoff, so a depth chart can never be "from the future".
   injuries/injuries_{season}.parquet             official report rows per team-week with report_status/practice_status
   espn_data/qbr_week_level.parquet               ESPN QBR per QB per game (join: ESPN game id + ESPN player id)
 

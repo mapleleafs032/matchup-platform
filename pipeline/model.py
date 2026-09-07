@@ -180,8 +180,24 @@ def fit_models(train: pd.DataFrame, league: str) -> dict:
     mm = Ridge(MARGIN_FEATURES, lam_m).fit(tr, "margin_home"); tm = Ridge(TOTAL_FEATURES, lam_t).fit(tr, "total")
     resid = tr.margin_home.to_numpy() - mm.predict(tr)
     sigma = float(np.std(resid))
-    return {"margin": mm, "total": tm, "sigma_margin": sigma, "n_train": int(len(tr)), "lam_margin": lam_m, "lam_total": lam_t,
+    # win-probability calibration: ridge compresses margins, so P(home win) = sigmoid(a + b * margin) is fit on training games (Platt)
+    a, b = fit_platt(mm.predict(tr), (tr.margin_home.to_numpy() > 0).astype(float))
+    return {"margin": mm, "total": tm, "sigma_margin": sigma, "platt_a": a, "platt_b": b, "n_train": int(len(tr)), "lam_margin": lam_m, "lam_total": lam_t,
             "train_seasons": sorted(tr.season.unique().tolist())}
+
+
+def fit_platt(margin: np.ndarray, won: np.ndarray, iters: int = 200) -> tuple[float, float]:
+    """Logistic regression of home win on predicted margin via Newton steps. Returns (a, b)."""
+    a, b = 0.0, 0.15
+    for _ in range(iters):
+        z = a + b * margin; p = 1 / (1 + np.exp(-z)); w = p * (1 - p) + 1e-9
+        g = np.array([np.sum(p - won), np.sum((p - won) * margin)])
+        H = np.array([[np.sum(w), np.sum(w * margin)], [np.sum(w * margin), np.sum(w * margin ** 2)]]) + 1e-6 * np.eye(2)
+        step = np.linalg.solve(H, g)
+        a, b = a - step[0], b - step[1]
+        if np.abs(step).max() < 1e-8:
+            break
+    return float(a), float(b)
 
 
 def predict_rows(models: dict, feats: pd.DataFrame, model_version: str, is_backtest: bool) -> pd.DataFrame:
@@ -189,8 +205,13 @@ def predict_rows(models: dict, feats: pd.DataFrame, model_version: str, is_backt
         return pd.DataFrame()
     mm, tm = models["margin"], models["total"]
     margin = mm.predict(feats); total = np.clip(tm.predict(feats), config.TOTAL_FLOOR, None)
+    league = feats.league.iloc[0] if "league" in feats.columns else "NFL"
+    total = np.maximum(total, np.abs(margin) + 2 * config.MIN_PROJ_SIDE[league])     # score-split consistency: blowouts run up the total
     sigma = models["sigma_margin"]
-    wp = np.array([0.5 * (1 + math.erf(x / (sigma * math.sqrt(2)))) for x in margin])
+    if models.get("platt_b") is not None:
+        wp = 1 / (1 + np.exp(-(models["platt_a"] + models["platt_b"] * margin)))
+    else:
+        wp = np.array([0.5 * (1 + math.erf(x / (sigma * math.sqrt(2)))) for x in margin])
     contrib = mm.contributions(feats)
     now = datetime.now(timezone.utc).isoformat()
     rows = []
@@ -222,7 +243,7 @@ def save_model(models: dict, league: str, model_version: str, backtest_summary: 
     all_models[model_version] = {
         "model_version": model_version, "league": league, "description": "ridge margin + ridge total on matchup edges; walk-forward validated",
         "weights": {"margin_coef_per_raw_unit": models["margin"].coef_per_raw_unit(), "lam_margin": models["lam_margin"], "lam_total": models["lam_total"],
-                    "sigma_margin": models["sigma_margin"], "recency": config.RECENCY_WEIGHTS, "prior_schedule": config.PRIOR_WEIGHT_BY_WEEK[league],
+                    "sigma_margin": models["sigma_margin"], "platt_a": models.get("platt_a"), "platt_b": models.get("platt_b"), "recency": config.RECENCY_WEIGHTS, "prior_schedule": config.PRIOR_WEIGHT_BY_WEEK[league],
                     "ridge_lambda_ratings": config.RIDGE_LAMBDA[league]},
         "features": MARGIN_FEATURES, "total_features": TOTAL_FEATURES, "trained_on_seasons": models["train_seasons"], "n_train": models["n_train"],
         "backtest_summary": backtest_summary, "created_at": datetime.now(timezone.utc).isoformat(), "is_active": is_active,
@@ -239,5 +260,6 @@ def load_active_model(league: str) -> tuple[str, dict] | tuple[None, None]:
     for k, v in all_models.items():
         if v.get("league") == league and v.get("is_active"):
             return k, {"margin": Ridge.from_dict(v["margin_model"]), "total": Ridge.from_dict(v["total_model"]), "sigma_margin": v["weights"]["sigma_margin"],
+                       "platt_a": v["weights"].get("platt_a"), "platt_b": v["weights"].get("platt_b"),
                        "n_train": v["n_train"], "lam_margin": v["weights"]["lam_margin"], "lam_total": v["weights"]["lam_total"], "train_seasons": v["trained_on_seasons"]}
     return None, None
