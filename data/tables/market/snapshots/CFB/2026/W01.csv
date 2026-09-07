@@ -1532,3 +1532,5 @@ snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_hom
 2026_CFB_W01_LOU_MISS_bovada_20260907T141704Z,2026_CFB_W01_LOU_MISS,2026-09-07T14:17:04.257512+00:00,,bovada,-6.5,,,-270.0,220.0,55.0,,,,,,,,,False,-8.5,52.5,cfbd,free
 2026_CFB_W01_LOU_MISS_draftkings_20260907T141704Z,2026_CFB_W01_LOU_MISS,2026-09-07T14:17:04.257512+00:00,,draftkings,-6.5,,,,,54.5,,,,,,,,,False,,,cfbd,free
 2026_CFB_W01_LOU_MISS_draftkings_20260907T141704Z,2026_CFB_W01_LOU_MISS,2026-09-07T14:17:04.257512+00:00,,draftkings,-6.5,,,-258.0,210.0,55.5,,,,,,,,,False,,,cfbd,free
+2026_CFB_W01_SMU_FSU_draftkings_20260907T230513Z,2026_CFB_W01_SMU_FSU,2026-09-07T23:05:13.038256+00:00,,draftkings,3.0,,,124.0,-148.0,54.5,,,,,,,,,False,,,cfbd,free
+2026_CFB_W01_SMU_FSU_bovada_20260907T230513Z,2026_CFB_W01_SMU_FSU,2026-09-07T23:05:13.038256+00:00,,bovada,3.0,,,145.0,-170.0,55.0,,,,,,,,,False,2.5,52.5,cfbd,free
