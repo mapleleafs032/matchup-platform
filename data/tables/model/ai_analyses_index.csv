@@ -1,0 +1,4 @@
+analysis_id,game_id,league,season,week,inputs_hash,llm_model,validation_failed,violations,tokens_in,tokens_out,generated_at
+2026_NFL_W01_NE_SEA_c2a4ebf412c9a4ca,2026_NFL_W01_NE_SEA,NFL,2026,1,c2a4ebf412c9a4ca,claude-sonnet-4-6,False,,10934,1966,2026-09-07T16:48:44.947962+00:00
+2026_NFL_W01_SF_LAR_96c702aa8eb5d393,2026_NFL_W01_SF_LAR,NFL,2026,1,96c702aa8eb5d393,claude-sonnet-4-6,True,<unparseable JSON>,10879,2000,2026-09-07T16:50:19.624183+00:00
+2026_NFL_W01_CHI_CAR_61683cdc2fdc500e,2026_NFL_W01_CHI_CAR,NFL,2026,1,61683cdc2fdc500e,claude-sonnet-4-6,True,"229,431",10974,1990,2026-09-07T16:52:02.428386+00:00

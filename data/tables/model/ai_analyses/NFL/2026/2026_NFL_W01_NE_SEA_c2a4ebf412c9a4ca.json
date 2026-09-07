@@ -1,0 +1,43 @@
+{
+"analysis_id": "2026_NFL_W01_NE_SEA_c2a4ebf412c9a4ca",
+"game_id": "2026_NFL_W01_NE_SEA",
+"inputs_hash": "c2a4ebf412c9a4ca",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Seattle 25.68, New England 21.56, a home margin of 4.12 points and a combined total of 47.24. Seattle's win probability sits at 62.4%. The market opened and has held at Seattle -3.5 with a total of 44.5, meaning the model is roughly a half-point more bullish on Seattle than the market on the spread and 2.7 points over the market on the total.",
+"offensive_matchup": "Both offenses grade similarly in overall EPA per play (expected points added per play, a measure of how much each play improves scoring odds): New England at 0.0801 ranks 9th while Seattle at 0.0784 ranks 10th. The sharper contrast is on the defensive side, where Seattle's defense allows just -0.1163 EPA per play (2nd in the league) compared to New England's -0.0781 (5th). Seattle's offense also converts at a 47.7% success rate (5th) versus New England's 46.5% (9th), and Seattle scores 29.2 points per game (2nd) against New England's 26.5 (8th), suggesting Seattle's unit is more consistent even if the raw efficiency numbers are close.",
+"quarterback_edge": "Drake Maye holds a meaningful edge in career EPA per dropback at 0.084 versus Sam Darnold's 0.017, and Maye's career yards per attempt of 7.87 tops Darnold's 7.61. Maye also completes 68% of his career attempts compared to Darnold's 64.2%, though Maye has 31 career games of 10-plus attempts versus Darnold's 58, so the sample sizes differ. The model scores this edge to New England, contributing -0.35 points toward Seattle's margin. Both are listed as returning starters with 0.8 confidence on the depth chart.",
+"trenches": "Seattle's defensive front is the most dominant unit in this matchup: the Seahawks rank 1st in defensive rushing EPA per play (-0.2306) and 1st in line yards allowed (2.5575 per rush), while New England's offensive line ranks 24th in line yards generated (2.7264) and 28th in sack rate allowed (8.96% of dropbacks). That mismatch drives a +0.73-point edge for Seattle in rush defense and a +0.47-point edge in defensive front overall. On the flip side, New England's pass defense ranks 4th in defensive passing EPA per play (-0.0792), giving it an advantage over Seattle's offensive line, which allows pressure on 22.9% of dropbacks (22nd). Seattle's own offensive line grades 25th in line yards, so neither team runs the ball efficiently, but Seattle's front will make New England's ground game even harder.",
+"explosive_play_edge": "New England generates explosive plays (10-plus rushing or 20-plus passing yards) on 9.97% of plays (7th) and limits them to 7.45% against (8th). Seattle produces explosives on 9.5% of plays (10th) but is elite at suppressing them, allowing just 6.58% (2nd in the league). The net result is a slight edge to New England in this category (-0.09 points toward Seattle), meaning the Patriots have a marginally better profile of creating chunk plays while facing a defense that is among the best at preventing them.",
+"third_down_red_zone": "Seattle's third-down defense is the best in the package, holding opponents to a 32.8% conversion rate (1st), well below New England's offensive third-down rate of 41.4% (11th). New England's own third-down defense allows 36.3% (7th), which is solid but not at Seattle's level. In the red zone, New England scores touchdowns on 64% of trips (11th) but faces a Seattle defense that allows touchdowns on only 47.6% of red-zone visits (2nd). Seattle converts 62.9% of its own red-zone trips (14th) against a New England defense that allows 54% (7th), giving Seattle a meaningful scoring-efficiency edge once drives reach the opponent's 20.",
+"roster_talent": "Insufficient reliable data on individual talent ratings. Seattle carries a roster continuity index of 0.93 with 85 returning offensive line starts and 89% total returning production, including 100% returning passing production. New England's continuity index is 0.87 with 64 returning offensive line starts and 80% total returning production, with receiving production returning at only 63%. The model awards Seattle a small +0.10-point edge for returning production.",
+"recent_form": "Both teams are entering Week 1 with zero games played in 2026, so no in-season form data exists. The model records a form shift of 0.0 for both sides and scores this category neutral. All metrics carry a low-sample flag and are derived from prior-season blended, opponent-adjusted data.",
+"market_movement": "The spread has held at Seattle -3.5 since the first recorded snapshot on DraftKings, with zero points of movement. The total has similarly held at 44.5 with no movement. The moneyline is -180 Seattle / +150 New England. No steam alerts are flagged, and public ticket and money percentages are unavailable, so no conclusions about betting-side composition can be drawn. The model and market are within 0.62 points on the spread.",
+"key_advantages": [
+"Seattle's rush defense ranks 1st in EPA per play allowed (-0.2306) and 1st in line yards allowed, neutralizing New England's already-weak run game (22nd in rushing EPA)",
+"Seattle's overall defense ranks 2nd in EPA per play allowed (-0.1163) and 1st in points allowed per game (16.9), creating a steep ceiling for New England's scoring",
+"Seattle's third-down defense (32.8% allowed, 1st) and red-zone defense (47.6% TD rate allowed, 2nd) are elite at ending drives without points",
+"Home-field advantage at Lumen Field contributes a 1.5-point model adjustment in Seattle's favor"
+],
+"key_concerns": [
+"Drake Maye's career EPA per dropback (0.084) significantly outpaces Sam Darnold's (0.017), giving New England a quarterback edge the model values at -0.35 points for Seattle",
+"New England's pass defense ranks 4th in defensive passing EPA per play (-0.0792), which could limit Seattle's passing attack (7th in passing EPA, 0.1641)",
+"Seattle's offensive line ranks 25th in line yards and 22nd in pressure rate allowed (22.9%), creating potential protection issues against New England's blitz-heavy defense (33.1% blitz rate, 7th)",
+"All metrics carry a low-sample flag as both teams have played zero 2026 games, reducing projection confidence"
+],
+"expected_game_script": "Seattle figures to control the line of scrimmage defensively from the opening drive, using its elite run-stopping front to force New England into obvious passing situations early. New England's offense, which passes at a 62% rate even in neutral game scripts (5th), will likely lean on Drake Maye's arm, but Seattle's secondary has allowed the 2nd-fewest explosive passing plays in the league, making chunk gains difficult. Seattle's offense will lean run-heavy by design \u2014 their neutral-script pass rate of 53.4% ranks 31st \u2014 but New England's run defense (7th in rushing EPA allowed) is capable of making that approach grind. The most likely path to points for Seattle is sustaining drives through their 47.7% success rate and cashing in red-zone trips at a higher rate than New England's defense typically allows. New England's best chance is Maye creating explosive passing plays against a defense that, while elite, does allow a 6.58% explosive rate, and converting those into touchdowns against a red-zone defense that has held opponents to 47.6%. Expect a lower-scoring, defense-driven game that trends toward the model's 47.24 total rather than the market's 44.5, with Seattle controlling the second half and covering a modest spread."
+},
+"validation": {
+"numbers_checked": 130,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 2,
+"generated_at": "2026-09-07T16:48:44.947962+00:00",
+"tokens_in": 10934,
+"tokens_out": 1966
+}

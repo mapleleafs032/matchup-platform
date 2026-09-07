@@ -1,0 +1,46 @@
+{
+"analysis_id": "2026_NFL_W01_CHI_CAR_61683cdc2fdc500e",
+"game_id": "2026_NFL_W01_CHI_CAR",
+"inputs_hash": "61683cdc2fdc500e",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Chicago Bears 23.26, Carolina Panthers 21.93, for a Bears margin of 1.33 points. The projected total is 45.18. Chicago's win probability is 57.0% (Carolina's implied win probability is 42.0%). The market currently has Carolina as a 3-point home favorite, meaning the model leans 1.67 points toward Chicago relative to that line.",
+"offensive_matchup": "Chicago's offense grades out significantly better than Carolina's, posting an offensive EPA per play of +0.085 (7th) versus Carolina's -0.084 (26th). The Bears also convert at a 46.3% offensive success rate (10th) compared to Carolina's 41.5% (25th), meaning Chicago generates positive expected-points plays far more consistently. Carolina's defense allows a 46.2% opponent success rate (21st), so it does not offer much resistance to a Bears offense that already operates at an above-average efficiency level. Carolina's offense, meanwhile, faces a Bears defense that sits at a middling 18th in defensive EPA per play, leaving some room for the Panthers to move the ball but not enough to overcome the efficiency gap.",
+"quarterback_edge": "Caleb Williams carries a career EPA per dropback of 0.00 across 1,229 career attempts, while Bryce Young sits at -0.145 over 1,431 attempts \u2014 a meaningful gap that is the second-largest single contributor to Chicago's model edge, worth 0.77 points toward the Bears. Williams also averages 6.6 yards per attempt versus Young's 5.98. Both are listed as returning starters with 0.8 confidence, so the edge is real but carries the caveat that neither has current-season data. Young's career interception total of 31 against 50 touchdowns in 45 games also compares unfavorably to Williams's 18 interceptions against 51 touchdowns in 36 games.",
+"trenches": "The trench battle is split but decisive in Chicago's favor overall. Carolina's offensive line grades as the stronger unit in pass protection relative to Chicago's pass rush, producing a positive edge score for the Panthers there. However, Chicago's defensive front is the single biggest model driver, contributing -0.81 points toward Carolina; the Bears' run-defense line-yards-allowed rank of 31st (3.25 line yards per rush) is a concern, but their run-blocking line yards of 3.19 (4th) and the Panthers' run-defense line yards allowed of 3.06 (26th) mean Chicago's ground game should find creases. Carolina's defensive pressure rate without a blitz ranks 30th at 8.7%, meaning the Panthers struggle to generate heat with a base front, which benefits Williams behind an offensive line that ranks 1st in sack rate allowed at 3.4%.",
+"explosive_play_edge": "Chicago generates explosive plays (10-plus rushing or 20-plus passing yards) at a 9.8% rate (9th), while Carolina allows them at a 7.8% rate (9th), creating a relatively neutral matchup on that side. Going the other direction, Carolina's offense produces explosives at only a 7.9% rate (22nd) against a Bears defense that allows them at a 10.5% rate (28th), which is the one area where the Panthers could catch up. The net edge favors Chicago by a modest margin, contributing -0.10 points toward Carolina in the model.",
+"third_down_red_zone": "Chicago converts third downs at a 43.6% rate (6th) and faces a Carolina defense that allows conversions at a 46.2% rate (30th), a stark mismatch that is the third-largest edge category in the model at -3 edge score. Carolina converts only 36.7% of its own third downs (25th) against a Bears defense that holds opponents to 40.5% (16th), compounding the Panthers' difficulty sustaining drives. In the red zone, Chicago scores touchdowns on 63.4% of trips (13th) while Carolina allows touchdowns on 54.3% of red-zone visits (8th), so the Panthers' red-zone defense is actually a relative strength. Carolina's own red-zone offense converts at only 54.2% (23rd), and the Bears allow touchdowns on 67.3% of opponent red-zone trips (29th), so both teams should score when they get inside the 20.",
+"roster_talent": "Insufficient reliable data \u2014 NFL talent ratings are not modeled in this package. Both teams show similar roster continuity indexes (Chicago 0.85, Carolina 0.86), and returning production totals are nearly identical at 76% and 77% respectively. Chicago returns 100% of passing production and 96% of rushing production, while Carolina returns 93% of passing production but only 48% of rushing production, suggesting more backfield turnover for the Panthers. Coaching edge is also unavailable.",
+"recent_form": "Both teams are entering Week 1 with zero games played in the current season, so no recent-form shift exists for either side. The model's recent-form category contributes 0.0 points in either direction. All metrics carry a low-sample flag and are derived from prior-season blended data.",
+"market_movement": "The spread moved from Carolina -2.5 at open to Carolina -3.0 at current (DraftKings), a half-point move toward the away Bears that crossed the key number 3. The total moved from 47.5 to 46.5, a full point downward, crossing the key number 47. The model's projected margin of -1.33 (Bears by 1.33) differs from the market spread of Carolina -3.0 by 1.67 points in Chicago's favor. Book disagreement on the spread is 0.5 points across the nine books sampled. Public ticket and money percentages are unavailable, so the cause of the movement cannot be attributed.",
+"key_advantages": [
+"Chicago holds a large third-down edge: 43.6% conversion rate (6th) vs. Carolina's 46.2% allowed rate (30th)",
+"Caleb Williams's career EPA per dropback (0.00) is substantially better than Bryce Young's (-0.145)",
+"Chicago's defensive front is the top model driver, with Bears run defense and pass-rush metrics outperforming Carolina's offensive line",
+"Chicago's turnover margin of +0.89 per game (1st) dwarfs Carolina's -0.17 (20th)"
+],
+"key_concerns": [
+"Chicago's defensive line yards allowed rank 31st (3.25 per rush), leaving the run defense vulnerable",
+"Bears allow explosive plays at a 10.5% rate (28th), giving Carolina's offense a path to chunk plays",
+"Chicago's defensive red-zone TD rate allowed is 67.3% (29th), meaning Carolina can score when it gets close",
+"All metrics carry a low-sample flag with zero current-season games played for both teams"
+],
+"expected_game_script": "Chicago figures to control the pace early, operating with the most plays per game in the league at 66.1 (1st) and the 4th-fastest snap tempo at 29.8 seconds per play, while Carolina runs a slower 31.7-second pace (23rd). The Bears' superior third-down efficiency should allow them to sustain drives and keep Carolina's offense off the field, which matters because the Panthers convert only 36.7% of third downs. Williams should have time to operate behind an offensive line that ranks 1st in sack rate allowed, and he will likely lean heavily on play-action \u2014 Chicago uses it at a 32.1% rate (2nd) \u2014 against a Carolina defense that generates pressure without a blitz at only an 8.7% rate (30th). Carolina's best path back into the game runs through its own red-zone defense, which holds opponents to a 54.3% touchdown rate (8th), and through the Bears' porous explosive-play defense, where a few chunk plays could keep the Panthers within striking distance. The total of 45.18 projected by the model sits slightly below the market's 46.5, consistent with a game where both offenses face meaningful defensive resistance despite the red-zone vulnerabilities on each side. Expect Chicago to hold a modest lead through most of the game, with Carolina's home-field advantage (worth 1.5 points in the model) keeping the Panthers competitive into the fourth quarter."
+},
+"validation": {
+"numbers_checked": 129,
+"violations": [
+"229",
+"431"
+],
+"confident_about_unavailable": [],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-07T16:52:02.428386+00:00",
+"tokens_in": 10974,
+"tokens_out": 1990
+}
