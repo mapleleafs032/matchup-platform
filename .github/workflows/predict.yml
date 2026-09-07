@@ -1,0 +1,29 @@
+name: Predict + lock
+on:
+  schedule:
+    - cron: "15 12 * * *"        # 07:15 CT daily after matchups: fresh predictions for upcoming games
+    - cron: "30 * * * *"         # every hour at :30: lock games that have kicked off; evaluate finished ones
+  workflow_dispatch:
+    inputs:
+      league: { description: "NFL, CFB, or BOTH", default: "BOTH", required: true }
+concurrency: { group: data-write, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Predict (daily run or manual)
+        if: ${{ github.event_name != 'schedule' || github.event.schedule == '15 12 * * *' }}
+        run: |
+          L="${{ github.event.inputs.league }}"; [ -z "$L" ] && L=BOTH
+          if [ "$L" = "NFL" ] || [ "$L" = "BOTH" ]; then python -m pipeline.jobs.predict --league NFL --trigger ${{ github.event_name == 'schedule' && 'cron' || 'manual' }}; fi
+          if [ "$L" = "CFB" ] || [ "$L" = "BOTH" ]; then python -m pipeline.jobs.predict --league CFB --trigger ${{ github.event_name == 'schedule' && 'cron' || 'manual' }}; fi
+      - name: Lock kicked-off games + evaluate finished ones
+        run: python -m pipeline.jobs.lock --league BOTH --evaluate --trigger ${{ github.event_name == 'schedule' && 'cron' || 'manual' }}
+      - uses: ./.github/actions/commit
+        with: { message: "data: predict/lock ${{ github.run_id }}" }
