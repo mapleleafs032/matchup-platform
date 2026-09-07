@@ -224,7 +224,8 @@ def normalize_injuries(raw: pd.DataFrame, season: int, games: pd.DataFrame, reso
         pr = _PRACTICE.get(str(x.practice_status), None)
         if st is None and pr in (None, "FP"):
             continue   # resting/full participation with no designation is not an injury row
-        season_type = "REG" if str(x.season_type) == "REG" else "POST"
+        st_raw = x.get("season_type", x.get("game_type", "REG"))            # older files name this column game_type
+        season_type = "REG" if str(st_raw) == "REG" else "POST"
         g = gm.get((x.team_id, int(x.week), season_type))
         report_date = None
         if g is not None and pd.notna(g.kickoff_utc):
