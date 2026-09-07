@@ -1,0 +1,10 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2025_CFB_W15_TROY_JMU,2026-09-07T06:05:01.888785+00:00,2025-12-06T00:00:00+00:00,-6606.1,False,False,open_meteo_archive,29.8,24.3,2.6,5.4,165.0,,0.0,91.0,3.0,True
+2025_CFB_W15_KENN_JXST,2026-09-07T06:05:02.181656+00:00,2025-12-06T00:00:00+00:00,-6606.1,False,False,open_meteo_archive,43.8,40.0,3.6,8.3,300.0,,0.0,89.0,3.0,True
+2025_CFB_W15_UNLV_BOIS,2026-09-07T06:05:02.514974+00:00,2025-12-06T01:00:00+00:00,-6605.1,False,False,open_meteo_archive,40.4,34.6,7.7,14.1,98.0,,0.012,96.0,51.0,True
+2025_CFB_W15_UNT_TULN,2026-09-07T06:05:02.807908+00:00,2025-12-06T01:00:00+00:00,-6605.1,False,False,open_meteo_archive,51.3,48.9,4.3,12.1,20.0,,0.0,89.0,3.0,True
+2025_CFB_W15_MOH_WMU,2026-09-07T06:05:02.808244+00:00,2025-12-06T17:00:00+00:00,-6589.1,True,False,open_meteo_archive,,,,,,,,,,True
+2025_CFB_W15_BYU_TTU,2026-09-07T06:05:02.808483+00:00,2025-12-06T17:00:00+00:00,-6589.1,True,False,open_meteo_archive,,,,,,,,,,True
+2025_CFB_W15_UGA_ALA,2026-09-07T06:05:02.808708+00:00,2025-12-06T21:00:00+00:00,-6585.1,True,False,open_meteo_archive,,,,,,,,,,True
+2025_CFB_W15_IU_OSU,2026-09-07T06:05:02.808943+00:00,2025-12-07T01:00:00+00:00,-6581.1,True,False,open_meteo_archive,,,,,,,,,,True
+2025_CFB_W15_DUKE_UVA,2026-09-07T06:05:03.105537+00:00,2025-12-07T01:00:00+00:00,-6581.1,False,False,open_meteo_archive,37.9,34.0,2.1,2.9,252.0,,0.0,95.0,0.0,True
