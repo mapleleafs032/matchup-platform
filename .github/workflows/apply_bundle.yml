@@ -1,0 +1,28 @@
+name: Apply code bundle
+on:
+  workflow_dispatch:
+permissions: { contents: write }
+concurrency: { group: data-write, cancel-in-progress: false }
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack the newest zip at the repo root into the repo
+        run: |
+          set -e
+          Z=$(ls -t *.zip 2>/dev/null | head -1)
+          if [ -z "$Z" ]; then echo "No .zip file found at the repo root. Upload the bundle zip first."; exit 1; fi
+          echo "Applying $Z"
+          rm -rf /tmp/bundle && mkdir -p /tmp/bundle && unzip -q -o "$Z" -d /tmp/bundle
+          SRC=/tmp/bundle
+          if [ "$(ls -1 /tmp/bundle | wc -l)" = "1" ] && [ -d "/tmp/bundle/$(ls -1 /tmp/bundle)" ]; then SRC="/tmp/bundle/$(ls -1 /tmp/bundle)"; fi
+          rsync -a --exclude '__pycache__' "$SRC"/ ./
+          rm -f "$Z"
+          rm -f test_*.py                               # stray test files at the root from earlier uploads
+          git config user.name "matchup-bot"; git config user.email "matchup-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "code: apply $Z" || echo "nothing to commit"
+          git push origin HEAD:main
+      - name: Show what changed
+        run: git show --stat HEAD | head -40
