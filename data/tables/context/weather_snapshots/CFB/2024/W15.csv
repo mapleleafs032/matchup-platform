@@ -1,0 +1,10 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2024_CFB_W15_WKU_JXST,2026-09-07T06:17:12.458548+00:00,2024-12-07T00:00:00+00:00,-15342.3,False,False,open_meteo_archive,32.5,24.5,5.5,11.2,317.0,,0.0,48.0,0.0,True
+2024_CFB_W15_UNLV_BOIS,2026-09-07T06:17:12.815879+00:00,2024-12-07T01:00:00+00:00,-15341.3,False,False,open_meteo_archive,25.0,19.5,1.4,4.7,279.0,,0.0,96.0,3.0,True
+2024_CFB_W15_TULN_ARMY,2026-09-07T06:17:13.174795+00:00,2024-12-07T01:00:00+00:00,-15341.3,False,False,open_meteo_archive,25.2,17.2,4.9,16.1,261.0,,0.0,60.0,1.0,True
+2024_CFB_W15_ISU_ASU,2026-09-07T06:17:13.175138+00:00,2024-12-07T17:00:00+00:00,-15325.3,True,False,open_meteo_archive,,,,,,,,,,True
+2024_CFB_W15_OHIO_MOH,2026-09-07T06:17:13.175401+00:00,2024-12-07T17:00:00+00:00,-15325.3,True,False,open_meteo_archive,,,,,,,,,,True
+2024_CFB_W15_UGA_TEX,2026-09-07T06:17:13.175634+00:00,2024-12-07T21:00:00+00:00,-15321.3,True,False,open_meteo_archive,,,,,,,,,,True
+2024_CFB_W15_MRSH_UL,2026-09-07T06:17:13.566530+00:00,2024-12-08T00:30:00+00:00,-15317.8,False,False,open_meteo_archive,52.3,47.5,5.1,9.6,79.0,,0.0,60.0,3.0,True
+2024_CFB_W15_CLEM_SMU,2026-09-07T06:17:13.929152+00:00,2024-12-08T01:00:00+00:00,-15317.3,False,False,open_meteo_archive,38.2,29.4,7.6,14.3,219.0,,0.0,43.0,0.0,True
+2024_CFB_W15_PSU_ORE,2026-09-07T06:17:13.929516+00:00,2024-12-08T01:00:00+00:00,-15317.3,True,False,open_meteo_archive,,,,,,,,,,True
