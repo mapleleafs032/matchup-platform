@@ -14,7 +14,15 @@ runs:
         if git diff --cached --quiet; then echo "no data changes"; exit 0; fi
         git commit -m "${{ inputs.message }}"
         for i in 1 2 3 4 5; do
-          git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
-          echo "push race, retry $i"; sleep $((i*5))
+          git fetch origin main
+          if git rebase -X theirs origin/main; then
+            git push origin HEAD:main && exit 0
+          else
+            echo "rebase conflict; resolving in favor of this job's files"
+            git diff --name-only --diff-filter=U | xargs -r git checkout --theirs --
+            git add -A
+            GIT_EDITOR=true git rebase --continue || git rebase --abort
+          fi
+          echo "push race, retry $i"; sleep $((i*7))
         done
         exit 1
