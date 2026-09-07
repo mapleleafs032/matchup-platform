@@ -1,6 +1,6 @@
 # Backtest report — NFL — NFL_v1.0
 
-Generated 2026-09-07T06:56+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
+Generated 2026-09-07T15:07+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
 **2021 has no earlier data; it was predicted by a model fit on the later seasons and is NOT out-of-sample. Treat it as a smoke test only.**
 
 ## Overall (out-of-sample seasons)
@@ -43,13 +43,14 @@ Break-even against -110 pricing is 52.4%. Anything below that is not an edge; an
 ## Calibration (home win probability)
 | bin | n | predicted | actual |
 |---|---|---|---|
-| 0.2-0.3 | 19 | 0.261 | 0.316 |
-| 0.3-0.4 | 85 | 0.36 | 0.318 |
-| 0.4-0.5 | 251 | 0.457 | 0.382 |
-| 0.5-0.6 | 346 | 0.549 | 0.52 |
-| 0.6-0.7 | 253 | 0.648 | 0.715 |
-| 0.7-0.8 | 116 | 0.743 | 0.741 |
-| 0.8-0.9 | 17 | 0.832 | 1.0 |
+| 0.1-0.2 | 10 | 0.17 | 0.4 |
+| 0.2-0.3 | 54 | 0.259 | 0.259 |
+| 0.3-0.4 | 149 | 0.356 | 0.369 |
+| 0.4-0.5 | 246 | 0.454 | 0.451 |
+| 0.5-0.6 | 258 | 0.547 | 0.519 |
+| 0.6-0.7 | 205 | 0.647 | 0.707 |
+| 0.7-0.8 | 126 | 0.744 | 0.754 |
+| 0.8-0.9 | 39 | 0.833 | 0.897 |
 
 ## Fitted weights (points per raw unit of each edge; the matchup engine displays these)
 | feature | points/unit |

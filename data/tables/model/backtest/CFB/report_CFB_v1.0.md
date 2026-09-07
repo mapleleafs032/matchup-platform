@@ -1,6 +1,6 @@
 # Backtest report — CFB — CFB_v1.0
 
-Generated 2026-09-07T06:56+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
+Generated 2026-09-07T15:08+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
 **2021 has no earlier data; it was predicted by a model fit on the later seasons and is NOT out-of-sample. Treat it as a smoke test only.**
 
 ## Overall (out-of-sample seasons)
@@ -20,7 +20,7 @@ Baselines on the same games (lower MAE is better):
 - market winner accuracy: 0.73 vs model 0.715
 - model side vs closing spread, all games: 0.502 (2178 decided)
 - model side vs closing spread when model differs by >= 3.0 pts: 0.495 (1184 decided)
-- over/under: 0.513
+- over/under: 0.51
 - correlation model margin vs market margin: 0.91
 
 Break-even against -110 pricing is 52.4%. Anything below that is not an edge; anything above it on a few hundred games is not proof either.
@@ -43,16 +43,16 @@ Break-even against -110 pricing is 52.4%. Anything below that is not an edge; an
 ## Calibration (home win probability)
 | bin | n | predicted | actual |
 |---|---|---|---|
-| 0.0-0.1 | 45 | 0.066 | 0.089 |
-| 0.1-0.2 | 141 | 0.151 | 0.191 |
-| 0.2-0.3 | 256 | 0.254 | 0.262 |
-| 0.3-0.4 | 320 | 0.352 | 0.325 |
-| 0.4-0.5 | 376 | 0.453 | 0.463 |
-| 0.5-0.6 | 433 | 0.551 | 0.545 |
-| 0.6-0.7 | 429 | 0.65 | 0.674 |
-| 0.7-0.8 | 404 | 0.748 | 0.78 |
-| 0.8-0.9 | 339 | 0.85 | 0.882 |
-| 0.9-1.0 | 271 | 0.946 | 0.941 |
+| 0.0-0.1 | 47 | 0.072 | 0.085 |
+| 0.1-0.2 | 150 | 0.152 | 0.2 |
+| 0.2-0.3 | 260 | 0.253 | 0.262 |
+| 0.3-0.4 | 304 | 0.351 | 0.329 |
+| 0.4-0.5 | 344 | 0.453 | 0.451 |
+| 0.5-0.6 | 394 | 0.55 | 0.546 |
+| 0.6-0.7 | 420 | 0.649 | 0.652 |
+| 0.7-0.8 | 419 | 0.749 | 0.759 |
+| 0.8-0.9 | 389 | 0.85 | 0.861 |
+| 0.9-1.0 | 287 | 0.942 | 0.944 |
 
 ## Fitted weights (points per raw unit of each edge; the matchup engine displays these)
 | feature | points/unit |
