@@ -1,0 +1,13 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2022_CFB_W14_AKR_BUF,2026-09-07T06:42:27.468802+00:00,2022-12-02T18:00:00+00:00,-32988.7,False,False,open_meteo_archive,45.7,37.6,6.8,18.8,191.0,,0.0,38.0,2.0,True
+2022_CFB_W14_UNT_UTSA,2026-09-07T06:42:27.469138+00:00,2022-12-03T00:30:00+00:00,-32982.2,True,False,open_meteo_archive,,,,,,,,,,True
+2022_CFB_W14_UTAH_USC,2026-09-07T06:42:27.469409+00:00,2022-12-03T01:00:00+00:00,-32981.7,True,False,open_meteo_archive,,,,,,,,,,True
+2022_CFB_W14_KSU_TCU,2026-09-07T06:42:27.469642+00:00,2022-12-03T17:00:00+00:00,-32965.7,True,False,open_meteo_archive,,,,,,,,,,True
+2022_CFB_W14_TOL_OHIO,2026-09-07T06:42:27.469861+00:00,2022-12-03T17:00:00+00:00,-32965.7,True,False,open_meteo_archive,,,,,,,,,,True
+2022_CFB_W14_FCS2674_NMSU,2026-09-07T06:42:27.951482+00:00,2022-12-03T20:00:00+00:00,-32962.7,False,False,open_meteo_archive,70.4,63.5,9.5,22.8,131.0,,0.0,30.0,3.0,True
+2022_CFB_W14_CCU_TROY,2026-09-07T06:42:28.473542+00:00,2022-12-03T20:30:00+00:00,-32962.2,False,False,open_meteo_archive,74.5,76.4,8.4,20.1,250.0,,0.004,72.0,51.0,True
+2022_CFB_W14_LSU_UGA,2026-09-07T06:42:28.473882+00:00,2022-12-03T21:00:00+00:00,-32961.7,True,False,open_meteo_archive,,,,,,,,,,True
+2022_CFB_W14_FRES_BOIS,2026-09-07T06:42:28.974415+00:00,2022-12-03T21:00:00+00:00,-32961.7,False,False,open_meteo_archive,40.5,30.7,8.8,16.8,144.0,,0.0,31.0,0.0,True
+2022_CFB_W14_UCF_TULN,2026-09-07T06:42:29.467642+00:00,2022-12-03T21:00:00+00:00,-32961.7,False,False,open_meteo_archive,74.7,80.8,4.5,10.5,340.0,,0.028,86.0,53.0,True
+2022_CFB_W14_CLEM_UNC,2026-09-07T06:42:29.992177+00:00,2022-12-04T01:00:00+00:00,-32957.7,False,False,open_meteo_archive,53.9,52.6,5.4,11.6,253.0,,0.0,97.0,3.0,True
+2022_CFB_W14_PUR_MICH,2026-09-07T06:42:29.992565+00:00,2022-12-04T01:00:00+00:00,-32957.7,True,False,open_meteo_archive,,,,,,,,,,True
