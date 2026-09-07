@@ -291,6 +291,53 @@ def weather(leagues: list[str], season: int, job: JobRun, vlog: ValidationLog):
     print(f"weather: {total} snapshot rows, {rm.calls_this_run} Open-Meteo calls")
 
 
+def weather_archive(leagues: list[str], season: int, job: JobRun, vlog: ValidationLog):
+    """Historical game-day weather from the Open-Meteo archive, one call per unique (venue, date).
+    Written to weather_snapshots as source=open_meteo_archive with is_actual=True (used by the backtest in place of a forecast)."""
+    rm = RequestManager("open_meteo", job.job_run_id)
+    venues = storage.read_table(REF / "venues.parquet")
+    if venues.empty:
+        job.message += " no venues;"; return
+    vidx = venues.set_index("venue_id")
+    total = 0
+    cache: dict[tuple, dict | None] = {}
+    for league in leagues:
+        games = storage.read_table(storage.games_path(league, season))
+        if games.empty:
+            continue
+        done = games[(games.status == "FINAL") & games.kickoff_utc.notna()].copy()
+        done["k"] = pd.to_datetime(done.kickoff_utc, utc=True)
+        existing = set()
+        for p in (CONTEXT / "weather_snapshots" / league / str(season)).glob("W*.csv"):
+            e = pd.read_csv(p); existing |= set(e[e.get("source", pd.Series(dtype=str)).eq("open_meteo_archive")].game_id) if "source" in e.columns else set()
+        rows = []
+        for _, g in done.iterrows():
+            if g.game_id in existing or pd.isna(g.venue_id) or g.venue_id not in vidx.index:
+                continue
+            v = vidx.loc[g.venue_id]
+            roof = g.venue_roof if isinstance(g.get("venue_roof"), str) else v.roof
+            if roof in open_meteo.INDOOR_ROOFS:
+                rows.append({**open_meteo.snapshot_row(g.game_id, g.k, roof, None, _now()), "source": "open_meteo_archive", "is_actual": True}); continue
+            if pd.isna(v.latitude) or pd.isna(v.longitude):
+                continue
+            day = g.k.strftime("%Y-%m-%d")
+            key = (round(float(v.latitude), 2), round(float(v.longitude), 2), day)
+            if key not in cache:
+                try:
+                    cache[key] = rm.get(open_meteo.ARCHIVE, params={"latitude": v.latitude, "longitude": v.longitude, "hourly": open_meteo.HOURLY_ARCHIVE,
+                                                                   "start_date": day, "end_date": day, **open_meteo.UNITS}).payload
+                except (ProviderError, BudgetExceeded) as e:
+                    vlog.warn("PROVIDER_FAIL", g.game_id, "open_meteo_archive", str(e)[:80], "200"); cache[key] = None
+            vals = open_meteo.pick_hour(cache[key], g.k) if cache[key] else None
+            rows.append({**open_meteo.snapshot_row(g.game_id, g.k, roof, vals, _now()), "source": "open_meteo_archive", "is_actual": True})
+        if rows:
+            df = pd.DataFrame(rows).merge(games[["game_id", "week"]], on="game_id")
+            for wk, part in df.groupby("week"):
+                total += storage.append_csv(CONTEXT / "weather_snapshots" / league / str(season) / f"W{int(wk):02d}.csv", part.drop(columns="week"), ["game_id", "retrieved_at"], on_duplicate="skip")
+        print(f"{league} {season} weather archive: {len(rows)} rows, {rm.calls_this_run} calls so far")
+    job.rows_written += total; job.api_calls += rm.calls_this_run
+
+
 def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--league", required=True, choices=["NFL", "CFB", "BOTH"])
@@ -312,6 +359,8 @@ def main(argv=None):
             cfb(what, a.season, job, vlog)
         if "weather" in what:
             weather(leagues, a.season, job, vlog)
+        if "weather_archive" in what:
+            weather_archive(leagues, a.season, job, vlog)
         vlog.flush()
         if vlog.rejects:
             job.status = "PARTIAL"; job.message += f" {vlog.rejects} manual rows rejected;"

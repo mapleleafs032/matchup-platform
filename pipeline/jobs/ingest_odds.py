@@ -102,16 +102,57 @@ def run(league: str, season: int, week: int | None, force: bool, job: JobRun) ->
           f"our monthly remaining={rm.remaining_monthly()}")
 
 
+def closing_backfill_cfb(season: int, job: JobRun) -> None:
+    """Historical CFB closing lines: CFBD's stored lines for finished games are closing values. 1 call/week -> closing_lines table."""
+    games = storage.read_table(storage.games_path("CFB", season))
+    if games.empty:
+        raise RuntimeError("no CFB games table")
+    rm = RequestManager("cfbd", job.job_run_id, enforce_daily=(job.trigger == "backfill"))
+    out_path = config.TABLES / "market" / "closing_lines" / "CFB" / f"{season}.parquet"
+    existing = storage.read_table(out_path)
+    rows = []
+    for week in sorted(games[games.season_type == "REG"].week.unique()):
+        wk_games = games[(games.week == week) & (games.status == "FINAL")]
+        if wk_games.empty or (not existing.empty and set(wk_games.game_id) <= set(existing.game_id)):
+            continue
+        gid_by = {}
+        for _, g in wk_games.iterrows():
+            try:
+                gid_by[int(str(g.provider_game_ids).split(":")[1].strip("}"))] = g.game_id
+            except (IndexError, ValueError):
+                pass
+        res = cfbd.fetch_lines(rm, season, int(week))
+        snaps = cfbd.normalize_lines(res.payload, season, gid_by, res.retrieved_at, "backfill", [], set())
+        if snaps.empty:
+            continue
+        snaps["_pri"] = snaps.book.map({b: i for i, b in enumerate(config.CLOSING_BOOK_PRIORITY)}).fillna(99)
+        best = snaps.sort_values(["game_id", "_pri"]).drop_duplicates("game_id")
+        for _, r in best.iterrows():
+            rows.append({"game_id": r.game_id, "book": r.book, "spread_home": r.spread_home, "ml_home": r.ml_home, "ml_away": r.ml_away, "total": r.total,
+                         "from_snapshot_id": None, "source": "cfbd_historical", "retrieved_at": r.retrieved_at})
+    if rows:
+        new = pd.DataFrame(rows)
+        if not existing.empty:
+            new = pd.concat([existing[~existing.game_id.isin(new.game_id)], new], ignore_index=True)
+        storage.write_parquet(out_path, new)
+    job.rows_written = len(rows); job.api_calls = rm.calls_this_run
+    print(f"CFB {season} closing lines: {len(rows)} new games ({rm.calls_this_run} calls)")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--league", required=True, choices=config.LEAGUES)
     p.add_argument("--season", type=int, default=config.SEASON)
     p.add_argument("--week", type=int)
     p.add_argument("--force", action="store_true")
+    p.add_argument("--closing-backfill", action="store_true", help="CFB: build historical closing_lines from CFBD (1 call/week)")
     p.add_argument("--trigger", default="manual")
     a = p.parse_args(argv)
     with JobRun(f"{a.league}_ODDS", a.league, a.trigger) as job:
-        run(a.league, a.season, a.week, a.force, job)
+        if a.closing_backfill:
+            closing_backfill_cfb(a.season, job)
+        else:
+            run(a.league, a.season, a.week, a.force, job)
 
 
 if __name__ == "__main__":

@@ -23,8 +23,11 @@ ROSTER = config.TABLES / "roster"
 REF = config.TABLES / "ref"
 
 
-def _latest_week_file(d, season) -> pd.DataFrame:
-    files = sorted(glob.glob(str(d / str(season) / "*.parquet")))
+def _latest_week_file(d, season, week: int | None = None) -> pd.DataFrame:
+    """Latest weekly file at or before `week` (never a later one: historical derives must not see future rosters)."""
+    files = sorted(glob.glob(str(d / str(season) / "W*.parquet")))
+    if week is not None:
+        files = [f for f in files if int(f.split("W")[-1][:2]) <= week] or files[:1]
     return pd.read_parquet(files[-1]) if files else pd.DataFrame()
 
 
@@ -59,7 +62,9 @@ def fetch_nfl(season: int, job: JobRun):
     job.api_calls += rm.calls_this_run
 
 
-def fetch_cfb(season: int, week: int, job: JobRun, vlog: ValidationLog, usage_only: bool = False):
+def fetch_cfb(season: int, week: int, job: JobRun, vlog: ValidationLog, usage_only: bool = False, force: bool = False):
+    if not usage_only and not force and (ROSTER / "player_season_usage" / "CFB" / f"{season}.parquet").exists() and (ROSTER / "transfers" / f"{season}.parquet").exists():
+        print(f"CFB {season}: roster inputs already fetched; skipping (--force to refetch)"); return
     rm = RequestManager("cfbd", job.job_run_id, enforce_daily=(job.trigger == "backfill"))
     resolver = ids.AliasResolver.load()
     unmatched: set[str] = set()
@@ -101,10 +106,16 @@ def fetch_cfb(season: int, week: int, job: JobRun, vlog: ValidationLog, usage_on
 
 
 # ---- derive ---------------------------------------------------------------------------------
-def derive(league: str, season: int, week: int, job: JobRun):
+def derive_weeks(league: str, season: int, weeks: list[int], job: JobRun):
+    """Historical: QB status + projected depth per week; returning production / departures / talent / continuity once."""
+    for i, wk in enumerate(weeks):
+        derive(league, season, wk, job, season_level=(i == 0))
+
+
+def derive(league: str, season: int, week: int, job: JobRun, season_level: bool = True):
     games = storage.read_table(storage.games_path(league, season))
     ros_dir = ROSTER / "roster_snapshots" / league
-    roster_now = _latest_week_file(ros_dir, season)
+    roster_now = _latest_week_file(ros_dir, season, week)
     if roster_now.empty:
         job.status = "SKIPPED"; job.message = f"no roster snapshot for {league} {season}; run context rosters first"; return
     players = storage.read_table(REF / "players" / f"{league}.parquet")
@@ -119,26 +130,27 @@ def derive(league: str, season: int, week: int, job: JobRun):
     coaches = storage.read_table(ROSTER / "coaches.csv")
     inj_path = ROSTER / "injuries" / league / f"{season}.csv"
     injuries = storage.read_table(inj_path)
-    depth_nfl = _latest_week_file(ROSTER / "depth_charts" / "NFL", season) if league == "NFL" else None
+    depth_nfl = _latest_week_file(ROSTER / "depth_charts" / "NFL", season, week) if league == "NFL" else None
     pgs = pd.concat([pd.read_parquet(p).assign(season=int(p.split("/")[-1][:4])) for p in glob.glob(str(config.TABLES / "stats" / "player_game_stats" / league / "*.parquet"))], ignore_index=True) if glob.glob(str(config.TABLES / "stats" / "player_game_stats" / league / "*.parquet")) else pd.DataFrame()
     if usage_prior.empty:
         print(f"{league} {season}: no prior-season usage table -> returning production from provider only (or unavailable)")
 
-    rp = eng.returning_production(league, season, week, roster_now, usage_prior)
-    if not rp.empty:
+    rp = eng.returning_production(league, season, week, roster_now, usage_prior) if season_level else storage.read_table(ROSTER / "returning_production" / league / f"{season}.parquet")
+    if season_level and not rp.empty:
         _merge(ROSTER / "returning_production" / league / f"{season}.parquet", rp, ["team_id", "season", "as_of_week", "method"])
         print(f"{league} {season} returning production (derived): {len(rp)} teams, median rp_total={rp.rp_total.median():.2f}")
-    dep = eng.departures(league, season, roster_now, usage_prior, draft, portal)
-    if not dep.empty:
+    dep = eng.departures(league, season, roster_now, usage_prior, draft, portal) if season_level else pd.DataFrame()
+    if season_level and not dep.empty:
         storage.write_parquet(ROSTER / "departures" / league / f"{season}.parquet", dep)
         print(f"{league} {season} departures: {len(dep)} ({dep.category.value_counts().to_dict()})")
     tr = None
     if league == "CFB" and portal is not None and not portal.empty:
-        tr = eng.evaluate_transfers(season, portal, roster_now, players, usage_prior)
-        storage.write_parquet(ROSTER / "transfers" / f"{season}.parquet", tr)
+        tr = eng.evaluate_transfers(season, portal, roster_now, players, usage_prior) if season_level else portal
+        if season_level:
+            storage.write_parquet(ROSTER / "transfers" / f"{season}.parquet", tr)
         print(f"CFB {season} transfers matched to roster: {int(tr.player_id.notna().sum())} of {len(tr)}; roles {tr.projected_role.value_counts().to_dict()}")
         classes = storage.read_table(ROSTER / "recruiting_classes.parquet"); talent = storage.read_table(ROSTER / "team_talent.parquet")
-        ts = eng.talent_scores(season, classes, talent, tr)
+        ts = eng.talent_scores(season, classes, talent, tr) if season_level else pd.DataFrame()
         if not ts.empty:
             _merge(ROSTER / "talent_scores.parquet", ts, ["team_id", "season"])
             print(f"CFB {season} talent scores: {len(ts)} teams")
@@ -156,7 +168,7 @@ def derive(league: str, season: int, week: int, job: JobRun):
         if not dc.empty:
             storage.write_parquet(ROSTER / "depth_charts" / "CFB" / str(season) / f"W{week:02d}.parquet", dc)
             print(f"CFB {season} W{week} projected depth charts: {len(dc)} slots; basis {dc.projection_basis.value_counts().to_dict()}")
-    cont = eng.continuity(league, season, rp, qb, coaches, tr)
+    cont = eng.continuity(league, season, rp, qb, coaches, tr) if season_level else pd.DataFrame()
     if not cont.empty:
         storage.write_parquet(ROSTER / "continuity" / league / f"{season}.parquet", cont)
         print(f"{league} {season} continuity index: median {cont.continuity_index.median():.2f}")
@@ -168,6 +180,8 @@ def main(argv=None):
     p.add_argument("--league", required=True, choices=config.LEAGUES)
     p.add_argument("--season", type=int, default=config.SEASON)
     p.add_argument("--week", type=int)
+    p.add_argument("--weeks", nargs="*", help="historical derive: week list or 'all'")
+    p.add_argument("--force", action="store_true")
     p.add_argument("--what", nargs="+", default=["fetch", "derive"])
     p.add_argument("--trigger", default="manual")
     a = p.parse_args(argv)
@@ -178,11 +192,15 @@ def main(argv=None):
     with JobRun(f"{a.league}_ROSTER", a.league, a.trigger) as job:
         vlog = ValidationLog(job.job_run_id, "roster")
         if "fetch" in a.what:
-            (fetch_nfl if a.league == "NFL" else lambda s, j: fetch_cfb(s, week, j, vlog))(a.season, job)
+            (fetch_nfl if a.league == "NFL" else lambda s, j: fetch_cfb(s, week, j, vlog, force=a.force))(a.season, job)
         if "usage" in a.what and a.league == "CFB":
             fetch_cfb(a.season, week, job, vlog, usage_only=True)
         if "derive" in a.what:
-            derive(a.league, a.season, week, job)
+            if a.weeks:
+                wks = sorted(games[games.season_type == "REG"].week.unique().tolist()) if a.weeks[0] == "all" else [int(w) for w in a.weeks]
+                derive_weeks(a.league, a.season, wks, job)
+            else:
+                derive(a.league, a.season, week, job)
         vlog.flush()
 
 

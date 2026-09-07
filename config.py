@@ -1,248 +1,148 @@
 """
-nflverse play-by-play / charting adapter (NFL). Extends providers/nflverse.py (schedules).
-
-Sources (GitHub release assets, free):
-  pbp/play_by_play_{season}.parquet            nflfastR play-by-play, 372 cols, revised in-season
-  ftn_charting/ftn_charting_{season}.parquet   FTN charting 2022+, joined on nflverse_play_id (CC-BY-SA, attribute in UI)
-  pfr_advstats/advstats_week_pass_{season}     per QB per week: times_pressured, blitzed, hurried, hit (PFR)
-  pfr_advstats/advstats_week_def_{season}      per defender per week: def_pressures, def_sacks, ...
-
-Normalization decisions:
-  * Slim play table follows Phase 3 `plays`. play_type: pass->PASS (sack->SACK), run->RUSH, qb_kneel->KNEEL,
-    qb_spike->SPIKE, no_play->PENALTY, kickoff/punt/field_goal/extra_point kept by name.
-  * Scrambles are play_type=RUSH with is_dropback=True (nflfastR qb_scramble). Metric engine treats them as dropbacks.
-  * garbage time: pre-snap vegas_wp outside config.NFL_GARBAGE_WP_BAND.
-  * success: nflfastR `success` (EPA > 0).
-  * drives: nflfastR fixed_drive; points = posteam_score_post at last play of the drive minus posteam_score at first play.
-    Defensive TDs against the offense are not credited to the offense (points can be negative -> clipped to 0).
-  * effective_at for every row = the game's kickoff date (+4h) so the as-of builder can use it.
+Centralized configuration. Nothing tunable lives anywhere else.
+Secrets are NOT here: they come from environment variables set by GitHub Actions secrets.
 """
 from __future__ import annotations
-import io
-from datetime import timedelta
+import os
+from pathlib import Path
 
-import numpy as np
-import pandas as pd
+ROOT = Path(__file__).resolve().parent
+DATA = ROOT / "data"
+TABLES = DATA / "tables"
+RAW = DATA / "raw"
+SNAPSHOTS = DATA / "snapshots"
+SITE_JSON = ROOT / "site" / "json"
 
-import config
-from pipeline import ids
-from providers.base import RequestManager
+SEASON = 2026
+LEAGUES = ("CFB", "NFL")
+BACKTEST_SEASONS = [2021, 2022, 2023, 2024, 2025]   # post-COVID only; 2020 and earlier are hard-rejected
+MIN_ALLOWED_SEASON = 2021
 
-_PLAY_TYPE = {"pass": "PASS", "run": "RUSH", "qb_kneel": "KNEEL", "qb_spike": "SPIKE", "no_play": "PENALTY",
-              "kickoff": "KICKOFF", "punt": "PUNT", "field_goal": "FG", "extra_point": "XP"}
-_DRIVE_RESULT = {"Touchdown": "TD", "Field goal": "FG", "Missed field goal": "MISSED_FG", "Punt": "PUNT",
-                 "Turnover": "TURNOVER", "Turnover on downs": "DOWNS", "End of half": "END_HALF",
-                 "Opp touchdown": "TURNOVER", "Safety": "SAFETY"}
+# ---- Provider keys (env only) -------------------------------------------------
+CFBD_API_KEY = os.environ.get("CFBD_API_KEY", "").strip()
+ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "").strip()
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 
+# ---- Odds routing (decision #2: free now, paid is a config flip) --------------
+ODDS_PLAN = os.environ.get("ODDS_PLAN", "free")          # "free" | "paid"
+ODDS_ROUTING = {
+    "free": {"NFL": "odds_api", "CFB": "cfbd"},
+    "paid": {"NFL": "odds_api", "CFB": "odds_api"},
+}[ODDS_PLAN]
+ODDS_API_REGIONS = "us"
+ODDS_API_MARKETS = "h2h,spreads,totals"                  # 3 credits per call on The Odds API
+ODDS_API_SPORT_KEYS = {"NFL": "americanfootball_nfl", "CFB": "americanfootball_ncaaf"}
+ODDS_BOOK_PRIORITY = ["consensus", "draftkings", "fanduel", "betmgm", "caesars", "espnbet", "bovada"]
 
-def fetch_asset(rm: RequestManager, asset: str, season: int) -> pd.DataFrame | None:
-    """Returns None (not an error) when the season file does not exist yet (e.g., before Week 1)."""
-    from providers.base import ProviderError
-    url = config.NFLVERSE_ASSETS[asset].format(season=season)
-    try:
-        res = rm.get(url, raw_bytes=True, timeout=120)
-    except ProviderError as e:
-        if "404" in str(e):
-            return None
-        raise
-    df = pd.read_parquet(io.BytesIO(res.payload))
-    df.attrs["raw_id"] = res.raw_id
-    df.attrs["retrieved_at"] = res.retrieved_at
-    return df
+# ---- API budgets (§50). Hard stops; jobs skip rather than exceed. ------------
+API_BUDGET = {
+    "cfbd":     {"monthly": 1000 if os.environ.get("CFBD_TIER", "free") == "free" else 5000, "daily_soft": 250},
+    "odds_api": {"monthly": 500 if ODDS_PLAN == "free" else 20000, "daily_soft": 25},
+    "open_meteo": {"monthly": 200000, "daily_soft": 5000},
+    "nflverse": {"monthly": 10**9, "daily_soft": 10**9},
+    "espn":     {"monthly": 5000, "daily_soft": 200},
+}
+BUDGET_DEGRADE_AT_PCT_REMAINING = 0.15   # below this, odds cadence halves automatically
 
+# ---- Refresh cadences (hours). Game-day cadences handled by Apps Script timer. -
+CADENCE = {
+    "schedules_hours": 24,
+    "odds_midweek_per_day": {"free": {"NFL": 2, "CFB": 2}, "paid": {"NFL": 6, "CFB": 6}}[ODDS_PLAN],
+    "odds_gameday_hours_before_kick": {"free": 6, "paid": 8}[ODDS_PLAN],
+}
 
-def _game_map(games: pd.DataFrame) -> dict[str, dict]:
-    """nflverse game_id -> our game row (via provider_game_ids json)."""
-    out = {}
-    for _, g in games.iterrows():
-        try:
-            nv = str(g.provider_game_ids).split('"nflverse":"')[1].split('"')[0]
-        except IndexError:
-            continue
-        out[nv] = g
-    return out
+# ---- Validation ranges (§44). Fractions 0..1 unless noted. -------------------
+VALIDATION_RANGES = {
+    "spread_home": (-60.0, 60.0),
+    "total": (20.0, 110.0),
+    "moneyline": (-10000, 10000),
+    "points": (0, 120),
+    "week_cfb": (1, 16),      # CFBD week numbering starts at 1 (no week 0)
+    "week_nfl": (1, 22),
+}
 
+# ---- Season / week conventions -------------------------------------------------
+NFL_GAME_TYPE_TO_SEASON_TYPE = {"REG": "REG", "WC": "POST", "DIV": "POST", "CON": "POST", "SB": "POST"}
+CFBD_SEASON_TYPE = {"regular": "REG", "postseason": "POST", "both": None}
+NFL_TIMEZONE = "America/New_York"   # nflverse gametime is Eastern
 
-def normalize_plays(pbp: pd.DataFrame, ftn: pd.DataFrame | None, games: pd.DataFrame, resolver: ids.AliasResolver,
-                    weeks: list[int] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Returns (plays_slim, drives). Only games present in our games table are kept."""
-    gm = _game_map(games)
-    p = pbp[pbp.game_id.isin(gm.keys())].copy()
-    if weeks is not None:
-        p = p[p.week.isin(weeks)]
-    p = p[p.posteam.notna() & p.play_type.notna()]
-    if ftn is not None and not ftn.empty:
-        f = ftn[["nflverse_game_id", "nflverse_play_id", "is_play_action", "is_rpo", "n_blitzers", "n_pass_rushers",
-                 "is_interception_worthy", "qb_location", "is_motion", "is_no_huddle", "is_screen_pass"]].rename(
-            columns={"nflverse_game_id": "game_id", "nflverse_play_id": "play_id"})
-        p = p.merge(f, on=["game_id", "play_id"], how="left")
-    else:
-        for c in ("is_play_action", "is_rpo", "n_blitzers", "n_pass_rushers", "is_interception_worthy"):
-            p[c] = np.nan
-    retrieved_at = pbp.attrs["retrieved_at"].isoformat()
-    lo, hi = config.NFL_GARBAGE_WP_BAND
+# ---- Game-level metric definitions (pipeline/metrics_game.py) ------------------
+EXPLOSIVE_RUSH_YDS = 10
+EXPLOSIVE_PASS_YDS = 20
+# Garbage time. CFB: CFBD's published rule (lead >= threshold by period). NFL: pre-snap vegas win prob band.
+CFB_GARBAGE_LEAD_BY_PERIOD = {2: 38, 3: 28, 4: 22}
+NFL_GARBAGE_WP_BAND = (0.05, 0.95)
+# Which upstream stats files to pull per league (nflverse release assets)
+NFLVERSE_ASSETS = {
+    "pbp": "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.parquet",
+    "ftn": "https://github.com/nflverse/nflverse-data/releases/download/ftn_charting/ftn_charting_{season}.parquet",
+    "pfr_pass": "https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_week_pass_{season}.parquet",
+    "pfr_def": "https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_week_def_{season}.parquet",
+}
+CFBD_STATS_CALLS_PER_WEEK = 5     # games/teams, stats/game/advanced, plays, drives, games/players
 
-    def team(abbr):
-        return resolver.resolve("nflverse", alias=abbr)
+# ---- Analytics layer (pipeline/asof.py, pipeline/ratings.py) -----------------------
+USE_GARBAGE_FILTERED = True          # which team_game_advanced variant feeds the model
+FCS_GAME_WEIGHT = 0.5                # CFB: weight of FBS-vs-FCS games in windows and ridge fits
+NIGHT_GAME_LOCAL_HOUR = 18           # local kickoff hour >= this -> NIGHT window
+RIDGE_LAMBDA = {"CFB": 3.0, "NFL": 2.0}          # opponent-adjustment shrinkage; tuned in Phase 8 backtest
+RECENCY_WEIGHTS = {"SEASON": 0.5, "LAST5": 0.3, "LAST3": 0.2}   # starting framework (§17); tuned in Phase 8
+PRIOR_WEIGHT_BY_WEEK = {             # weight on previous-season OPP_ADJ values (§40); tuned in Phase 8
+    "CFB": {1: 0.85, 2: 0.75, 3: 0.65, 4: 0.50, 5: 0.40, 6: 0.30, 7: 0.20, 8: 0.10, "default": 0.05},
+    "NFL": {1: 0.70, 2: 0.55, 3: 0.40, 4: 0.30, 5: 0.20, 6: 0.10, "default": 0.05},
+}
+LOW_SAMPLE_GAMES = {"CFB": 4, "NFL": 4}
+QUALITY_TARGET_GAMES = {"CFB": 6, "NFL": 5}
 
-    rows = []
-    for _, r in p.iterrows():
-        g = gm[r.game_id]
-        off = team(r.posteam); deff = team(r.defteam)
-        pt = _PLAY_TYPE.get(r.play_type, "OTHER")
-        is_sack = bool(r.sack == 1)
-        if pt == "PASS" and is_sack:
-            pt = "SACK"
-        is_scramble = bool(r.qb_scramble == 1)
-        turnover_type = "INT" if r.interception == 1 else ("FUM" if r.fumble_lost == 1 else None)
-        rows.append({
-            "play_id": f"{g.game_id}_{int(r.play_id)}", "game_id": g.game_id,
-            "offense_team_id": off, "defense_team_id": deff,
-            "period": int(r.qtr) if pd.notna(r.qtr) else None,
-            "clock_sec_remaining": int(r.quarter_seconds_remaining) if pd.notna(r.quarter_seconds_remaining) else None,
-            "game_sec_remaining": int(r.game_seconds_remaining) if pd.notna(r.game_seconds_remaining) else None,
-            "drive_id": f"{g.game_id}_{int(r.fixed_drive)}" if pd.notna(r.fixed_drive) else None,
-            "down": int(r.down) if pd.notna(r.down) else None,
-            "distance": int(r.ydstogo) if pd.notna(r.ydstogo) else None,
-            "yardline_100": int(r.yardline_100) if pd.notna(r.yardline_100) else None,
-            "play_type": pt,
-            "yards_gained": int(r.yards_gained) if pd.notna(r.yards_gained) else 0,
-            "is_success": bool(r.success == 1) if pd.notna(r.success) else None,
-            "ppa": float(r.epa) if pd.notna(r.epa) else None,
-            "is_dropback": bool(r.qb_dropback == 1),
-            "is_scramble": is_scramble,
-            "is_sack": is_sack,
-            "is_turnover": turnover_type is not None,
-            "turnover_type": turnover_type,
-            "is_td": bool(r.touchdown == 1) and str(r.td_team) == str(r.posteam),
-            "is_complete": bool(r.complete_pass == 1),
-            "is_garbage_time": bool(pd.notna(r.vegas_wp) and not (lo <= r.vegas_wp <= hi)),
-            "score_diff_pre": int(r.score_differential) if pd.notna(r.score_differential) else None,
-            "wp_pre": float(r.vegas_wp) if pd.notna(r.vegas_wp) else None,
-            "passer_id": f"NFL_P_{r.passer_player_id}" if pd.notna(r.passer_player_id) else None,
-            "rusher_id": f"NFL_P_{r.rusher_player_id}" if pd.notna(r.rusher_player_id) else None,
-            "receiver_id": f"NFL_P_{r.receiver_player_id}" if pd.notna(r.receiver_player_id) else None,
-            "air_yards": int(r.air_yards) if pd.notna(r.air_yards) else None,
-            "run_gap": r.run_gap if pd.notna(r.run_gap) else None,
-            "run_location": r.run_location if pd.notna(r.run_location) else None,
-            "shotgun": bool(r.shotgun == 1),
-            "play_action": bool(r.is_play_action) if pd.notna(r.is_play_action) else None,
-            "rpo": bool(r.is_rpo) if pd.notna(r.is_rpo) else None,
-            "n_blitzers": int(r.n_blitzers) if pd.notna(r.n_blitzers) else None,
-            "n_pass_rushers": int(r.n_pass_rushers) if pd.notna(r.n_pass_rushers) else None,
-            "qb_hit": bool(r.qb_hit == 1),
-            "is_tfl": bool(r.tackled_for_loss == 1),
-            "is_pbu": bool(pd.notna(r.pass_defense_1_player_id)),
-            "is_ff": bool(r.fumble_forced == 1),
-            "int_worthy": bool(r.is_interception_worthy) if pd.notna(r.is_interception_worthy) else None,
-            "cpoe": float(r.cpoe) if pd.notna(r.cpoe) else None,
-            "posteam_score": int(r.posteam_score) if pd.notna(r.posteam_score) else None,
-            "posteam_score_post": int(r.posteam_score_post) if pd.notna(r.posteam_score_post) else None,
-            "source": "nflverse", "retrieved_at": retrieved_at,
-            "effective_at": (pd.Timestamp(g.kickoff_utc) + timedelta(hours=4)).isoformat() if pd.notna(g.kickoff_utc) else retrieved_at,
-        })
-    plays = pd.DataFrame(rows)
-    drives = _drives_from_plays(plays, p, gm, retrieved_at)
-    return plays, drives
+# ---- Roster engine (pipeline/roster_engine.py) ----------------------------------------
+RP_POSITION_WEIGHTS = {"passing": 0.30, "ol": 0.20, "receiving": 0.15, "rushing": 0.10, "defense": 0.25}   # §12; tuned in Phase 8
+OL_STARTS_FULL = {"NFL": 85, "CFB": 5}        # NFL: 17 games x 5 starters; CFB proxy: 5 retained OL = "full"
+DEF_PRODUCTION_WEIGHTS = {"tackles": 1.0, "tfl": 2.0, "sacks": 3.0, "ints": 3.0, "pbu": 2.0, "qb_hurries": 1.5, "pressures": 1.5, "ff": 2.0}
+RECRUIT_CLASS_WEIGHTS = {0: 0.15, 1: 0.35, 2: 0.30, 3: 0.20}   # years ago -> weight (current class matters least in-season)
+CONTINUITY_WEIGHTS = {"CFB": {"rp_total": 0.45, "qb": 0.25, "hc": 0.15, "portal_churn": 0.15},
+                      "NFL": {"rp_total": 0.50, "qb": 0.30, "hc": 0.20}}
+PORTAL_CHURN_FULL = 25                         # incoming transfers at which churn penalty saturates
+CFBD_ROSTER_CALLS_PER_SEASON = 8
 
+# ---- Matchup engine (pipeline/matchup_engine.py). Weights = points per league-SD of edge_raw. PRIORS; fit in Phase 8. ----
+MATCHUP_MODEL_VERSION = "MATCHUP_v0.7_prelim"
+_W_NFL = {"OVERALL_OFF": 1.5, "OVERALL_DEF": 1.5, "PASS_OFF": 1.0, "PASS_DEF": 1.0, "RUSH_OFF": 0.5, "RUSH_DEF": 0.5, "QB": 1.5,
+          "OFFENSIVE_LINE": 0.6, "DEFENSIVE_FRONT": 0.6, "EXPLOSIVE": 0.6, "SUCCESS": 0.5, "THIRD_DOWN": 0.3, "RED_ZONE": 0.3,
+          "TURNOVER": 0.3, "SPECIAL_TEAMS": 0.3, "COACHING": 0.5, "TALENT": 0.0, "RETURNING_PROD": 0.5, "RECENT_FORM": 0.4,
+          "SOS": 0.0, "HOME_FIELD": 1.0, "STYLE_FIT": 0.5, "INJURY": 1.0, "WEATHER": 0.3, "REST": 0.6}
+MATCHUP_WEIGHTS_INIT = {"NFL": _W_NFL, "CFB": {**{k: v * 1.6 for k, v in _W_NFL.items()}, "TALENT": 1.0, "RETURNING_PROD": 0.8, "COACHING": 0.6, "HOME_FIELD": 1.0}}
+HFA_DEFAULT_POINTS = {"NFL": 1.5, "CFB": 2.5}     # used only when no fitted ratings exist for the week
+INJURY_POSITION_WEIGHTS = {"QB": 3.0, "OL": 0.6, "RB": 0.5, "WR": 0.6, "TE": 0.4, "EDGE": 0.7, "DL": 0.5, "LB": 0.4, "CB": 0.6, "S": 0.4, "K": 0.3, "P": 0.1, "LS": 0.05, "UNK": 0.2}
+INJURY_SD_POINTS = 1.5            # injury burden units per league-SD (QB out alone = 2 SD)
+TURNOVER_REGRESSION = 0.4         # turnover margin is mostly noise; shrink toward zero
+WIND_PASS_THRESHOLD_MPH = 12
+QB_MIN_CAREER_ATT = 80         # attempts in our 2021+ tables before career evidence is used for the QB index
 
-def _drives_from_plays(plays: pd.DataFrame, pbp: pd.DataFrame, gm: dict, retrieved_at: str) -> pd.DataFrame:
-    rows = []
-    src = pbp[pbp.fixed_drive.notna()]
-    for (nv_gid, drv), grp in src.groupby(["game_id", "fixed_drive"], sort=False):
-        g = gm[nv_gid]
-        grp = grp.sort_values("play_id")
-        first, last = grp.iloc[0], grp.iloc[-1]
-        drive_id = f"{g.game_id}_{int(drv)}"
-        ours = plays[plays.drive_id == drive_id]
-        if ours.empty:
-            continue
-        off = ours.offense_team_id.iloc[0]
-        result = _DRIVE_RESULT.get(str(last.fixed_drive_result), "OTHER")
-        pts = None
-        if pd.notna(first.posteam_score) and pd.notna(last.posteam_score_post):
-            pts = max(0, int(last.posteam_score_post) - int(first.posteam_score))
-        min_y100 = ours.yardline_100.min()
-        rows.append({
-            "drive_id": drive_id, "game_id": g.game_id, "offense_team_id": off,
-            "defense_team_id": ours.defense_team_id.iloc[0], "drive_number": int(drv),
-            "start_period": int(first.qtr) if pd.notna(first.qtr) else None,
-            "start_yardline_100": int(ours.yardline_100.dropna().iloc[0]) if ours.yardline_100.notna().any() else None,
-            "end_yardline_100": int(ours.yardline_100.dropna().iloc[-1]) if ours.yardline_100.notna().any() else None,
-            "plays": int(len(ours[ours.play_type.isin(["PASS", "RUSH", "SACK"])])),
-            "yards": int(ours.yards_gained.sum()),
-            "elapsed_sec": int(first.game_seconds_remaining - last.game_seconds_remaining) if pd.notna(first.game_seconds_remaining) and pd.notna(last.game_seconds_remaining) else None,
-            "result": result, "points": pts,
-            "reached_opp_40": bool(pd.notna(min_y100) and min_y100 <= 40),
-            "reached_rz": bool(pd.notna(min_y100) and min_y100 <= 20),
-            "is_garbage_time": bool(ours.is_garbage_time.iloc[0]),
-            "source": "nflverse", "retrieved_at": retrieved_at, "effective_at": ours.effective_at.iloc[0],
-        })
-    return pd.DataFrame(rows)
+# ---- Prediction model (pipeline/model.py, jobs/backtest.py, jobs/predict.py) ----------------
+LEAGUE_AVG_TOTAL = {"NFL": 44.0, "CFB": 54.0}
+TOTAL_FLOOR = 20.0
+ATS_EDGE_THRESHOLD = {"NFL": 2.0, "CFB": 3.0}      # points of model-vs-market disagreement to count as an "edge" pick
+CLOSING_BOOK_PRIORITY = ["nflverse_close", "consensus", "draftkings", "fanduel", "bovada", "betmgm", "espnbet"]
+HFA_SHRINK_GAMES = {"NFL": 120, "CFB": 400}         # games of fit needed before the fitted HFA fully replaces the league prior
 
+# ---- Storage --------------------------------------------------------------------
+APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to repo root
+    "data/tables/market/snapshots",
+    "data/tables/model/predictions",
+    "data/tables/model/pregame_final_flags.csv",
+    "data/tables/model/pregame_snapshots_index.csv",
+    "data/tables/model/model_evaluation",
+    "data/tables/results",
+    "data/tables/roster/injuries",
+    "data/tables/context/weather_snapshots",
+    "data/tables/ops/job_log.csv",
+    "data/tables/ops/validation_log.csv",
+    "data/tables/ops/raw_responses.csv",
+    "data/snapshots",
+]
 
-def qb_game_stats(pbp: pd.DataFrame, pfr_pass: pd.DataFrame | None, games: pd.DataFrame, resolver: ids.AliasResolver,
-                  weeks: list[int] | None = None) -> pd.DataFrame:
-    """player_game_stats rows for passers (QB) from pbp, enriched with PFR pressure counts when available."""
-    gm = _game_map(games)
-    p = pbp[pbp.game_id.isin(gm.keys()) & pbp.passer_player_id.notna() & (pbp.qb_dropback == 1)]
-    if weeks is not None:
-        p = p[p.week.isin(weeks)]
-    retrieved_at = pbp.attrs["retrieved_at"].isoformat()
-    rows = []
-    for (nv_gid, team, pid), grp in p.groupby(["game_id", "posteam", "passer_player_id"]):
-        g = gm[nv_gid]
-        att = grp[grp.play_type == "pass"]
-        att_real = att[att.sack != 1]
-        rows.append({
-            "game_id": g.game_id, "team_id": resolver.resolve("nflverse", alias=team), "player_id": f"NFL_P_{pid}",
-            "position": "QB", "started": None, "snaps_off": None, "snaps_def": None,
-            "pass_att": int(len(att_real)), "pass_cmp": int((att_real.complete_pass == 1).sum()),
-            "pass_yds": int(att_real.yards_gained.sum()), "pass_td": int((att_real.pass_touchdown == 1).sum()),
-            "pass_int": int((att_real.interception == 1).sum()), "sacks_taken": int((grp.sack == 1).sum()),
-            "dropbacks": int(len(grp)), "ppa_dropback": float(grp.epa.mean()) if grp.epa.notna().any() else None,
-            "qbr": None, "cpoe": float(att_real.cpoe.mean()) if att_real.cpoe.notna().any() else None,
-            "int_worthy": None, "pressured_dropbacks": None, "pressured_ppa": None, "clean_ppa": None,
-            "rush_att": None, "rush_yds": None, "rush_td": None, "targets": None, "receptions": None, "rec_yds": None,
-            "rec_td": None, "tackles": None, "tfl": None, "sacks": None, "pressures": None, "ints": None, "pbu": None, "ff": None,
-            "source": "nflverse", "retrieved_at": retrieved_at,
-            "effective_at": (pd.Timestamp(g.kickoff_utc) + timedelta(hours=4)).isoformat() if pd.notna(g.kickoff_utc) else retrieved_at,
-        })
-    out = pd.DataFrame(rows)
-    if pfr_pass is not None and not pfr_pass.empty and not out.empty:
-        pf = pfr_pass.copy()
-        pf["game_id"] = pf.game_id.map(lambda x: gm[x].game_id if x in gm else None)
-        pf = pf[pf.game_id.notna()]
-        pf["team_id"] = pf.team.map(lambda t: resolver.resolve("nflverse", alias=t))
-        # PFR has no gsis id; join on (game, team) when a team has exactly one passer row on both sides
-        one = out.groupby(["game_id", "team_id"]).player_id.transform("count") == 1
-        pf_one = pf.groupby(["game_id", "team_id"]).pfr_player_id.transform("count") == 1
-        merged = out[one].merge(pf[pf_one][["game_id", "team_id", "times_pressured", "times_blitzed", "times_hurried", "times_hit"]],
-                                on=["game_id", "team_id"], how="left")
-        out.loc[one, "pressured_dropbacks"] = merged.times_pressured.values
-    return out
+# Raw payload archiving: keyed/quota APIs are archived (small JSON, needed for rebuilds and disputes).
+# nflverse bulk files are NOT archived (1 MB+ per pull, publicly versioned upstream); the index row still records the sha.
+RAW_ARCHIVE_PROVIDERS = {"cfbd", "odds_api", "espn", "open_meteo"}
 
-
-def team_pressure_rates(pfr_pass: pd.DataFrame | None, pfr_def: pd.DataFrame | None, games: pd.DataFrame,
-                        resolver: ids.AliasResolver) -> pd.DataFrame:
-    """Per team-game pressure counts from PFR weekly files. NULL where absent.
-    off_pressures_allowed = sum of times_pressured across the team's passers (one count per dropback -> true rate).
-    def_pressures         = sum of individual defenders' pressures; several defenders can be credited on one
-                            dropback, so def_pressure_rate can exceed the play-level rate. Labeled as such in
-                            metric_definitions ("PFR individual pressures per opponent dropback")."""
-    gm = _game_map(games)
-    rows = {}
-    if pfr_pass is not None and not pfr_pass.empty:
-        pf = pfr_pass[pfr_pass.game_id.isin(gm.keys())]
-        agg = pf.groupby(["game_id", "team"]).agg(pressured=("times_pressured", "sum"), dropbacks=("times_pressured_pct", "size"))
-        # times_pressured_pct is per-player; recompute team rate as pressured / (attempts + sacks) using pbp later.
-        for (nv, team), r in agg.iterrows():
-            key = (gm[nv].game_id, resolver.resolve("nflverse", alias=team))
-            rows.setdefault(key, {})["off_pressures_allowed"] = int(r.pressured)
-    if pfr_def is not None and not pfr_def.empty:
-        pd_ = pfr_def[pfr_def.game_id.isin(gm.keys())]
-        agg = pd_.groupby(["game_id", "team"]).def_pressures.sum()
-        for (nv, team), v in agg.items():
-            key = (gm[nv].game_id, resolver.resolve("nflverse", alias=team))
-            rows.setdefault(key, {})["def_pressures"] = int(v)
-    return pd.DataFrame([{"game_id": k[0], "team_id": k[1], **v} for k, v in rows.items()])
+PIPELINE_VERSION = "ingest_v0.1"
