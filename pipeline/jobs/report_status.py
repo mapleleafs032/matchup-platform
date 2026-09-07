@@ -86,6 +86,12 @@ def main():
             pr = pd.read_csv(files[-1]).sort_values("predicted_at").drop_duplicates("game_id", keep="last")
             up = pr.sort_values("proj_margin_home")
             print(f"  {lg} latest predictions ({len(pr)} games): " + " | ".join(f"{r.game_id.split('_',3)[3]} {r.proj_away_pts:.0f}-{r.proj_home_pts:.0f} wp={r.win_prob_home:.2f} mkt={r.market_spread_home}" for _, r in pd.concat([up.head(2), up.tail(2)]).iterrows()))
+    print("\nAI ANALYSES")
+    ai_idx = storage.read_table(config.TABLES / "model" / "ai_analyses_index.csv")
+    if ai_idx.empty:
+        print("  none yet")
+    else:
+        print(f"  {len(ai_idx)} analyses | validation failures: {int(ai_idx.validation_failed.sum())} | tokens in/out: {int(ai_idx.tokens_in.fillna(0).sum())}/{int(ai_idx.tokens_out.fillna(0).sum())} | model: {ai_idx.llm_model.dropna().iloc[-1] if ai_idx.llm_model.notna().any() else '?'}")
     print("\nMARKET (latest week per league)")
     for lg in ("NFL", "CFB"):
         files = sorted(glob.glob(str(config.TABLES / f"analytics/market_analysis/{lg}/*/W*.parquet")))

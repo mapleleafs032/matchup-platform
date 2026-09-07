@@ -129,11 +129,18 @@ HFA_SHRINK_GAMES = {"NFL": 120, "CFB": 400}         # games of fit needed before
 STEAM_WINDOW_HOURS = 3
 MIN_PROJ_SIDE = {"NFL": 7.0, "CFB": 10.0}   # projected total is raised so neither team is projected below this (blowouts run up the total)
 
+# ---- AI analysis layer (pipeline/ai_agent.py, jobs/build_ai.py) -------------------------------
+AI_MODEL_CANDIDATES = ["claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"]   # first that the account can use is kept
+AI_MAX_GAMES_PER_RUN = 120          # cost guard per job run
+AI_PROMPT_VERSION = "ai_v1.0"
+
 # ---- Storage --------------------------------------------------------------------
 APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to repo root
     "data/tables/market/snapshots",
     "data/tables/model/predictions",
     "data/tables/model/pregame_final_flags.csv",
+    "data/tables/model/ai_analyses",
+    "data/tables/model/ai_analyses_index.csv",
     "data/tables/model/pregame_snapshots_index.csv",
     "data/tables/model/model_evaluation",
     "data/tables/results",

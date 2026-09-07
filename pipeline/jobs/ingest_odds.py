@@ -65,15 +65,21 @@ def run(league: str, season: int, week: int | None, force: bool, job: JobRun) ->
         res = odds_api.fetch_odds(rm, league)
         snaps = odds_api.normalize_odds(res.payload, league, games, resolver, res.retrieved_at, config.ODDS_PLAN, first_ids, unmatched)
     elif provider == "cfbd":
-        wk_games = games[games.week == week]
-        gid_by_cfbd = {}
-        for _, g in wk_games.iterrows():
-            try:
-                gid_by_cfbd[int(str(g.provider_game_ids).split(":")[1].strip("}"))] = g.game_id
-            except (IndexError, ValueError):
-                pass
-        res = cfbd.fetch_lines(rm, season, week)
-        snaps = cfbd.normalize_lines(res.payload, season, gid_by_cfbd, res.retrieved_at, config.ODDS_PLAN, rejects, first_ids)
+        # current week AND next week (so next week's opening lines are captured while this week is still in progress)
+        parts = []
+        for wk_i in (week, week + 1):
+            wk_games = games[(games.week == wk_i) & (games.status == "SCHEDULED")]
+            if wk_games.empty:
+                continue
+            gid_by_cfbd = {}
+            for _, g in wk_games.iterrows():
+                try:
+                    gid_by_cfbd[int(str(g.provider_game_ids).split(":")[1].strip("}"))] = g.game_id
+                except (IndexError, ValueError):
+                    pass
+            res = cfbd.fetch_lines(rm, season, wk_i)
+            parts.append(cfbd.normalize_lines(res.payload, season, gid_by_cfbd, res.retrieved_at, config.ODDS_PLAN, rejects, _first_snapshot_ids(league, season, wk_i)))
+        snaps = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
     else:
         raise ValueError(provider)
 
