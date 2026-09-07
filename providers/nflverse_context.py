@@ -4,9 +4,9 @@ nflverse context adapter (NFL): players, weekly rosters, depth charts, injuries,
 Assets (verified 2026-09-06):
   players/players.parquet                        one row per player, gsis_id, draft info, ids for other providers
   weekly_rosters/roster_weekly_{season}.parquet  one row per player per team-week incl. status (ACT/RES/...)
-  depth_charts/depth_charts_{season}.parquet     TIMESTAMPED SNAPSHOTS: dt, team, gsis_id, pos_grp, pos_abb, pos_rank.
-                                                 No week column. We keep, per team-week, the latest snapshot whose
-                                                 dt <= that week's kickoff, so a depth chart can never be "from the future".
+  depth_charts/depth_charts_{season}.parquet     2025+: TIMESTAMPED SNAPSHOTS (dt, team, gsis_id, pos_grp, pos_abb, pos_rank);
+                                                 we keep, per team-week, the latest snapshot whose dt <= that week's kickoff.
+                                                 2021-2024: weekly rows with depth_position and depth_team (rank).
   injuries/injuries_{season}.parquet             official report rows per team-week with report_status/practice_status
   espn_data/qbr_week_level.parquet               ESPN QBR per QB per game (join: ESPN game id + ESPN player id)
 
@@ -111,7 +111,53 @@ def normalize_rosters(raw: pd.DataFrame, season: int, resolver: ids.AliasResolve
 
 
 # ---- depth charts (snapshots -> per team-week) ------------------------------------
+_OLD_SLOT = {"QB": "QB1", "RB": "RB1", "HB": "RB1", "FB": "FB1", "TE": "TE1", "LT": "LT", "LG": "LG", "C": "C", "RG": "RG", "RT": "RT",
+             "LDE": "EDGE1", "RDE": "EDGE2", "DE": "EDGE1", "EDGE": "EDGE1", "RUSH": "EDGE2", "LOLB": "EDGE1", "ROLB": "EDGE2", "OLB": "EDGE1",
+             "LDT": "DL1", "RDT": "DL2", "DT": "DL1", "NT": "DL2", "DL": "DL1",
+             "WLB": "LB1", "MLB": "LB2", "SLB": "LB3", "ILB": "LB1", "LILB": "LB1", "RILB": "LB2", "LB": "LB1", "MIKE": "LB2", "WILL": "LB1", "SAM": "LB3",
+             "LCB": "CB1", "RCB": "CB2", "CB": "CB1", "NB": "NB", "NCB": "NB", "NKL": "NB", "NICKE": "NB", "NDB": "NB", "DB": "CB2",
+             "FS": "S1", "SS": "S2", "S": "S1", "K": "K", "PK": "K", "P": "P", "LS": "LS"}
+
+
+def _normalize_depth_charts_weekly(raw: pd.DataFrame, season: int, resolver: ids.AliasResolver) -> pd.DataFrame:
+    """Old nflverse format (2021-2024): one row per player per week with depth_position and depth_team (rank)."""
+    ts = raw.attrs["retrieved_at"].isoformat()
+    d = raw[raw.gsis_id.notna() & (raw.game_type == "REG") & raw.week.notna()].copy()
+    d["team_id"] = _team_map(d.club_code, resolver)
+    d["pos"] = d.depth_position.astype(str).str.strip().str.upper()
+    rows = []
+    for (team_id, week), snap in d.groupby(["team_id", "week"]):
+        wr = snap[snap.pos == "WR"].sort_values("depth_team")
+        wr_slots = {}
+        # old format lists WRs as repeated 'WR' rows; assign WR1..WR3 by depth_team order, deeper ranks fill in
+        for i, (_, x) in enumerate(wr.iterrows()):
+            wr_slots[x.gsis_id] = (f"WR{min(i % 3 + 1, 3)}", i // 3 + 1)
+        generic_seen: dict = {}
+        for _, x in snap.sort_values("depth_team").iterrows():
+            if x.pos == "WR":
+                slot, rank = wr_slots.get(x.gsis_id, ("WR3", int(x.depth_team)))
+            else:
+                slot = _OLD_SLOT.get(x.pos)
+                rank = int(x.depth_team) if pd.notna(x.depth_team) else 1
+                # generic labels (CB, S, DT, DE, LB, ILB, OLB) list several starters under one name: spread them across slots
+                spread = {"CB": ["CB1", "CB2", "NB"], "DB": ["CB1", "CB2", "NB"], "S": ["S1", "S2"], "DT": ["DL1", "DL2"], "DL": ["DL1", "DL2"],
+                          "DE": ["EDGE1", "EDGE2"], "EDGE": ["EDGE1", "EDGE2"], "OLB": ["EDGE1", "EDGE2"], "LB": ["LB1", "LB2", "LB3"], "ILB": ["LB1", "LB2"]}
+                if x.pos in spread:
+                    key = (x.pos, rank)
+                    i = generic_seen.get(key, 0); generic_seen[key] = i + 1
+                    slot = spread[x.pos][min(i, len(spread[x.pos]) - 1)]
+            if slot is None:
+                continue
+            rows.append({"team_id": team_id, "season": season, "week": int(week), "slot": slot, "player_id": f"NFL_P_{x.gsis_id}",
+                         "rank_in_slot": rank, "is_projected": False, "projection_basis": None, "confidence": 1.0,
+                         "pos_abb_raw": x.pos, "scheme": str(x.formation), "snapshot_dt": None, "source": "nflverse", "retrieved_at": ts})
+    out = pd.DataFrame(rows)
+    return out.drop_duplicates(["team_id", "season", "week", "slot", "rank_in_slot"], keep="first") if not out.empty else out
+
+
 def normalize_depth_charts(raw: pd.DataFrame, season: int, games: pd.DataFrame, resolver: ids.AliasResolver) -> pd.DataFrame:
+    if "dt" not in raw.columns:                      # 2021-2024 files use the weekly format
+        return _normalize_depth_charts_weekly(raw, season, resolver)
     ts = raw.attrs["retrieved_at"].isoformat()
     d = raw[raw.gsis_id.notna()].copy()
     d["dt"] = pd.to_datetime(d.dt, utc=True)
