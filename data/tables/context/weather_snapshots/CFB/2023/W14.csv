@@ -1,0 +1,11 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2023_CFB_W14_NMSU_LIB,2026-09-07T06:30:56.434234+00:00,2023-12-02T00:00:00+00:00,-24246.5,False,False,open_meteo_archive,49.3,45.4,8.3,17.4,216.0,,0.0,97.0,3.0,True
+2023_CFB_W14_ORE_WASH,2026-09-07T06:30:56.434584+00:00,2023-12-02T01:00:00+00:00,-24245.5,True,False,open_meteo_archive,,,,,,,,,,True
+2023_CFB_W14_OKST_TEX,2026-09-07T06:30:56.434862+00:00,2023-12-02T17:00:00+00:00,-24229.5,True,False,open_meteo_archive,,,,,,,,,,True
+2023_CFB_W14_MOH_TOL,2026-09-07T06:30:56.435155+00:00,2023-12-02T17:00:00+00:00,-24229.5,True,False,open_meteo_archive,,,,,,,,,,True
+2023_CFB_W14_BOIS_UNLV,2026-09-07T06:30:56.435425+00:00,2023-12-02T20:00:00+00:00,-24226.5,True,False,open_meteo_archive,,,,,,,,,,True
+2023_CFB_W14_SMU_TULN,2026-09-07T06:30:57.069870+00:00,2023-12-02T21:00:00+00:00,-24225.5,False,False,open_meteo_archive,71.8,75.1,9.6,18.3,233.0,,0.0,91.0,3.0,True
+2023_CFB_W14_UGA_ALA,2026-09-07T06:30:57.070253+00:00,2023-12-02T21:00:00+00:00,-24225.5,True,False,open_meteo_archive,,,,,,,,,,True
+2023_CFB_W14_APP_TROY,2026-09-07T06:30:57.709413+00:00,2023-12-02T21:00:00+00:00,-24225.5,False,False,open_meteo_archive,67.7,70.5,9.3,24.6,169.0,,0.047,99.0,55.0,True
+2023_CFB_W14_MICH_IOWA,2026-09-07T06:30:57.709778+00:00,2023-12-03T01:00:00+00:00,-24221.5,True,False,open_meteo_archive,,,,,,,,,,True
+2023_CFB_W14_LOU_FSU,2026-09-07T06:30:58.375410+00:00,2023-12-03T01:00:00+00:00,-24221.5,False,False,open_meteo_archive,62.1,63.1,6.2,9.8,165.0,,0.0,96.0,3.0,True
