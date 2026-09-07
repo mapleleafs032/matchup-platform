@@ -1,81 +1,181 @@
 """
-python -m pipeline.jobs.build_metrics --league NFL --season 2025 --weeks 10
-python -m pipeline.jobs.build_metrics --league CFB                      # current + next week
-python -m pipeline.jobs.build_metrics --league NFL --season 2025 --weeks all   # every week (backtest inputs)
+All outbound HTTP goes through RequestManager. Nothing else in the codebase calls requests.get.
 
-Writes:
-  data/tables/ref/metric_definitions.csv
-  data/tables/analytics/team_metrics_asof/{league}/{season}/W{ww}.parquet
-  data/tables/analytics/team_ratings/{league}/{season}.parquet   (merged by as_of_week)
+Responsibilities:
+  * enforce per-provider daily/monthly budgets (config.API_BUDGET)
+  * retry with backoff on 5xx / timeouts; never retry on 4xx auth errors
+  * archive every successful payload to data/raw/<provider>/<date>/<sha256>.json.gz
+  * append an index row to data/tables/ops/raw_responses.csv
+  * expose provider-reported remaining quota when headers carry it
 """
 from __future__ import annotations
-import argparse
-import sys
+import gzip
+import hashlib
+import json
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone, date
+from pathlib import Path
+from typing import Any, Optional
 
 import pandas as pd
+import requests
 
 import config
-from pipeline import asof, storage
-from pipeline.log import JobRun
-from pipeline.metric_registry import write_registry
-
-AN = config.TABLES / "analytics"
+from pipeline import storage
 
 
-def _merge_ratings(league: str, season: int, rat: pd.DataFrame):
-    if rat.empty:
-        return
-    path = AN / "team_ratings" / league / f"{season}.parquet"
-    cur = storage.read_table(path)
-    if not cur.empty:
-        cur = cur[cur.as_of_week != rat.as_of_week.iloc[0]]
-        rat = pd.concat([cur, rat], ignore_index=True)
-    storage.write_parquet(path, rat.sort_values(["as_of_week", "team_id"]))
+class BudgetExceeded(RuntimeError):
+    pass
 
 
-def run(league: str, season: int, weeks: list[int], job: JobRun):
-    n_defs = write_registry()
-    games = storage.read_table(storage.games_path(league, season))
-    if games.empty:
-        job.status = "SKIPPED"; job.message = "no games"; return
-    tg = asof.load_team_games(league, season)
-    prior = asof.prior_season_values(league, season - 1) if season - 1 >= config.MIN_ALLOWED_SEASON else None
-    if prior is None:
-        print(f"{league} {season}: no prior-season data (first backfill season) -> early-season prior disabled")
-    for wk in weeks:
-        m, rat = asof.build_week(league, season, wk, tg=tg, prior_season_values=prior)
-        if m.empty:
-            print(f"{league} {season} W{wk}: no games"); continue
-        storage.write_parquet(AN / "team_metrics_asof" / league / str(season) / f"W{wk:02d}.parquet", m)
-        _merge_ratings(league, season, rat)
-        job.rows_written += len(m) + len(rat)
-        lo = int((m.quality_flags.str.contains("LOW_SAMPLE")).sum())
-        print(f"{league} {season} W{wk}: {len(m)} metric rows for {m.team_id.nunique()} teams, {len(rat)} ratings, "
-              f"prior_w={asof.prior_weight(league, wk) if prior else 0}, low-sample rows={lo}")
-    print(f"metric registry: {n_defs} definitions")
+class ProviderError(RuntimeError):
+    pass
 
 
-def main(argv=None):
-    p = argparse.ArgumentParser()
-    p.add_argument("--league", required=True, choices=config.LEAGUES)
-    p.add_argument("--season", type=int, default=config.SEASON)
-    p.add_argument("--weeks", nargs="*", default=None, help="week numbers, or 'all'")
-    p.add_argument("--trigger", default="manual")
-    a = p.parse_args(argv)
-    if a.season < config.MIN_ALLOWED_SEASON:
-        sys.exit("season refused")
-    games = storage.read_table(storage.games_path(a.league, a.season))
-    if a.weeks and a.weeks[0] == "all":
-        weeks = sorted(games[games.season_type == "REG"].week.unique().tolist()) if not games.empty else []
-    elif a.weeks:
-        weeks = [int(w) for w in a.weeks]
-    else:
-        sched = games[(games.status == "SCHEDULED")] if not games.empty else games
-        cur = int(sched.week.min()) if not sched.empty else int(games.week.max())
-        weeks = [cur, cur + 1]
-    with JobRun(f"{a.league}_METRICS", a.league, a.trigger) as job:
-        run(a.league, a.season, weeks, job)
+@dataclass
+class FetchResult:
+    payload: Any
+    raw_id: str
+    retrieved_at: datetime
+    remaining_reported: Optional[int]
+    http_status: int
 
 
-if __name__ == "__main__":
-    main()
+class RequestManager:
+    BUDGET_PATH = config.TABLES / "ops" / "api_budget.csv"
+    RAW_INDEX_PATH = config.TABLES / "ops" / "raw_responses.csv"
+
+    def __init__(self, provider: str, job_run_id: str, session: Optional[requests.Session] = None,
+                 enforce_daily: bool = False):
+        """enforce_daily: the daily soft limit is a backfill guardrail; routine jobs are small and bounded,
+        so they respect only the monthly cap. Backfill jobs pass enforce_daily=True."""
+        if provider not in config.API_BUDGET:
+            raise ValueError(f"Unknown provider {provider}; add it to config.API_BUDGET")
+        self.provider = provider
+        self.job_run_id = job_run_id
+        self.enforce_daily = enforce_daily
+        self.session = session or requests.Session()
+        self.calls_this_run = 0
+        self._budget = self._load_budget()
+
+    # ---- budget ----------------------------------------------------------------
+    def _load_budget(self) -> pd.DataFrame:
+        if self.BUDGET_PATH.exists():
+            df = pd.read_csv(self.BUDGET_PATH, dtype={"provider": str, "day": str})
+        else:
+            df = pd.DataFrame(columns=["provider", "day", "requests", "credits", "failures",
+                                       "remaining_reported", "last_request_at"])
+        return df
+
+    def _used(self, scope: str) -> int:
+        d = self._budget[self._budget.provider == self.provider]
+        if d.empty:
+            return 0
+        today = date.today().isoformat()
+        if scope == "day":
+            return int(d[d.day == today].credits.fillna(0).sum())
+        month = today[:7]
+        return int(d[d.day.str.startswith(month)].credits.fillna(0).sum())
+
+    def remaining_monthly(self) -> int:
+        ours = config.API_BUDGET[self.provider]["monthly"] - self._used("month")
+        d = self._budget[self._budget.provider == self.provider]
+        if not d.empty:
+            month = date.today().isoformat()[:7]
+            rep = d[d.day.str.startswith(month)].sort_values("day").remaining_reported.dropna()
+            if not rep.empty:
+                return min(ours, int(rep.iloc[-1]))   # provider's own count wins when lower (e.g., usage outside this pipeline)
+        return ours
+
+    def _check_budget(self, cost: int) -> None:
+        lim = config.API_BUDGET[self.provider]
+        if self._used("month") + cost > lim["monthly"]:
+            raise BudgetExceeded(f"{self.provider}: monthly budget {lim['monthly']} would be exceeded")
+        if self.enforce_daily and self._used("day") + cost > lim["daily_soft"]:
+            raise BudgetExceeded(f"{self.provider}: daily soft limit {lim['daily_soft']} would be exceeded")
+
+    def _record(self, cost: int, failed: bool, remaining: Optional[int]) -> None:
+        today = date.today().isoformat()
+        mask = (self._budget.provider == self.provider) & (self._budget.day == today)
+        now = datetime.now(timezone.utc).isoformat()
+        if mask.any():
+            i = self._budget[mask].index[0]
+            self._budget.loc[i, "requests"] = int(self._budget.loc[i, "requests"]) + 1
+            self._budget.loc[i, "credits"] = int(self._budget.loc[i, "credits"] or 0) + (0 if failed else cost)
+            self._budget.loc[i, "failures"] = int(self._budget.loc[i, "failures"]) + (1 if failed else 0)
+            if remaining is not None:
+                self._budget.loc[i, "remaining_reported"] = remaining
+            self._budget.loc[i, "last_request_at"] = now
+        else:
+            row = {"provider": self.provider, "day": today, "requests": 1, "credits": 0 if failed else cost,
+                   "failures": 1 if failed else 0, "remaining_reported": remaining, "last_request_at": now}
+            self._budget = pd.concat([self._budget, pd.DataFrame([row])], ignore_index=True)
+        self.BUDGET_PATH.parent.mkdir(parents=True, exist_ok=True)
+        self._budget.to_csv(self.BUDGET_PATH, index=False)
+
+    # ---- fetch -----------------------------------------------------------------
+    def get(self, url: str, params: dict | None = None, headers: dict | None = None,
+            cost: int = 1, timeout: int = 30, max_retries: int = 3, expect_json: bool = True,
+            raw_bytes: bool = False) -> FetchResult:
+        self._check_budget(cost)
+        last_err: Exception | None = None
+        for attempt in range(max_retries):
+            try:
+                resp = self.session.get(url, params=params, headers=headers, timeout=timeout)
+            except (requests.Timeout, requests.ConnectionError) as e:
+                last_err = e
+                time.sleep(2 ** attempt)
+                continue
+            remaining = self._remaining_from_headers(resp.headers)
+            if resp.status_code in (401, 403):
+                self._record(cost, failed=True, remaining=remaining)
+                raise ProviderError(f"{self.provider} auth error {resp.status_code}: check API key secret")
+            if resp.status_code == 429:
+                self._record(cost, failed=True, remaining=remaining)
+                raise BudgetExceeded(f"{self.provider} returned 429 (quota exhausted at provider)")
+            if resp.status_code >= 500:
+                last_err = ProviderError(f"{self.provider} {resp.status_code}")
+                time.sleep(2 ** attempt)
+                continue
+            if resp.status_code != 200:
+                self._record(cost, failed=True, remaining=remaining)
+                raise ProviderError(f"{self.provider} HTTP {resp.status_code}: {resp.text[:200]}")
+            body = resp.content
+            payload = body if raw_bytes else (resp.json() if expect_json else body.decode("utf-8", errors="replace"))
+            retrieved_at = datetime.now(timezone.utc)
+            raw_id = self._archive(url, params, body, retrieved_at, resp.status_code)
+            self._record(cost, failed=False, remaining=remaining)
+            self.calls_this_run += 1
+            return FetchResult(payload, raw_id, retrieved_at, remaining, resp.status_code)
+        self._record(cost, failed=True, remaining=None)
+        raise ProviderError(f"{self.provider}: failed after {max_retries} attempts: {last_err}")
+
+    @staticmethod
+    def _remaining_from_headers(h) -> Optional[int]:
+        for key in ("x-requests-remaining", "X-Requests-Remaining", "x-ratelimit-remaining"):
+            if key in h:
+                try:
+                    return int(float(h[key]))
+                except ValueError:
+                    return None
+        return None
+
+    # ---- raw archive -----------------------------------------------------------
+    def _archive(self, url: str, params: dict | None, body: bytes, retrieved_at: datetime, status: int) -> str:
+        sha = hashlib.sha256(body).hexdigest()
+        day_dir = config.RAW / self.provider / retrieved_at.date().isoformat()
+        day_dir.mkdir(parents=True, exist_ok=True)
+        path = day_dir / f"{sha}.json.gz"
+        archived = self.provider in config.RAW_ARCHIVE_PROVIDERS
+        if archived and not path.exists():
+            with gzip.open(path, "wb") as f:
+                f.write(body)
+        safe_params = {k: v for k, v in (params or {}).items() if "key" not in k.lower()}
+        storage.append_csv(self.RAW_INDEX_PATH, pd.DataFrame([{
+            "raw_id": sha, "provider": self.provider, "endpoint": url.split("?")[0],
+            "params": json.dumps(safe_params, sort_keys=True), "retrieved_at": retrieved_at.isoformat(),
+            "http_status": status, "bytes": len(body), "path": (str(path.relative_to(config.ROOT)) if path.is_relative_to(config.ROOT) else str(path)) if archived else "",
+            "job_run_id": self.job_run_id,
+        }]), key_cols=["raw_id", "job_run_id"], on_duplicate="skip")
+        return sha

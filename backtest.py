@@ -1,207 +1,369 @@
 """
-python -m pipeline.jobs.build_roster --league NFL --season 2026 --what fetch derive
-python -m pipeline.jobs.build_roster --league CFB --season 2026 --what fetch derive     # 8 CFBD calls (+1 usage in-season)
-python -m pipeline.jobs.build_roster --league CFB --season 2025 --what fetch            # backfill inputs for 2026 returning production
+python -m pipeline.jobs.ingest_context --league NFL --what rosters injuries qbr
+python -m pipeline.jobs.ingest_context --league CFB --what rosters rankings coaches venues
+python -m pipeline.jobs.ingest_context --league BOTH --what weather manual        (weather needs venues first)
+python -m pipeline.jobs.ingest_context --league BOTH --what all
 
-fetch  -> player_season_usage (both), transfers/recruits/recruiting_classes/team_talent/draft_picks/returning (CFB)
-derive -> returning_production (derived), departures, transfers (matched), talent_scores, qb_status, depth_charts (CFB projected), continuity
+Storage (Phase 3 layout):
+  ref/players/{league}.parquet, ref/player_aliases.parquet, ref/venues.parquet         REBUILDABLE
+  roster/roster_snapshots/{league}/{season}/W{ww}.parquet, roster/depth_charts/...     APPEND by week (rewritten per week)
+  roster/injuries/{league}/{season}.csv                                                 APPEND-ONLY
+  roster/coaches.csv (provider + manual rows)                                          APPEND-ONLY
+  context/rankings/{season}.parquet                                                    REBUILDABLE per week
+  context/weather_snapshots/{league}/{season}/W{ww}.csv                                APPEND-ONLY
+  ops/manual_lists.csv, ops/kickoff_overrides.csv                                      from data/manual/
 """
 from __future__ import annotations
 import argparse
 import glob
 import sys
+from datetime import datetime, timezone
 
 import pandas as pd
 
 import config
-from pipeline import ids, storage, roster_engine as eng
+from pipeline import ids, storage
 from pipeline.log import JobRun, ValidationLog
-from providers import cfbd_roster, nflverse_roster
-from providers.base import RequestManager, ProviderError
+from providers import cfbd_context, nflverse_context, open_meteo
+from providers.base import RequestManager, BudgetExceeded, ProviderError
 
-ROSTER = config.TABLES / "roster"
 REF = config.TABLES / "ref"
+ROSTER = config.TABLES / "roster"
+CONTEXT = config.TABLES / "context"
+MANUAL = config.DATA / "manual"
 
 
-def _latest_week_file(d, season, week: int | None = None) -> pd.DataFrame:
-    """Latest weekly file at or before `week` (never a later one: historical derives must not see future rosters)."""
-    files = sorted(glob.glob(str(d / str(season) / "W*.parquet")))
-    if week is not None:
-        files = [f for f in files if int(f.split("W")[-1][:2]) <= week] or files[:1]
-    return pd.read_parquet(files[-1]) if files else pd.DataFrame()
+def _now():
+    return datetime.now(timezone.utc)
 
 
-def _merge(path, new, keys):
+def _merge_by_key(path, new: pd.DataFrame, keys: list[str]):
     cur = storage.read_table(path)
+    if not cur.empty and not new.empty:
+        k_new = new[keys].astype(str).agg("|".join, axis=1)
+        k_cur = cur[keys].astype(str).agg("|".join, axis=1)
+        cur = cur[~k_cur.isin(set(k_new))]
+        new = pd.concat([cur, new], ignore_index=True)
     if not new.empty:
-        if not cur.empty:
-            k = lambda df: df[keys].astype(str).agg("|".join, axis=1)
-            cur = cur[~k(cur).isin(set(k(new)))]
-            new = pd.concat([cur, new], ignore_index=True)
         storage.write_parquet(path, new)
     return len(new)
 
 
-# ---- fetch ---------------------------------------------------------------------------------
-def fetch_nfl(season: int, job: JobRun):
+def _current_week(games: pd.DataFrame) -> int:
+    sched = games[(games.status == "SCHEDULED") & games.kickoff_utc.notna()]
+    return int(sched.week.min()) if not sched.empty else int(games.week.max())
+
+
+# ---- NFL --------------------------------------------------------------------------
+def nfl(what: set[str], season: int, job: JobRun):
     rm = RequestManager("nflverse", job.job_run_id)
     resolver = ids.AliasResolver.load()
-    pa = storage.read_table(REF / "player_aliases.parquet")
-    snaps = nflverse_roster.fetch(rm, "snaps", season)
-    pstats = nflverse_roster.fetch(rm, "pstats", season)
-    pfr = nflverse_roster.fetch(rm, "pfr_def", season)
-    usage = nflverse_roster.player_season_usage(snaps, pstats, pfr, season, resolver, pa)
-    if not usage.empty:
-        storage.write_parquet(ROSTER / "player_season_usage" / "NFL" / f"{season}.parquet", usage)
-        print(f"NFL {season} player_season_usage: {len(usage)} rows")
-    draft = nflverse_roster.fetch(rm, "draft")
-    if draft is not None:
-        d = nflverse_roster.draft_rows(draft, season, resolver)
-        storage.write_parquet(ROSTER / "draft_picks" / "NFL" / f"{season}.parquet", d)
-        print(f"NFL {season} draft picks: {len(d)}")
-    job.api_calls += rm.calls_this_run
+    games = storage.read_table(storage.games_path("NFL", season))
+    if "players" in what or "rosters" in what or "qbr" in what:
+        raw = nflverse_context.fetch_asset(rm, "players")
+        players, aliases = nflverse_context.normalize_players(raw)
+        storage.write_parquet(REF / "players" / "NFL.parquet", players)
+        cur = storage.read_table(REF / "player_aliases.parquet")
+        cur = cur[~cur.player_id.str.startswith("NFL_P_")] if not cur.empty else cur
+        storage.write_parquet(REF / "player_aliases.parquet", pd.concat([cur, aliases], ignore_index=True))
+        job.rows_written += len(players)
+        print(f"NFL players: {len(players)}")
+    if "rosters" in what:
+        raw = nflverse_context.fetch_asset(rm, "rosters", season)
+        if raw is not None:
+            prior_files = sorted(glob.glob(str(ROSTER / "roster_snapshots" / "NFL" / str(season - 1) / "*.parquet")))
+            prior = pd.read_parquet(prior_files[-1]) if prior_files else None
+            ros = nflverse_context.normalize_rosters(raw, season, resolver, prior)
+            for wk, part in ros.groupby("week"):
+                storage.write_parquet(ROSTER / "roster_snapshots" / "NFL" / str(season) / f"W{int(wk):02d}.parquet", part)
+            job.rows_written += len(ros)
+            print(f"NFL rosters: {len(ros)} rows, weeks {sorted(ros.week.unique().tolist())}")
+        raw = nflverse_context.fetch_asset(rm, "depth", season)
+        if raw is not None and not games.empty:
+            dc = nflverse_context.normalize_depth_charts(raw, season, games, resolver)
+            for wk, part in dc.groupby("week"):
+                storage.write_parquet(ROSTER / "depth_charts" / "NFL" / str(season) / f"W{int(wk):02d}.parquet", part)
+            job.rows_written += len(dc)
+            print(f"NFL depth charts: {len(dc)} rows, weeks {sorted(dc.week.unique().tolist())}")
+    if "injuries" in what:
+        raw = nflverse_context.fetch_asset(rm, "injuries", season)
+        if raw is None:
+            print(f"NFL injuries {season}: not published yet")
+        else:
+            inj = nflverse_context.normalize_injuries(raw, season, games, resolver)
+            n = storage.append_csv(ROSTER / "injuries" / "NFL" / f"{season}.csv", inj, ["injury_row_id"], on_duplicate="skip")
+            job.rows_written += n
+            print(f"NFL injuries: {n} new rows ({len(inj)} in file)")
+    if "coaches" in what:
+        from providers import nflverse as nv
+        raw = nv.fetch_schedules(rm)
+        d = raw[(raw.season == season) & (raw.game_type == "REG")]
+        pairs = pd.concat([d[["home_team", "home_coach"]].rename(columns={"home_team": "team", "home_coach": "coach"}),
+                           d[["away_team", "away_coach"]].rename(columns={"away_team": "team", "away_coach": "coach"})]).dropna()
+        rows = []
+        for team, g in pairs.groupby("team"):
+            tid = resolver.resolve("nflverse", alias=team)
+            for coach, n in g.coach.value_counts().items():     # a mid-season change yields two rows; manual dates refine
+                cid = str(coach).lower().replace(" ", "_").replace(".", "")
+                rows.append({"team_id": tid, "season": season, "role": "HC", "coach_name": coach, "coach_id": cid, "effective_from": f"{season}-01-01",
+                             "effective_to": None, "is_first_season_in_role": None, "source": "nflverse", "entered_by": None,
+                             "retrieved_at": raw.attrs["retrieved_at"].isoformat(), "games": int(n), "wins": None, "losses": None,
+                             "needs_manual_dates": len(g.coach.unique()) > 1, "coach_row_id": f"{tid}_{season}_HC_{cid}"})
+        if rows:
+            n = storage.append_csv(ROSTER / "coaches.csv", pd.DataFrame(rows), ["coach_row_id"], on_duplicate="skip")
+            job.rows_written += n
+            print(f"NFL head coaches {season}: {n} new rows")
+    if "qbr" in what:
+        raw = nflverse_context.fetch_asset(rm, "qbr")
+        pa = storage.read_table(REF / "player_aliases.parquet")
+        q = nflverse_context.normalize_qbr(raw, season, games, pa)
+        path = config.TABLES / "stats" / "player_game_stats" / "NFL" / f"{season}.parquet"
+        pgs = storage.read_table(path)
+        if not pgs.empty and not q.empty:
+            pgs = pgs.drop(columns=["qbr"]).merge(q, on=["game_id", "player_id"], how="left")
+            storage.write_parquet(path, pgs)
+            print(f"NFL QBR: {int(pgs.qbr.notna().sum())} of {len(pgs)} QB game rows now carry QBR")
+    job.api_calls = rm.calls_this_run
 
 
-def fetch_cfb(season: int, week: int, job: JobRun, vlog: ValidationLog, usage_only: bool = False, force: bool = False):
-    if not usage_only and not force and (ROSTER / "player_season_usage" / "CFB" / f"{season}.parquet").exists() and (ROSTER / "transfers" / f"{season}.parquet").exists():
-        print(f"CFB {season}: roster inputs already fetched; skipping (--force to refetch)"); return
-    rm = RequestManager("cfbd", job.job_run_id, enforce_daily=(job.trigger == "backfill"))
+# ---- CFB --------------------------------------------------------------------------
+def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
+    rm = RequestManager("cfbd", job.job_run_id)
     resolver = ids.AliasResolver.load()
+    games = storage.read_table(storage.games_path("CFB", season))
+    week = _current_week(games) if not games.empty else 1
     unmatched: set[str] = set()
-    res = cfbd_roster.fetch(rm, "/player/usage", season)
-    usage = cfbd_roster.normalize_usage(res.payload, season, resolver, res.retrieved_at, unmatched)
-    if usage_only:
-        _merge(ROSTER / "player_season_usage" / "CFB" / f"{season}_usage_W{week:02d}.parquet", usage, ["player_id", "team_id"])
-        print(f"CFB {season} usage as of W{week}: {len(usage)} players"); job.api_calls += rm.calls_this_run; return
-    res = cfbd_roster.fetch(rm, "/stats/player/season", season)
-    stats = cfbd_roster.normalize_player_season_stats(res.payload, season, resolver, res.retrieved_at, unmatched)
-    merged = stats.merge(usage.drop(columns=["player_name", "position_raw", "position"], errors="ignore"), on=["player_id", "team_id", "season"], how="outer")
-    if not merged.empty:
-        storage.write_parquet(ROSTER / "player_season_usage" / "CFB" / f"{season}.parquet", merged)
-        print(f"CFB {season} player_season_usage: {len(merged)} rows ({len(stats)} with stats, {len(usage)} with usage)")
-    for endpoint, fn, path, keys in (
-        ("/player/returning", cfbd_roster.normalize_returning, ROSTER / "returning_production" / "CFB" / f"{season}.parquet", ["team_id", "season", "as_of_week", "method"]),
-        ("/player/portal", cfbd_roster.normalize_portal, ROSTER / "transfers" / f"{season}.parquet", ["transfer_id"]),
-        ("/talent", cfbd_roster.normalize_talent, ROSTER / "team_talent.parquet", ["team_id", "season"]),
-        ("/draft/picks", cfbd_roster.normalize_draft_picks, ROSTER / "draft_picks" / "CFB" / f"{season}.parquet", ["season", "overall"]),
-    ):
+    if "rosters" in what:
         try:
-            r = cfbd_roster.fetch(rm, endpoint, season)
+            res = cfbd_context.fetch_roster(rm, season)
+            payloads = [res.payload]
+            ts = res.retrieved_at
         except ProviderError as e:
-            vlog.warn("PROVIDER_FAIL", endpoint, "", str(e)[:100], "200"); continue
-        df = fn(r.payload, season, resolver, r.retrieved_at, unmatched)
-        n = _merge(path, df, keys)
-        print(f"CFB {season} {endpoint}: {len(df)} rows")
-    r1 = cfbd_roster.fetch(rm, "/recruiting/teams", season)
-    teams_class = cfbd_roster.normalize_recruiting_teams(r1.payload, season, resolver, r1.retrieved_at, unmatched)
-    r2 = cfbd_roster.fetch(rm, "/recruiting/players", season, classification="HighSchool")
-    recruits = cfbd_roster.normalize_recruits(r2.payload, season, resolver, r2.retrieved_at, unmatched)
-    storage.write_parquet(REF / "recruits" / f"{season}.parquet", recruits)
-    classes = cfbd_roster.class_summary(recruits, teams_class, season)
-    _merge(ROSTER / "recruiting_classes.parquet", classes, ["team_id", "season"])
-    print(f"CFB {season} recruiting: {len(classes)} classes, {len(recruits)} recruits")
+            if "400" not in str(e):
+                raise
+            teams = storage.read_table(REF / "teams.parquet"); teams = teams[teams.league == "CFB"]
+            payloads, ts = [], _now()
+            for _, t in teams.iterrows():
+                payloads.append(cfbd_context.fetch_roster(rm, season, t.school_or_city).payload)
+        prior_files = sorted(glob.glob(str(ROSTER / "roster_snapshots" / "CFB" / str(season - 1) / "*.parquet")))
+        prior = pd.read_parquet(prior_files[-1]) if prior_files else None
+        ros_all, pl_all = [], []
+        for pl in payloads:
+            ros, players = cfbd_context.normalize_roster(pl, season, week, resolver, ts, prior, unmatched)
+            ros_all.append(ros); pl_all.append(players)
+        ros = pd.concat(ros_all, ignore_index=True); players = pd.concat(pl_all, ignore_index=True)
+        storage.write_parquet(ROSTER / "roster_snapshots" / "CFB" / str(season) / f"W{week:02d}.parquet", ros)
+        _merge_by_key(REF / "players" / "CFB.parquet", players.drop_duplicates("player_id"), ["player_id"])
+        job.rows_written += len(ros)
+        print(f"CFB rosters: {len(ros)} players on {ros.team_id.nunique()} teams as of week {week}")
+    if "rankings" in what:
+        res = cfbd_context.fetch_rankings(rm, season, week)
+        rk = cfbd_context.normalize_rankings(res.payload, resolver, res.retrieved_at, unmatched)
+        if not rk.empty:
+            _merge_by_key(CONTEXT / "rankings" / f"{season}.parquet", rk, ["season", "week", "poll", "team_id"])
+            job.rows_written += len(rk)
+        print(f"CFB rankings week {week}: {len(rk)} rows, polls {sorted(rk.poll.unique().tolist()) if not rk.empty else []}")
+    if "coaches" in what:
+        res = cfbd_context.fetch_coaches(rm, season)
+        co = cfbd_context.normalize_coaches(res.payload, season, resolver, res.retrieved_at, unmatched)
+        if not co.empty:
+            co["coach_row_id"] = co.team_id + "_" + co.season.astype(str) + "_" + co.role + "_" + co.coach_id
+            n = storage.append_csv(ROSTER / "coaches.csv", co, ["coach_row_id"], on_duplicate="skip")
+            job.rows_written += n
+            print(f"CFB head coaches {season}: {n} new rows; {int(co.needs_manual_dates.sum())} teams with mid-season change need manual dates")
+    if "venues" in what:
+        res = cfbd_context.fetch_venues(rm)
+        v = cfbd_context.normalize_venues(res.payload, res.retrieved_at)
+        _merge_by_key(REF / "venues.parquet", v, ["venue_id"])
+        job.rows_written += len(v)
+        print(f"CFB venues: {len(v)}")
     for u in sorted(unmatched):
-        vlog.warn("ALIAS_UNMATCHED", u, "team", u, "team_aliases row (non-FBS expected)")
+        vlog.warn("ALIAS_UNMATCHED", u, "team", u, "team_aliases row (non-FBS teams expected)")
+    job.api_calls = rm.calls_this_run
+
+
+# ---- shared -------------------------------------------------------------------------
+def load_manual(job: JobRun, vlog: ValidationLog):
+    teams = storage.read_table(REF / "teams.parquet")
+    known = set(teams.team_id) if not teams.empty else set()
+    # NFL venues (static)
+    nv = pd.read_csv(MANUAL / "nfl_venues.csv")
+    nv["retrieved_at"] = _now().isoformat()
+    for c in ("elevation_m", "capacity", "surface"):
+        nv[c] = None
+    _merge_by_key(REF / "venues.parquet", nv, ["venue_id"])
+    # coordinators
+    co = pd.read_csv(MANUAL / "coaches_manual.csv")
+    co = co[co.coach_name.notna() & (co.coach_name.astype(str).str.strip() != "")]
+    rows = []
+    for _, r in co.iterrows():
+        if r.team_id not in known:
+            vlog.reject("IDENTITY", f"coaches_manual:{r.team_id}", "team_id", r.team_id, "known team_id"); continue
+        if r.role not in ("OC", "DC", "HC"):
+            vlog.reject("RANGE", f"coaches_manual:{r.team_id}", "role", r.role, "OC|DC|HC"); continue
+        cid = str(r.coach_name).lower().replace(" ", "_").replace(".", "")
+        rows.append({"team_id": r.team_id, "season": int(r.season), "role": r.role, "coach_name": r.coach_name, "coach_id": cid,
+                     "effective_from": r.effective_from, "effective_to": r.effective_to if pd.notna(r.effective_to) else None,
+                     "is_first_season_in_role": None, "source": "manual", "entered_by": r.entered_by, "retrieved_at": _now().isoformat(),
+                     "coach_row_id": f"{r.team_id}_{int(r.season)}_{r.role}_{cid}"})
+    if rows:
+        job.rows_written += storage.append_csv(ROSTER / "coaches.csv", pd.DataFrame(rows), ["coach_row_id"], on_duplicate="skip")
+    # rivalries
+    rv = pd.read_csv(MANUAL / "rivalries.csv")
+    rows = []
+    for _, r in rv.iterrows():
+        if r.team_a not in known or r.team_b not in known:
+            vlog.warn("IDENTITY", f"rivalries:{r.team_a}-{r.team_b}", "team", f"{r.team_a},{r.team_b}", "known team_ids"); continue
+        rows.append({"list_name": "RIVALRY", "league": r.league, "key_a": r.team_a, "key_b": r.team_b, "value": r.get("name"),
+                     "entered_by": r.entered_by, "entered_at": _now().isoformat()})
+    if rows:
+        out = pd.DataFrame(rows)
+        storage.write_parquet(config.TABLES / "ops" / "manual_lists.parquet", out)
+        print(f"rivalries loaded: {len(out)}")
+    # CFB injuries
+    inj = pd.read_csv(MANUAL / "injuries_cfb.csv")
+    inj = inj[inj.player_name.notna() & (inj.player_name.astype(str).str.strip() != "")]
+    rows = []
+    for _, r in inj.iterrows():
+        if r.team_id not in known:
+            vlog.reject("IDENTITY", f"injuries_cfb:{r.team_id}", "team_id", r.team_id, "known team_id"); continue
+        if r.status not in ("OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "IR"):
+            vlog.reject("RANGE", f"injuries_cfb:{r.player_name}", "status", r.status, "OUT|DOUBTFUL|QUESTIONABLE|PROBABLE|IR"); continue
+        rows.append({"injury_row_id": f"{r.team_id}_{str(r.player_name).replace(' ', '')}_{int(r.season)}W{int(r.week):02d}_{r.status}_{r.report_date}",
+                     "league": "CFB", "season": int(r.season), "week": int(r.week), "game_id": None, "team_id": r.team_id,
+                     "player_id": None, "player_name": r.player_name, "position": r.position, "depth_slot": None, "status": r.status,
+                     "practice_status": None, "injury_desc": r.injury_desc if pd.notna(r.injury_desc) else None,
+                     "report_date": r.report_date, "source": "manual", "entered_by": r.entered_by, "retrieved_at": _now().isoformat(),
+                     "effective_at": pd.Timestamp(r.report_date).isoformat()})
+    if rows:
+        job.rows_written += storage.append_csv(ROSTER / "injuries" / "CFB" / f"{config.SEASON}.csv", pd.DataFrame(rows), ["injury_row_id"], on_duplicate="skip")
+    # kickoff overrides
+    ko = pd.read_csv(MANUAL / "kickoff_overrides.csv")
+    if not ko.empty:
+        ko["entered_at"] = _now().isoformat()
+        storage.append_csv(config.TABLES / "ops" / "kickoff_overrides.csv", ko, ["game_id", "kickoff_utc"], on_duplicate="skip")
+
+
+def weather(leagues: list[str], season: int, job: JobRun, vlog: ValidationLog):
+    rm = RequestManager("open_meteo", job.job_run_id)
+    venues = storage.read_table(REF / "venues.parquet")
+    if venues.empty:
+        job.message += " no venues table; run --what venues manual first;"; return
+    vidx = venues.set_index("venue_id")
+    now = pd.Timestamp(_now())
+    horizon = now + pd.Timedelta(days=15)
+    total = 0
+    cache: dict[str, dict] = {}
+    for league in leagues:
+        games = storage.read_table(storage.games_path(league, season))
+        if games.empty:
+            continue
+        up = games[(games.status == "SCHEDULED") & games.kickoff_utc.notna()].copy()
+        up["k"] = pd.to_datetime(up.kickoff_utc, utc=True)
+        up = up[(up.k >= now - pd.Timedelta(hours=4)) & (up.k <= horizon)]
+        rows = []
+        for _, g in up.iterrows():
+            if pd.isna(g.venue_id) or g.venue_id not in vidx.index:
+                vlog.warn("VENUE_MISSING", g.game_id, "venue_id", g.venue_id, "venues row"); continue
+            v = vidx.loc[g.venue_id]
+            roof = g.venue_roof if isinstance(g.get("venue_roof"), str) else v.roof
+            if roof in open_meteo.INDOOR_ROOFS:
+                rows.append(open_meteo.snapshot_row(g.game_id, g.k, roof, None, _now())); continue
+            if pd.isna(v.latitude) or pd.isna(v.longitude):
+                vlog.warn("VENUE_NO_COORDS", g.game_id, "latitude", None, "coordinates"); continue
+            key = f"{round(float(v.latitude), 2)},{round(float(v.longitude), 2)}"
+            if key not in cache:
+                try:
+                    cache[key] = rm.get(open_meteo.FORECAST, params={"latitude": v.latitude, "longitude": v.longitude, "hourly": open_meteo.HOURLY,
+                                                                    "forecast_days": 16, **open_meteo.UNITS}).payload
+                except (ProviderError, BudgetExceeded) as e:
+                    vlog.warn("PROVIDER_FAIL", g.game_id, "open_meteo", str(e)[:80], "200"); cache[key] = None
+            payload = cache[key]
+            vals = open_meteo.pick_hour(payload, g.k) if payload else None
+            rows.append(open_meteo.snapshot_row(g.game_id, g.k, roof, vals, _now()))
+        if rows:
+            df = pd.DataFrame(rows).merge(games[["game_id", "week"]], on="game_id")
+            for wk, part in df.groupby("week"):
+                total += storage.append_csv(CONTEXT / "weather_snapshots" / league / str(season) / f"W{int(wk):02d}.csv",
+                                            part.drop(columns="week"), ["game_id", "retrieved_at"], on_duplicate="skip")
+    job.rows_written += total
     job.api_calls += rm.calls_this_run
+    print(f"weather: {total} snapshot rows, {rm.calls_this_run} Open-Meteo calls")
 
 
-# ---- derive ---------------------------------------------------------------------------------
-def derive_weeks(league: str, season: int, weeks: list[int], job: JobRun):
-    """Historical: QB status + projected depth per week; returning production / departures / talent / continuity once."""
-    for i, wk in enumerate(weeks):
-        derive(league, season, wk, job, season_level=(i == 0))
-
-
-def derive(league: str, season: int, week: int, job: JobRun, season_level: bool = True):
-    games = storage.read_table(storage.games_path(league, season))
-    ros_dir = ROSTER / "roster_snapshots" / league
-    roster_now = _latest_week_file(ros_dir, season, week)
-    if roster_now.empty:
-        job.status = "SKIPPED"; job.message = f"no roster snapshot for {league} {season}; run context rosters first"; return
-    players = storage.read_table(REF / "players" / f"{league}.parquet")
-    usage_prior = storage.read_table(ROSTER / "player_season_usage" / league / f"{season - 1}.parquet") if season - 1 >= config.MIN_ALLOWED_SEASON else pd.DataFrame()
-    usage_cur = None
-    cur_files = sorted(glob.glob(str(ROSTER / "player_season_usage" / league / f"{season}_usage_W*.parquet")))
-    if cur_files:
-        usage_cur = pd.read_parquet(cur_files[-1])
-    draft = storage.read_table(ROSTER / "draft_picks" / league / f"{season}.parquet")
-    portal = storage.read_table(ROSTER / "transfers" / f"{season}.parquet") if league == "CFB" else None
-    recruits = storage.read_table(REF / "recruits" / f"{season}.parquet") if league == "CFB" else None
-    coaches = storage.read_table(ROSTER / "coaches.csv")
-    inj_path = ROSTER / "injuries" / league / f"{season}.csv"
-    injuries = storage.read_table(inj_path)
-    depth_nfl = _latest_week_file(ROSTER / "depth_charts" / "NFL", season, week) if league == "NFL" else None
-    pgs = pd.concat([pd.read_parquet(p).assign(season=int(p.split("/")[-1][:4])) for p in glob.glob(str(config.TABLES / "stats" / "player_game_stats" / league / "*.parquet"))], ignore_index=True) if glob.glob(str(config.TABLES / "stats" / "player_game_stats" / league / "*.parquet")) else pd.DataFrame()
-    if usage_prior.empty:
-        print(f"{league} {season}: no prior-season usage table -> returning production from provider only (or unavailable)")
-
-    rp = eng.returning_production(league, season, week, roster_now, usage_prior) if season_level else storage.read_table(ROSTER / "returning_production" / league / f"{season}.parquet")
-    if season_level and not rp.empty:
-        _merge(ROSTER / "returning_production" / league / f"{season}.parquet", rp, ["team_id", "season", "as_of_week", "method"])
-        print(f"{league} {season} returning production (derived): {len(rp)} teams, median rp_total={rp.rp_total.median():.2f}")
-    dep = eng.departures(league, season, roster_now, usage_prior, draft, portal) if season_level else pd.DataFrame()
-    if season_level and not dep.empty:
-        storage.write_parquet(ROSTER / "departures" / league / f"{season}.parquet", dep)
-        print(f"{league} {season} departures: {len(dep)} ({dep.category.value_counts().to_dict()})")
-    tr = None
-    if league == "CFB" and portal is not None and not portal.empty:
-        tr = eng.evaluate_transfers(season, portal, roster_now, players, usage_prior) if season_level else portal
-        if season_level:
-            storage.write_parquet(ROSTER / "transfers" / f"{season}.parquet", tr)
-        print(f"CFB {season} transfers matched to roster: {int(tr.player_id.notna().sum())} of {len(tr)}; roles {tr.projected_role.value_counts().to_dict()}")
-        classes = storage.read_table(ROSTER / "recruiting_classes.parquet"); talent = storage.read_table(ROSTER / "team_talent.parquet")
-        ts = eng.talent_scores(season, classes, talent, tr) if season_level else pd.DataFrame()
-        if not ts.empty:
-            _merge(ROSTER / "talent_scores.parquet", ts, ["team_id", "season"])
-            print(f"CFB {season} talent scores: {len(ts)} teams")
-    # QB status as of the earliest kickoff of `week`
-    wk = games[(games.week == week) & (games.season_type == "REG") & games.kickoff_utc.notna()]
-    cutoff = pd.to_datetime(wk.kickoff_utc, utc=True).min() if not wk.empty else pd.Timestamp.now(tz="UTC")
-    team_ids = sorted(set(wk.home_team_id) | set(wk.away_team_id)) if not wk.empty else sorted(roster_now.team_id.unique())
-    team_ids = [t for t in team_ids if not t.startswith("CFB_FCS")]
-    qb = eng.qb_status(league, season, week, cutoff, team_ids, roster_now, players, pgs, usage_prior, injuries, depth_nfl, tr, recruits)
-    if not qb.empty:
-        storage.write_parquet(ROSTER / "qb_status" / league / str(season) / f"W{week:02d}.parquet", qb)
-        print(f"{league} {season} W{week} QB status: {len(qb)} teams; basis {qb.projection_basis.value_counts().to_dict()}")
-    if league == "CFB":
-        dc = eng.project_depth_chart_cfb(season, week, roster_now, usage_prior, usage_cur, tr, recruits)
-        if not dc.empty:
-            storage.write_parquet(ROSTER / "depth_charts" / "CFB" / str(season) / f"W{week:02d}.parquet", dc)
-            print(f"CFB {season} W{week} projected depth charts: {len(dc)} slots; basis {dc.projection_basis.value_counts().to_dict()}")
-    cont = eng.continuity(league, season, rp, qb, coaches, tr) if season_level else pd.DataFrame()
-    if not cont.empty:
-        storage.write_parquet(ROSTER / "continuity" / league / f"{season}.parquet", cont)
-        print(f"{league} {season} continuity index: median {cont.continuity_index.median():.2f}")
-    job.rows_written += sum(len(x) for x in (rp, dep, qb, cont) if x is not None and not x.empty)
+def weather_archive(leagues: list[str], season: int, job: JobRun, vlog: ValidationLog):
+    """Historical game-day weather from the Open-Meteo archive, one call per unique (venue, date).
+    Written to weather_snapshots as source=open_meteo_archive with is_actual=True (used by the backtest in place of a forecast)."""
+    rm = RequestManager("open_meteo", job.job_run_id)
+    venues = storage.read_table(REF / "venues.parquet")
+    if venues.empty:
+        job.message += " no venues;"; return
+    vidx = venues.set_index("venue_id")
+    total = 0
+    cache: dict[tuple, dict | None] = {}
+    for league in leagues:
+        games = storage.read_table(storage.games_path(league, season))
+        if games.empty:
+            continue
+        done = games[(games.status == "FINAL") & games.kickoff_utc.notna()].copy()
+        done["k"] = pd.to_datetime(done.kickoff_utc, utc=True)
+        existing = set()
+        for p in (CONTEXT / "weather_snapshots" / league / str(season)).glob("W*.csv"):
+            e = pd.read_csv(p); existing |= set(e[e.get("source", pd.Series(dtype=str)).eq("open_meteo_archive")].game_id) if "source" in e.columns else set()
+        rows = []
+        for _, g in done.iterrows():
+            if g.game_id in existing or pd.isna(g.venue_id) or g.venue_id not in vidx.index:
+                continue
+            v = vidx.loc[g.venue_id]
+            roof = g.venue_roof if isinstance(g.get("venue_roof"), str) else v.roof
+            if roof in open_meteo.INDOOR_ROOFS:
+                rows.append({**open_meteo.snapshot_row(g.game_id, g.k, roof, None, _now()), "source": "open_meteo_archive", "is_actual": True}); continue
+            if pd.isna(v.latitude) or pd.isna(v.longitude):
+                continue
+            day = g.k.strftime("%Y-%m-%d")
+            key = (round(float(v.latitude), 2), round(float(v.longitude), 2), day)
+            if key not in cache:
+                try:
+                    cache[key] = rm.get(open_meteo.ARCHIVE, params={"latitude": v.latitude, "longitude": v.longitude, "hourly": open_meteo.HOURLY_ARCHIVE,
+                                                                   "start_date": day, "end_date": day, **open_meteo.UNITS}).payload
+                except (ProviderError, BudgetExceeded) as e:
+                    vlog.warn("PROVIDER_FAIL", g.game_id, "open_meteo_archive", str(e)[:80], "200"); cache[key] = None
+            vals = open_meteo.pick_hour(cache[key], g.k) if cache[key] else None
+            rows.append({**open_meteo.snapshot_row(g.game_id, g.k, roof, vals, _now()), "source": "open_meteo_archive", "is_actual": True})
+        if rows:
+            df = pd.DataFrame(rows).merge(games[["game_id", "week"]], on="game_id")
+            for wk, part in df.groupby("week"):
+                total += storage.append_csv(CONTEXT / "weather_snapshots" / league / str(season) / f"W{int(wk):02d}.csv", part.drop(columns="week"), ["game_id", "retrieved_at"], on_duplicate="skip")
+        print(f"{league} {season} weather archive: {len(rows)} rows, {rm.calls_this_run} calls so far")
+    job.rows_written += total; job.api_calls += rm.calls_this_run
 
 
 def main(argv=None):
     p = argparse.ArgumentParser()
-    p.add_argument("--league", required=True, choices=config.LEAGUES)
+    p.add_argument("--league", required=True, choices=["NFL", "CFB", "BOTH"])
     p.add_argument("--season", type=int, default=config.SEASON)
-    p.add_argument("--week", type=int)
-    p.add_argument("--weeks", nargs="*", help="historical derive: week list or 'all'")
-    p.add_argument("--force", action="store_true")
-    p.add_argument("--what", nargs="+", default=["fetch", "derive"])
+    p.add_argument("--what", nargs="+", default=["all"])
     p.add_argument("--trigger", default="manual")
     a = p.parse_args(argv)
-    if a.season < config.MIN_ALLOWED_SEASON:
-        sys.exit("season refused")
-    games = storage.read_table(storage.games_path(a.league, a.season))
-    week = a.week or (int(games[games.status == "SCHEDULED"].week.min()) if not games.empty and (games.status == "SCHEDULED").any() else 1)
-    with JobRun(f"{a.league}_ROSTER", a.league, a.trigger) as job:
-        vlog = ValidationLog(job.job_run_id, "roster")
-        if "fetch" in a.what:
-            (fetch_nfl if a.league == "NFL" else lambda s, j: fetch_cfb(s, week, j, vlog, force=a.force))(a.season, job)
-        if "usage" in a.what and a.league == "CFB":
-            fetch_cfb(a.season, week, job, vlog, usage_only=True)
-        if "derive" in a.what:
-            if a.weeks:
-                wks = sorted(games[games.season_type == "REG"].week.unique().tolist()) if a.weeks[0] == "all" else [int(w) for w in a.weeks]
-                derive_weeks(a.league, a.season, wks, job)
-            else:
-                derive(a.league, a.season, week, job)
+    what = set(a.what)
+    if "all" in what:
+        what = {"players", "rosters", "injuries", "qbr", "rankings", "coaches", "venues", "manual", "weather"}
+    leagues = ["NFL", "CFB"] if a.league == "BOTH" else [a.league]
+    with JobRun("CONTEXT", a.league, a.trigger) as job:
+        vlog = ValidationLog(job.job_run_id, "context")
+        if "manual" in what:
+            load_manual(job, vlog)
+        if "NFL" in leagues and what & {"players", "rosters", "injuries", "qbr", "coaches"}:
+            nfl(what, a.season, job)
+        if "CFB" in leagues and what & {"rosters", "rankings", "coaches", "venues"}:
+            cfb(what, a.season, job, vlog)
+        if "weather" in what:
+            weather(leagues, a.season, job, vlog)
+        if "weather_archive" in what:
+            weather_archive(leagues, a.season, job, vlog)
         vlog.flush()
+        if vlog.rejects:
+            job.status = "PARTIAL"; job.message += f" {vlog.rejects} manual rows rejected;"
 
 
 if __name__ == "__main__":

@@ -1,185 +1,207 @@
 """
-python -m pipeline.jobs.backtest --league NFL
-python -m pipeline.jobs.backtest --league CFB --activate      # also fit the final model on all seasons and mark it active
+python -m pipeline.jobs.build_roster --league NFL --season 2026 --what fetch derive
+python -m pipeline.jobs.build_roster --league CFB --season 2026 --what fetch derive     # 8 CFBD calls (+1 usage in-season)
+python -m pipeline.jobs.build_roster --league CFB --season 2025 --what fetch            # backfill inputs for 2026 returning production
 
-Walk-forward: for each evaluated season S in BACKTEST_SEASONS, the model is fit ONLY on seasons < S.
-The first season (no earlier data) is evaluated with a model fit on the other seasons and flagged
-"in_sample_warning" so it is reported separately and never mistaken for out-of-sample.
-
-Baselines reported next to the model (§66):
-  market   : closing spread as the margin prediction (the number to beat)
-  prior    : blended rating diff + league HFA only
-  ratings  : opponent-adjusted rating diff only
-
-Writes (REBUILDABLE — backtests are re-runnable):
-  data/tables/model/backtest/{league}/predictions_{model_version}.csv
-  data/tables/model/backtest/{league}/evaluation_{model_version}.csv
-  data/tables/model/backtest/{league}/report_{model_version}.md
+fetch  -> player_season_usage (both), transfers/recruits/recruiting_classes/team_talent/draft_picks/returning (CFB)
+derive -> returning_production (derived), departures, transfers (matched), talent_scores, qb_status, depth_charts (CFB projected), continuity
 """
 from __future__ import annotations
 import argparse
-import json
-from datetime import datetime, timezone
+import glob
+import sys
 
-import numpy as np
 import pandas as pd
 
 import config
-from pipeline import model as M, storage
-from pipeline.log import JobRun
+from pipeline import ids, storage, roster_engine as eng
+from pipeline.log import JobRun, ValidationLog
+from providers import cfbd_roster, nflverse_roster
+from providers.base import RequestManager, ProviderError
 
-BT = config.TABLES / "model" / "backtest"
-
-
-def closing(league: str, season: int) -> pd.DataFrame:
-    cl = storage.read_table(config.TABLES / "market" / "closing_lines" / league / f"{season}.parquet")
-    if cl.empty:
-        return pd.DataFrame(columns=["game_id", "spread_home", "total"])
-    pref = [b for b in config.CLOSING_BOOK_PRIORITY if b in set(cl.book)]
-    if pref:
-        cl = cl[cl.book == pref[0]]
-    return cl.drop_duplicates("game_id")[["game_id", "spread_home", "total"]].rename(columns={"spread_home": "close_spread_home", "total": "close_total"})
+ROSTER = config.TABLES / "roster"
+REF = config.TABLES / "ref"
 
 
-def evaluate(pred: pd.DataFrame, feats: pd.DataFrame, league: str) -> pd.DataFrame:
-    df = pred.merge(feats[["game_id", "season", "week", "margin_home", "total", "home_field"]], on="game_id", how="inner")
-    df = df[df.margin_home.notna()]
-    cl = pd.concat([closing(league, s) for s in df.season.unique()], ignore_index=True) if len(df) else pd.DataFrame()
-    df = df.merge(cl, on="game_id", how="left") if not cl.empty else df.assign(close_spread_home=np.nan, close_total=np.nan)
-    df["margin_error"] = df.proj_margin_home - df.margin_home
-    df["abs_margin_error"] = df.margin_error.abs()
-    df["total_error"] = df.proj_total - df.total; df["abs_total_error"] = df.total_error.abs()
-    df["winner_correct"] = (np.sign(df.proj_margin_home) == np.sign(df.margin_home)).astype(float)
-    df.loc[df.margin_home == 0, "winner_correct"] = np.nan
-    df["favorite_side"] = np.where(df.close_spread_home < 0, "HOME", np.where(df.close_spread_home > 0, "AWAY", "PICKEM"))
-    df["market_margin"] = -df.close_spread_home
-    df["market_abs_error"] = (df.market_margin - df.margin_home).abs()
-    df["market_winner_correct"] = (np.sign(df.market_margin) == np.sign(df.margin_home)).astype(float)
-    # ATS: model side = home if proj_margin_home > market_margin; result vs closing spread
-    df["model_side_home"] = df.proj_margin_home > df.market_margin
-    cover_home = df.margin_home + df.close_spread_home
-    df["model_ats_result"] = np.where(cover_home == 0, "PUSH", np.where((cover_home > 0) == df.model_side_home, "WIN", "LOSS"))
-    df.loc[df.close_spread_home.isna(), "model_ats_result"] = None
-    df["model_ou_side_over"] = df.proj_total > df.close_total
-    ou = df.total - df.close_total
-    df["model_ou_result"] = np.where(ou == 0, "PUSH", np.where((ou > 0) == df.model_ou_side_over, "WIN", "LOSS"))
-    df.loc[df.close_total.isna(), "model_ou_result"] = None
-    df["edge_vs_market"] = (df.proj_margin_home - df.market_margin).abs()
-    df["baseline_ratings_abs_error"] = (df.baseline_ratings_margin - df.margin_home).abs()
-    df["baseline_hfa_abs_error"] = (df.baseline_hfa_margin - df.margin_home).abs()
-    df["win_prob_bin"] = (df.win_prob_home * 10).clip(0, 9).astype(int)
-    df["home_won"] = df.margin_home > 0
-    return df
+def _latest_week_file(d, season, week: int | None = None) -> pd.DataFrame:
+    """Latest weekly file at or before `week` (never a later one: historical derives must not see future rosters)."""
+    files = sorted(glob.glob(str(d / str(season) / "W*.parquet")))
+    if week is not None:
+        files = [f for f in files if int(f.split("W")[-1][:2]) <= week] or files[:1]
+    return pd.read_parquet(files[-1]) if files else pd.DataFrame()
 
 
-def summarize(ev: pd.DataFrame, league: str) -> dict:
-    def block(d: pd.DataFrame) -> dict:
-        if d.empty:
-            return {}
-        out = {"n": int(len(d)), "mae_margin": round(float(d.abs_margin_error.mean()), 2), "rmse_margin": round(float(np.sqrt((d.margin_error ** 2).mean())), 2),
-               "winner_acc": round(float(d.winner_correct.mean()), 3), "mae_total": round(float(d.abs_total_error.mean()), 2),
-               "baseline_ratings_mae": round(float(d.baseline_ratings_abs_error.mean()), 2), "baseline_hfa_mae": round(float(d.baseline_hfa_abs_error.mean()), 2)}
-        m = d[d.close_spread_home.notna()]
-        if len(m):
-            ats = m[m.model_ats_result.isin(["WIN", "LOSS"])]
-            big = ats[ats.edge_vs_market >= config.ATS_EDGE_THRESHOLD[league]]
-            ou = m[m.model_ou_result.isin(["WIN", "LOSS"])]
-            out.update({"n_with_close": int(len(m)), "market_mae_margin": round(float(m.market_abs_error.mean()), 2),
-                        "market_winner_acc": round(float(m.market_winner_correct.mean()), 3),
-                        "model_mae_on_same_games": round(float(m.abs_margin_error.mean()), 2),
-                        "ats_all_pct": round(float((ats.model_ats_result == "WIN").mean()), 3) if len(ats) else None, "ats_all_n": int(len(ats)),
-                        f"ats_edge{config.ATS_EDGE_THRESHOLD[league]}_pct": round(float((big.model_ats_result == "WIN").mean()), 3) if len(big) else None, "ats_edge_n": int(len(big)),
-                        "ou_pct": round(float((ou.model_ou_result == "WIN").mean()), 3) if len(ou) else None,
-                        "corr_model_vs_close": round(float(np.corrcoef(m.proj_margin_home, m.market_margin)[0, 1]), 3) if len(m) > 3 else None})
-        return out
-    s = {"overall": block(ev), "by_season": {int(k): block(g) for k, g in ev.groupby("season")},
-         "by_week_bucket": {b: block(g) for b, g in ev.groupby(pd.cut(ev.week, [0, 3, 8, 30], labels=["W1-3", "W4-8", "W9+"]), observed=True)},
-         "home_games": block(ev[ev.home_field == 1.0]), "neutral_games": block(ev[ev.home_field == 0.0]),
-         "favorites": block(ev[(ev.favorite_side == "HOME") & (ev.proj_margin_home > 0) | (ev.favorite_side == "AWAY") & (ev.proj_margin_home < 0)]),
-         "calibration": [{"bin": f"{b/10:.1f}-{(b+1)/10:.1f}", "n": int(len(g)), "pred_mean": round(float(g.win_prob_home.mean()), 3), "actual_home_win": round(float(g.home_won.mean()), 3)}
-                         for b, g in ev.groupby("win_prob_bin")]}
-    return s
+def _merge(path, new, keys):
+    cur = storage.read_table(path)
+    if not new.empty:
+        if not cur.empty:
+            k = lambda df: df[keys].astype(str).agg("|".join, axis=1)
+            cur = cur[~k(cur).isin(set(k(new)))]
+            new = pd.concat([cur, new], ignore_index=True)
+        storage.write_parquet(path, new)
+    return len(new)
 
 
-def report_md(league: str, mv: str, summ: dict, coefs: dict, sigma: float, warn_season: int | None) -> str:
-    o = summ["overall"]
-    L = [f"# Backtest report — {league} — {mv}", "", f"Generated {datetime.now(timezone.utc).isoformat(timespec='minutes')}. Walk-forward by season: each season predicted by a model fit only on earlier seasons."]
-    if warn_season:
-        L.append(f"**{warn_season} has no earlier data; it was predicted by a model fit on the later seasons and is NOT out-of-sample. Treat it as a smoke test only.**")
-    L += ["", "## Overall (out-of-sample seasons)", f"- games: {o.get('n')}", f"- margin MAE: **{o.get('mae_margin')}** (RMSE {o.get('rmse_margin')})", f"- winner accuracy: **{o.get('winner_acc')}**", f"- total MAE: {o.get('mae_total')}", f"- residual SD used for win probability: {sigma:.2f}",
-          "", "Baselines on the same games (lower MAE is better):", f"- home-field only: {o.get('baseline_hfa_mae')}", f"- opponent-adjusted rating diff + HFA: {o.get('baseline_ratings_mae')}", f"- full model: {o.get('mae_margin')}"]
-    if o.get("n_with_close"):
-        L += ["", f"## Versus the closing line ({o['n_with_close']} games with a closing spread)",
-              f"- market MAE on those games: **{o['market_mae_margin']}** vs model MAE **{o['model_mae_on_same_games']}**",
-              f"- market winner accuracy: {o['market_winner_acc']} vs model {o.get('winner_acc')}",
-              f"- model side vs closing spread, all games: {o['ats_all_pct']} ({o['ats_all_n']} decided)",
-              f"- model side vs closing spread when model differs by >= {config.ATS_EDGE_THRESHOLD[league]} pts: {o.get(f'ats_edge{config.ATS_EDGE_THRESHOLD[league]}_pct')} ({o['ats_edge_n']} decided)",
-              f"- over/under: {o['ou_pct']}", f"- correlation model margin vs market margin: {o['corr_model_vs_close']}",
-              "", "Break-even against -110 pricing is 52.4%. Anything below that is not an edge; anything above it on a few hundred games is not proof either."]
-    L += ["", "## By season", "| season | n | MAE | winner acc | market MAE | ATS all | ATS edge |", "|---|---|---|---|---|---|---|"]
-    for s, b in summ["by_season"].items():
-        L.append(f"| {s}{' (in-sample)' if s == warn_season else ''} | {b.get('n')} | {b.get('mae_margin')} | {b.get('winner_acc')} | {b.get('market_mae_margin', '—')} | {b.get('ats_all_pct', '—')} | {b.get(f'ats_edge{config.ATS_EDGE_THRESHOLD[league]}_pct', '—')} |")
-    L += ["", "## By week bucket", "| weeks | n | MAE | winner acc |", "|---|---|---|---|"]
-    for k, b in summ["by_week_bucket"].items():
-        L.append(f"| {k} | {b.get('n')} | {b.get('mae_margin')} | {b.get('winner_acc')} |")
-    L += ["", "## Calibration (home win probability)", "| bin | n | predicted | actual |", "|---|---|---|---|"]
-    for c in summ["calibration"]:
-        L.append(f"| {c['bin']} | {c['n']} | {c['pred_mean']} | {c['actual_home_win']} |")
-    L += ["", "## Fitted weights (points per raw unit of each edge; the matchup engine displays these)", "| feature | points/unit |", "|---|---|"]
-    for f, c in sorted(coefs.items(), key=lambda x: -abs(x[1])):
-        L.append(f"| {f} | {c:+.3f} |")
-    return "\n".join(L)
+# ---- fetch ---------------------------------------------------------------------------------
+def fetch_nfl(season: int, job: JobRun):
+    rm = RequestManager("nflverse", job.job_run_id)
+    resolver = ids.AliasResolver.load()
+    pa = storage.read_table(REF / "player_aliases.parquet")
+    snaps = nflverse_roster.fetch(rm, "snaps", season)
+    pstats = nflverse_roster.fetch(rm, "pstats", season)
+    pfr = nflverse_roster.fetch(rm, "pfr_def", season)
+    usage = nflverse_roster.player_season_usage(snaps, pstats, pfr, season, resolver, pa)
+    if not usage.empty:
+        storage.write_parquet(ROSTER / "player_season_usage" / "NFL" / f"{season}.parquet", usage)
+        print(f"NFL {season} player_season_usage: {len(usage)} rows")
+    draft = nflverse_roster.fetch(rm, "draft")
+    if draft is not None:
+        d = nflverse_roster.draft_rows(draft, season, resolver)
+        storage.write_parquet(ROSTER / "draft_picks" / "NFL" / f"{season}.parquet", d)
+        print(f"NFL {season} draft picks: {len(d)}")
+    job.api_calls += rm.calls_this_run
 
 
-def run(league: str, activate: bool, job: JobRun) -> None:
-    seasons = [s for s in config.BACKTEST_SEASONS]
-    feats = {s: M.season_features(league, s) for s in seasons}
-    feats = {s: f for s, f in feats.items() if not f.empty}
-    if len(feats) < 2:
-        job.status = "SKIPPED"; job.message = f"need >=2 seasons of matchup edges; found {sorted(feats)}"; return
-    mv = f"{league}_v1.0"
-    preds, warn_season = [], None
-    for s in sorted(feats):
-        train_seasons = [t for t in feats if t < s]
-        if not train_seasons:
-            train_seasons = [t for t in feats if t != s]; warn_season = s
-        train = pd.concat([feats[t] for t in train_seasons], ignore_index=True)
-        models = M.fit_models(train, league)
-        p = M.predict_rows(models, feats[s], mv, is_backtest=True)
-        tr = train[train.margin_home.notna()]
-        base_r = M.Ridge(["rating_diff_blend", "home_field"], 1.0).fit(tr, "margin_home")
-        base_h = M.Ridge(["home_field"], 1.0).fit(tr, "margin_home")
-        p["baseline_ratings_margin"] = base_r.predict(feats[s]); p["baseline_hfa_margin"] = base_h.predict(feats[s])
-        p["train_seasons"] = ",".join(map(str, models["train_seasons"])); p["in_sample_warning"] = (s == warn_season)
-        preds.append(p)
-        print(f"{league} {s}: predicted {len(p)} games with model trained on {models['train_seasons']} (lambda margin={models['lam_margin']}, total={models['lam_total']}, sigma={models['sigma_margin']:.1f})")
-    pred = pd.concat(preds, ignore_index=True)
-    allf = pd.concat(feats.values(), ignore_index=True)
-    ev = evaluate(pred, allf, league)
-    oos = ev[~ev.game_id.isin(pred[pred.in_sample_warning].game_id)]
-    summ = summarize(oos if len(oos) else ev, league)
-    final = M.fit_models(allf, league)
-    BT.mkdir(parents=True, exist_ok=True)
-    (BT / league).mkdir(parents=True, exist_ok=True)
-    pred.to_csv(BT / league / f"predictions_{mv}.csv", index=False)
-    ev.to_csv(BT / league / f"evaluation_{mv}.csv", index=False)
-    md = report_md(league, mv, summ, final["margin"].coef_per_raw_unit(), final["sigma_margin"], warn_season)
-    (BT / league / f"report_{mv}.md").write_text(md)
-    M.save_model(final, league, mv, summ, is_active=activate)
-    job.rows_written = len(pred) + len(ev)
-    o = summ["overall"]
-    print(f"{league} OOS: n={o.get('n')} MAE={o.get('mae_margin')} winner={o.get('winner_acc')} | market MAE={o.get('market_mae_margin')} ATS all={o.get('ats_all_pct')} ATS edge={o.get(f'ats_edge{config.ATS_EDGE_THRESHOLD[league]}_pct')} (n={o.get('ats_edge_n')})")
-    print(f"model {mv} saved; active={activate}; trained on {final['train_seasons']}")
+def fetch_cfb(season: int, week: int, job: JobRun, vlog: ValidationLog, usage_only: bool = False, force: bool = False):
+    if not usage_only and not force and (ROSTER / "player_season_usage" / "CFB" / f"{season}.parquet").exists() and (ROSTER / "transfers" / f"{season}.parquet").exists():
+        print(f"CFB {season}: roster inputs already fetched; skipping (--force to refetch)"); return
+    rm = RequestManager("cfbd", job.job_run_id, enforce_daily=(job.trigger == "backfill"))
+    resolver = ids.AliasResolver.load()
+    unmatched: set[str] = set()
+    res = cfbd_roster.fetch(rm, "/player/usage", season)
+    usage = cfbd_roster.normalize_usage(res.payload, season, resolver, res.retrieved_at, unmatched)
+    if usage_only:
+        _merge(ROSTER / "player_season_usage" / "CFB" / f"{season}_usage_W{week:02d}.parquet", usage, ["player_id", "team_id"])
+        print(f"CFB {season} usage as of W{week}: {len(usage)} players"); job.api_calls += rm.calls_this_run; return
+    res = cfbd_roster.fetch(rm, "/stats/player/season", season)
+    stats = cfbd_roster.normalize_player_season_stats(res.payload, season, resolver, res.retrieved_at, unmatched)
+    merged = stats.merge(usage.drop(columns=["player_name", "position_raw", "position"], errors="ignore"), on=["player_id", "team_id", "season"], how="outer")
+    if not merged.empty:
+        storage.write_parquet(ROSTER / "player_season_usage" / "CFB" / f"{season}.parquet", merged)
+        print(f"CFB {season} player_season_usage: {len(merged)} rows ({len(stats)} with stats, {len(usage)} with usage)")
+    for endpoint, fn, path, keys in (
+        ("/player/returning", cfbd_roster.normalize_returning, ROSTER / "returning_production" / "CFB" / f"{season}.parquet", ["team_id", "season", "as_of_week", "method"]),
+        ("/player/portal", cfbd_roster.normalize_portal, ROSTER / "transfers" / f"{season}.parquet", ["transfer_id"]),
+        ("/talent", cfbd_roster.normalize_talent, ROSTER / "team_talent.parquet", ["team_id", "season"]),
+        ("/draft/picks", cfbd_roster.normalize_draft_picks, ROSTER / "draft_picks" / "CFB" / f"{season}.parquet", ["season", "overall"]),
+    ):
+        try:
+            r = cfbd_roster.fetch(rm, endpoint, season)
+        except ProviderError as e:
+            vlog.warn("PROVIDER_FAIL", endpoint, "", str(e)[:100], "200"); continue
+        df = fn(r.payload, season, resolver, r.retrieved_at, unmatched)
+        n = _merge(path, df, keys)
+        print(f"CFB {season} {endpoint}: {len(df)} rows")
+    r1 = cfbd_roster.fetch(rm, "/recruiting/teams", season)
+    teams_class = cfbd_roster.normalize_recruiting_teams(r1.payload, season, resolver, r1.retrieved_at, unmatched)
+    r2 = cfbd_roster.fetch(rm, "/recruiting/players", season, classification="HighSchool")
+    recruits = cfbd_roster.normalize_recruits(r2.payload, season, resolver, r2.retrieved_at, unmatched)
+    storage.write_parquet(REF / "recruits" / f"{season}.parquet", recruits)
+    classes = cfbd_roster.class_summary(recruits, teams_class, season)
+    _merge(ROSTER / "recruiting_classes.parquet", classes, ["team_id", "season"])
+    print(f"CFB {season} recruiting: {len(classes)} classes, {len(recruits)} recruits")
+    for u in sorted(unmatched):
+        vlog.warn("ALIAS_UNMATCHED", u, "team", u, "team_aliases row (non-FBS expected)")
+    job.api_calls += rm.calls_this_run
+
+
+# ---- derive ---------------------------------------------------------------------------------
+def derive_weeks(league: str, season: int, weeks: list[int], job: JobRun):
+    """Historical: QB status + projected depth per week; returning production / departures / talent / continuity once."""
+    for i, wk in enumerate(weeks):
+        derive(league, season, wk, job, season_level=(i == 0))
+
+
+def derive(league: str, season: int, week: int, job: JobRun, season_level: bool = True):
+    games = storage.read_table(storage.games_path(league, season))
+    ros_dir = ROSTER / "roster_snapshots" / league
+    roster_now = _latest_week_file(ros_dir, season, week)
+    if roster_now.empty:
+        job.status = "SKIPPED"; job.message = f"no roster snapshot for {league} {season}; run context rosters first"; return
+    players = storage.read_table(REF / "players" / f"{league}.parquet")
+    usage_prior = storage.read_table(ROSTER / "player_season_usage" / league / f"{season - 1}.parquet") if season - 1 >= config.MIN_ALLOWED_SEASON else pd.DataFrame()
+    usage_cur = None
+    cur_files = sorted(glob.glob(str(ROSTER / "player_season_usage" / league / f"{season}_usage_W*.parquet")))
+    if cur_files:
+        usage_cur = pd.read_parquet(cur_files[-1])
+    draft = storage.read_table(ROSTER / "draft_picks" / league / f"{season}.parquet")
+    portal = storage.read_table(ROSTER / "transfers" / f"{season}.parquet") if league == "CFB" else None
+    recruits = storage.read_table(REF / "recruits" / f"{season}.parquet") if league == "CFB" else None
+    coaches = storage.read_table(ROSTER / "coaches.csv")
+    inj_path = ROSTER / "injuries" / league / f"{season}.csv"
+    injuries = storage.read_table(inj_path)
+    depth_nfl = _latest_week_file(ROSTER / "depth_charts" / "NFL", season, week) if league == "NFL" else None
+    pgs = pd.concat([pd.read_parquet(p).assign(season=int(p.split("/")[-1][:4])) for p in glob.glob(str(config.TABLES / "stats" / "player_game_stats" / league / "*.parquet"))], ignore_index=True) if glob.glob(str(config.TABLES / "stats" / "player_game_stats" / league / "*.parquet")) else pd.DataFrame()
+    if usage_prior.empty:
+        print(f"{league} {season}: no prior-season usage table -> returning production from provider only (or unavailable)")
+
+    rp = eng.returning_production(league, season, week, roster_now, usage_prior) if season_level else storage.read_table(ROSTER / "returning_production" / league / f"{season}.parquet")
+    if season_level and not rp.empty:
+        _merge(ROSTER / "returning_production" / league / f"{season}.parquet", rp, ["team_id", "season", "as_of_week", "method"])
+        print(f"{league} {season} returning production (derived): {len(rp)} teams, median rp_total={rp.rp_total.median():.2f}")
+    dep = eng.departures(league, season, roster_now, usage_prior, draft, portal) if season_level else pd.DataFrame()
+    if season_level and not dep.empty:
+        storage.write_parquet(ROSTER / "departures" / league / f"{season}.parquet", dep)
+        print(f"{league} {season} departures: {len(dep)} ({dep.category.value_counts().to_dict()})")
+    tr = None
+    if league == "CFB" and portal is not None and not portal.empty:
+        tr = eng.evaluate_transfers(season, portal, roster_now, players, usage_prior) if season_level else portal
+        if season_level:
+            storage.write_parquet(ROSTER / "transfers" / f"{season}.parquet", tr)
+        print(f"CFB {season} transfers matched to roster: {int(tr.player_id.notna().sum())} of {len(tr)}; roles {tr.projected_role.value_counts().to_dict()}")
+        classes = storage.read_table(ROSTER / "recruiting_classes.parquet"); talent = storage.read_table(ROSTER / "team_talent.parquet")
+        ts = eng.talent_scores(season, classes, talent, tr) if season_level else pd.DataFrame()
+        if not ts.empty:
+            _merge(ROSTER / "talent_scores.parquet", ts, ["team_id", "season"])
+            print(f"CFB {season} talent scores: {len(ts)} teams")
+    # QB status as of the earliest kickoff of `week`
+    wk = games[(games.week == week) & (games.season_type == "REG") & games.kickoff_utc.notna()]
+    cutoff = pd.to_datetime(wk.kickoff_utc, utc=True).min() if not wk.empty else pd.Timestamp.now(tz="UTC")
+    team_ids = sorted(set(wk.home_team_id) | set(wk.away_team_id)) if not wk.empty else sorted(roster_now.team_id.unique())
+    team_ids = [t for t in team_ids if not t.startswith("CFB_FCS")]
+    qb = eng.qb_status(league, season, week, cutoff, team_ids, roster_now, players, pgs, usage_prior, injuries, depth_nfl, tr, recruits)
+    if not qb.empty:
+        storage.write_parquet(ROSTER / "qb_status" / league / str(season) / f"W{week:02d}.parquet", qb)
+        print(f"{league} {season} W{week} QB status: {len(qb)} teams; basis {qb.projection_basis.value_counts().to_dict()}")
+    if league == "CFB":
+        dc = eng.project_depth_chart_cfb(season, week, roster_now, usage_prior, usage_cur, tr, recruits)
+        if not dc.empty:
+            storage.write_parquet(ROSTER / "depth_charts" / "CFB" / str(season) / f"W{week:02d}.parquet", dc)
+            print(f"CFB {season} W{week} projected depth charts: {len(dc)} slots; basis {dc.projection_basis.value_counts().to_dict()}")
+    cont = eng.continuity(league, season, rp, qb, coaches, tr) if season_level else pd.DataFrame()
+    if not cont.empty:
+        storage.write_parquet(ROSTER / "continuity" / league / f"{season}.parquet", cont)
+        print(f"{league} {season} continuity index: median {cont.continuity_index.median():.2f}")
+    job.rows_written += sum(len(x) for x in (rp, dep, qb, cont) if x is not None and not x.empty)
 
 
 def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--league", required=True, choices=config.LEAGUES)
-    p.add_argument("--activate", action="store_true")
+    p.add_argument("--season", type=int, default=config.SEASON)
+    p.add_argument("--week", type=int)
+    p.add_argument("--weeks", nargs="*", help="historical derive: week list or 'all'")
+    p.add_argument("--force", action="store_true")
+    p.add_argument("--what", nargs="+", default=["fetch", "derive"])
     p.add_argument("--trigger", default="manual")
     a = p.parse_args(argv)
-    with JobRun(f"{a.league}_BACKTEST", a.league, a.trigger) as job:
-        run(a.league, a.activate, job)
+    if a.season < config.MIN_ALLOWED_SEASON:
+        sys.exit("season refused")
+    games = storage.read_table(storage.games_path(a.league, a.season))
+    week = a.week or (int(games[games.status == "SCHEDULED"].week.min()) if not games.empty and (games.status == "SCHEDULED").any() else 1)
+    with JobRun(f"{a.league}_ROSTER", a.league, a.trigger) as job:
+        vlog = ValidationLog(job.job_run_id, "roster")
+        if "fetch" in a.what:
+            (fetch_nfl if a.league == "NFL" else lambda s, j: fetch_cfb(s, week, j, vlog, force=a.force))(a.season, job)
+        if "usage" in a.what and a.league == "CFB":
+            fetch_cfb(a.season, week, job, vlog, usage_only=True)
+        if "derive" in a.what:
+            if a.weeks:
+                wks = sorted(games[games.season_type == "REG"].week.unique().tolist()) if a.weeks[0] == "all" else [int(w) for w in a.weeks]
+                derive_weeks(a.league, a.season, wks, job)
+            else:
+                derive(a.league, a.season, week, job)
+        vlog.flush()
 
 
 if __name__ == "__main__":

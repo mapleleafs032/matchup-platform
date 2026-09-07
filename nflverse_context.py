@@ -1,181 +1,175 @@
 """
-All outbound HTTP goes through RequestManager. Nothing else in the codebase calls requests.get.
+CFBD roster-intelligence adapter (CFB). One call per endpoint per season (8 calls/season):
 
-Responsibilities:
-  * enforce per-provider daily/monthly budgets (config.API_BUDGET)
-  * retry with backoff on 5xx / timeouts; never retry on 4xx auth errors
-  * archive every successful payload to data/raw/<provider>/<date>/<sha256>.json.gz
-  * append an index row to data/tables/ops/raw_responses.csv
-  * expose provider-reported remaining quota when headers carry it
+  /player/returning?year          provider's returning production (offense only): percentPPA, usage shares
+  /player/portal?year             transfers with origin/destination/rating/stars (no player id -> matched by name)
+  /recruiting/teams?year          class rank + points per team
+  /recruiting/players?year        individual recruits with stars/rating (for blue-chip ratio, freshman ordering)
+  /talent?year                    team talent composite
+  /player/usage?year              per-player usage shares (overall/pass/rush/downs) with player ids
+  /stats/player/season?year       long-format player season stats (category/statType/stat)
+  /draft/picks?year               NFL draft picks with collegeAthleteId (lost players)
+
+Every normalizer is defensive; unknown teams are collected into `unmatched` rather than guessed.
 """
 from __future__ import annotations
-import gzip
-import hashlib
-import json
-import time
-from dataclasses import dataclass
-from datetime import datetime, timezone, date
-from pathlib import Path
-from typing import Any, Optional
+import re
+from datetime import datetime
 
 import pandas as pd
-import requests
 
-import config
-from pipeline import storage
-
-
-class BudgetExceeded(RuntimeError):
-    pass
+from pipeline import ids
+from providers.base import RequestManager
+from providers.cfbd import BASE, _headers, _g
+from providers.cfbd_context import _POS_NORM
 
 
-class ProviderError(RuntimeError):
-    pass
+def fetch(rm: RequestManager, endpoint: str, season: int, **extra):
+    return rm.get(f"{BASE}{endpoint}", params={"year": season, **extra}, headers=_headers(), timeout=90)
 
 
-@dataclass
-class FetchResult:
-    payload: Any
-    raw_id: str
-    retrieved_at: datetime
-    remaining_reported: Optional[int]
-    http_status: int
+def _tid(resolver: ids.AliasResolver, name, unmatched: set[str]):
+    if not name:
+        return None
+    try:
+        return resolver.resolve("cfbd", alias=name)
+    except ids.UnmatchedAlias:
+        resolver.unmatched.pop(); unmatched.add(str(name)); return None
 
 
-class RequestManager:
-    BUDGET_PATH = config.TABLES / "ops" / "api_budget.csv"
-    RAW_INDEX_PATH = config.TABLES / "ops" / "raw_responses.csv"
-
-    def __init__(self, provider: str, job_run_id: str, session: Optional[requests.Session] = None,
-                 enforce_daily: bool = False):
-        """enforce_daily: the daily soft limit is a backfill guardrail; routine jobs are small and bounded,
-        so they respect only the monthly cap. Backfill jobs pass enforce_daily=True."""
-        if provider not in config.API_BUDGET:
-            raise ValueError(f"Unknown provider {provider}; add it to config.API_BUDGET")
-        self.provider = provider
-        self.job_run_id = job_run_id
-        self.enforce_daily = enforce_daily
-        self.session = session or requests.Session()
-        self.calls_this_run = 0
-        self._budget = self._load_budget()
-
-    # ---- budget ----------------------------------------------------------------
-    def _load_budget(self) -> pd.DataFrame:
-        if self.BUDGET_PATH.exists():
-            df = pd.read_csv(self.BUDGET_PATH, dtype={"provider": str, "day": str})
-        else:
-            df = pd.DataFrame(columns=["provider", "day", "requests", "credits", "failures",
-                                       "remaining_reported", "last_request_at"])
-        return df
-
-    def _used(self, scope: str) -> int:
-        d = self._budget[self._budget.provider == self.provider]
-        if d.empty:
-            return 0
-        today = date.today().isoformat()
-        if scope == "day":
-            return int(d[d.day == today].credits.fillna(0).sum())
-        month = today[:7]
-        return int(d[d.day.str.startswith(month)].credits.fillna(0).sum())
-
-    def remaining_monthly(self) -> int:
-        ours = config.API_BUDGET[self.provider]["monthly"] - self._used("month")
-        d = self._budget[self._budget.provider == self.provider]
-        if not d.empty:
-            month = date.today().isoformat()[:7]
-            rep = d[d.day.str.startswith(month)].sort_values("day").remaining_reported.dropna()
-            if not rep.empty:
-                return min(ours, int(rep.iloc[-1]))   # provider's own count wins when lower (e.g., usage outside this pipeline)
-        return ours
-
-    def _check_budget(self, cost: int) -> None:
-        lim = config.API_BUDGET[self.provider]
-        if self._used("month") + cost > lim["monthly"]:
-            raise BudgetExceeded(f"{self.provider}: monthly budget {lim['monthly']} would be exceeded")
-        if self.enforce_daily and self._used("day") + cost > lim["daily_soft"]:
-            raise BudgetExceeded(f"{self.provider}: daily soft limit {lim['daily_soft']} would be exceeded")
-
-    def _record(self, cost: int, failed: bool, remaining: Optional[int]) -> None:
-        today = date.today().isoformat()
-        mask = (self._budget.provider == self.provider) & (self._budget.day == today)
-        now = datetime.now(timezone.utc).isoformat()
-        if mask.any():
-            i = self._budget[mask].index[0]
-            self._budget.loc[i, "requests"] = int(self._budget.loc[i, "requests"]) + 1
-            self._budget.loc[i, "credits"] = int(self._budget.loc[i, "credits"] or 0) + (0 if failed else cost)
-            self._budget.loc[i, "failures"] = int(self._budget.loc[i, "failures"]) + (1 if failed else 0)
-            if remaining is not None:
-                self._budget.loc[i, "remaining_reported"] = remaining
-            self._budget.loc[i, "last_request_at"] = now
-        else:
-            row = {"provider": self.provider, "day": today, "requests": 1, "credits": 0 if failed else cost,
-                   "failures": 1 if failed else 0, "remaining_reported": remaining, "last_request_at": now}
-            self._budget = pd.concat([self._budget, pd.DataFrame([row])], ignore_index=True)
-        self.BUDGET_PATH.parent.mkdir(parents=True, exist_ok=True)
-        self._budget.to_csv(self.BUDGET_PATH, index=False)
-
-    # ---- fetch -----------------------------------------------------------------
-    def get(self, url: str, params: dict | None = None, headers: dict | None = None,
-            cost: int = 1, timeout: int = 30, max_retries: int = 3, expect_json: bool = True,
-            raw_bytes: bool = False) -> FetchResult:
-        self._check_budget(cost)
-        last_err: Exception | None = None
-        for attempt in range(max_retries):
-            try:
-                resp = self.session.get(url, params=params, headers=headers, timeout=timeout)
-            except (requests.Timeout, requests.ConnectionError) as e:
-                last_err = e
-                time.sleep(2 ** attempt)
-                continue
-            remaining = self._remaining_from_headers(resp.headers)
-            if resp.status_code in (401, 403):
-                self._record(cost, failed=True, remaining=remaining)
-                raise ProviderError(f"{self.provider} auth error {resp.status_code}: check API key secret")
-            if resp.status_code == 429:
-                self._record(cost, failed=True, remaining=remaining)
-                raise BudgetExceeded(f"{self.provider} returned 429 (quota exhausted at provider)")
-            if resp.status_code >= 500:
-                last_err = ProviderError(f"{self.provider} {resp.status_code}")
-                time.sleep(2 ** attempt)
-                continue
-            if resp.status_code != 200:
-                self._record(cost, failed=True, remaining=remaining)
-                raise ProviderError(f"{self.provider} HTTP {resp.status_code}: {resp.text[:200]}")
-            body = resp.content
-            payload = body if raw_bytes else (resp.json() if expect_json else body.decode("utf-8", errors="replace"))
-            retrieved_at = datetime.now(timezone.utc)
-            raw_id = self._archive(url, params, body, retrieved_at, resp.status_code)
-            self._record(cost, failed=False, remaining=remaining)
-            self.calls_this_run += 1
-            return FetchResult(payload, raw_id, retrieved_at, remaining, resp.status_code)
-        self._record(cost, failed=True, remaining=None)
-        raise ProviderError(f"{self.provider}: failed after {max_retries} attempts: {last_err}")
-
-    @staticmethod
-    def _remaining_from_headers(h) -> Optional[int]:
-        for key in ("x-requests-remaining", "X-Requests-Remaining", "x-ratelimit-remaining"):
-            if key in h:
-                try:
-                    return int(float(h[key]))
-                except ValueError:
-                    return None
+def _num(x):
+    try:
+        return None if x in (None, "") else float(x)
+    except (TypeError, ValueError):
         return None
 
-    # ---- raw archive -----------------------------------------------------------
-    def _archive(self, url: str, params: dict | None, body: bytes, retrieved_at: datetime, status: int) -> str:
-        sha = hashlib.sha256(body).hexdigest()
-        day_dir = config.RAW / self.provider / retrieved_at.date().isoformat()
-        day_dir.mkdir(parents=True, exist_ok=True)
-        path = day_dir / f"{sha}.json.gz"
-        archived = self.provider in config.RAW_ARCHIVE_PROVIDERS
-        if archived and not path.exists():
-            with gzip.open(path, "wb") as f:
-                f.write(body)
-        safe_params = {k: v for k, v in (params or {}).items() if "key" not in k.lower()}
-        storage.append_csv(self.RAW_INDEX_PATH, pd.DataFrame([{
-            "raw_id": sha, "provider": self.provider, "endpoint": url.split("?")[0],
-            "params": json.dumps(safe_params, sort_keys=True), "retrieved_at": retrieved_at.isoformat(),
-            "http_status": status, "bytes": len(body), "path": (str(path.relative_to(config.ROOT)) if path.is_relative_to(config.ROOT) else str(path)) if archived else "",
-            "job_run_id": self.job_run_id,
-        }]), key_cols=["raw_id", "job_run_id"], on_duplicate="skip")
-        return sha
+
+def normalize_returning(payload, season, resolver, ts: datetime, unmatched) -> pd.DataFrame:
+    rows = []
+    for r in payload:
+        tid = _tid(resolver, _g(r, "team"), unmatched)
+        if not tid:
+            continue
+        rows.append({"team_id": tid, "season": season, "as_of_week": 0,
+                     "rp_total": _num(_g(r, "percentPPA")), "rp_offense": _num(_g(r, "percentPPA")), "rp_defense": None,
+                     "rp_passing": _num(_g(r, "percentPassingPPA")), "rp_rushing": _num(_g(r, "percentRushingPPA")),
+                     "rp_receiving": _num(_g(r, "percentReceivingPPA")),
+                     "usage_returning": _num(_g(r, "usage")), "passing_usage_returning": _num(_g(r, "passingUsage")),
+                     "rushing_usage_returning": _num(_g(r, "rushingUsage")), "receiving_usage_returning": _num(_g(r, "receivingUsage")),
+                     "ol_starts_returning": None, "ol_starts_returning_is_proxy": None, "def_pressure_returning": None,
+                     "secondary_snaps_returning": None, "method": "cfbd_returning", "source": "cfbd", "retrieved_at": ts.isoformat()})
+    return pd.DataFrame(rows)
+
+
+def normalize_portal(payload, season, resolver, ts: datetime, unmatched) -> pd.DataFrame:
+    rows = []
+    for r in payload:
+        name = f"{_g(r, 'firstName') or ''} {_g(r, 'lastName') or ''}".strip()
+        rows.append({"transfer_id": f"{season}_{re.sub(r'[^a-z]', '', name.lower())}_{_g(r, 'origin')}", "season": season,
+                     "player_id": None, "player_name": name, "position": _POS_NORM.get(str(_g(r, "position")).upper(), _g(r, "position")),
+                     "from_team_id": _tid(resolver, _g(r, "origin"), set()), "from_team_raw": _g(r, "origin"),
+                     "to_team_id": _tid(resolver, _g(r, "destination"), set()), "to_team_raw": _g(r, "destination"),
+                     "stars": _g(r, "stars"), "rating": _num(_g(r, "rating")), "transfer_rank": None, "eligibility": _g(r, "eligibility"),
+                     "prior_season_usage": None, "prior_season_snaps": None, "prior_production": None, "projected_role": "UNKNOWN",
+                     "announced_at": (_g(r, "transferDate") or "")[:10] or None, "source": "cfbd", "retrieved_at": ts.isoformat()})
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df["transfer_rank"] = df.rating.rank(ascending=False, method="min").astype("Int64")
+    return df
+
+
+def normalize_recruiting_teams(payload, season, resolver, ts: datetime, unmatched) -> pd.DataFrame:
+    rows = []
+    for r in payload:
+        tid = _tid(resolver, _g(r, "team"), unmatched)
+        if tid:
+            rows.append({"team_id": tid, "season": season, "class_rank": _g(r, "rank"), "class_points": _num(_g(r, "points"))})
+    return pd.DataFrame(rows)
+
+
+def normalize_recruits(payload, season, resolver, ts: datetime, unmatched) -> pd.DataFrame:
+    rows = []
+    for r in payload:
+        tid = _tid(resolver, _g(r, "committedTo"), unmatched) if _g(r, "committedTo") else None
+        rows.append({"recruit_id": _g(r, "id"), "season": season, "athlete_id": _g(r, "athleteId"), "name": _g(r, "name"),
+                     "position": _POS_NORM.get(str(_g(r, "position")).upper(), _g(r, "position")), "team_id": tid,
+                     "stars": _g(r, "stars"), "rating": _num(_g(r, "rating")), "ranking": _g(r, "ranking"),
+                     "recruit_type": _g(r, "recruitType"), "source": "cfbd", "retrieved_at": ts.isoformat()})
+    return pd.DataFrame(rows)
+
+
+def class_summary(recruits: pd.DataFrame, teams_class: pd.DataFrame, season: int) -> pd.DataFrame:
+    """recruiting_classes rows: rank/points from /recruiting/teams, star counts and blue-chip ratio from recruits."""
+    hs = recruits[(recruits.recruit_type.fillna("HighSchool") == "HighSchool") & recruits.team_id.notna()]
+    g = hs.groupby("team_id").agg(commits=("recruit_id", "count"), avg_rating=("rating", "mean"),
+                                  five_stars=("stars", lambda s: int((s == 5).sum())), four_stars=("stars", lambda s: int((s == 4).sum())),
+                                  three_stars=("stars", lambda s: int((s == 3).sum())))
+    g["blue_chip_ratio"] = (g.five_stars + g.four_stars) / g.commits.replace(0, pd.NA)
+    g = g.reset_index()
+    out = teams_class.merge(g, on="team_id", how="outer")
+    out["season"] = season
+    return out
+
+
+def normalize_talent(payload, season, resolver, ts: datetime, unmatched) -> pd.DataFrame:
+    rows = []
+    for r in payload:
+        tid = _tid(resolver, _g(r, "team") or _g(r, "school"), unmatched)
+        if tid:
+            rows.append({"team_id": tid, "season": season, "talent_composite": _num(_g(r, "talent")), "source": "cfbd", "retrieved_at": ts.isoformat()})
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df["talent_rank"] = df.talent_composite.rank(ascending=False, method="min").astype("Int64")
+    return df
+
+
+def normalize_usage(payload, season, resolver, ts: datetime, unmatched) -> pd.DataFrame:
+    rows = []
+    for r in payload:
+        tid = _tid(resolver, _g(r, "team"), unmatched)
+        if not tid:
+            continue
+        u = _g(r, "usage") or {}
+        rows.append({"player_id": f"CFB_P_{_g(r, 'id')}", "team_id": tid, "season": season, "player_name": _g(r, "name"),
+                     "position_raw": _g(r, "position"), "position": _POS_NORM.get(str(_g(r, "position")).upper(), None),
+                     "usage_overall": _num(u.get("overall")), "usage_pass": _num(u.get("pass")), "usage_rush": _num(u.get("rush")),
+                     "usage_first_down": _num(u.get("firstDown")), "usage_std_downs": _num(u.get("standardDowns")), "usage_pass_downs": _num(u.get("passingDowns"))})
+    return pd.DataFrame(rows)
+
+
+_STAT_MAP = {("passing", "ATT"): "pass_att", ("passing", "COMPLETIONS"): "pass_cmp", ("passing", "YDS"): "pass_yds", ("passing", "TD"): "pass_td",
+             ("passing", "INT"): "pass_int", ("rushing", "CAR"): "rush_att", ("rushing", "YDS"): "rush_yds", ("rushing", "TD"): "rush_td",
+             ("receiving", "REC"): "receptions", ("receiving", "YDS"): "rec_yds", ("receiving", "TD"): "rec_td",
+             ("defensive", "TOT"): "tackles", ("defensive", "SOLO"): "tackles_solo", ("defensive", "TFL"): "tfl", ("defensive", "SACKS"): "sacks",
+             ("defensive", "PD"): "pbu", ("defensive", "QB HUR"): "qb_hurries", ("interceptions", "INT"): "ints", ("fumbles", "FUM"): "fumbles"}
+
+
+def normalize_player_season_stats(payload, season, resolver, ts: datetime, unmatched) -> pd.DataFrame:
+    rows: dict = {}
+    for r in payload:
+        key = (str(_g(r, "category") or "").lower(), str(_g(r, "statType") or "").upper())
+        col = _STAT_MAP.get(key)
+        if col is None:
+            continue
+        tid = _tid(resolver, _g(r, "team"), unmatched)
+        if not tid:
+            continue
+        pid = f"CFB_P_{_g(r, 'playerId')}"
+        row = rows.setdefault((pid, tid), {"player_id": pid, "team_id": tid, "season": season, "player_name": _g(r, "player"),
+                                            "position_raw": _g(r, "position"), "position": _POS_NORM.get(str(_g(r, "position")).upper(), None)})
+        row[col] = _num(_g(r, "stat"))
+    out = pd.DataFrame(list(rows.values()))
+    if not out.empty:
+        out["source"] = "cfbd"; out["retrieved_at"] = ts.isoformat()
+    return out
+
+
+def normalize_draft_picks(payload, season, resolver, ts: datetime, unmatched) -> pd.DataFrame:
+    rows = []
+    for r in payload:
+        rows.append({"season": season, "round": _g(r, "round"), "pick": _g(r, "pick"), "overall": _g(r, "overall"),
+                     "player_id": f"CFB_P_{_g(r, 'collegeAthleteId')}" if _g(r, "collegeAthleteId") else None,
+                     "team_id": _tid(resolver, _g(r, "collegeTeam"), set()), "college_raw": _g(r, "collegeTeam"),
+                     "nfl_team_raw": _g(r, "nflTeam"), "name": _g(r, "name"), "position": _POS_NORM.get(str(_g(r, "position")).upper(), _g(r, "position")),
+                     "source": "cfbd", "retrieved_at": ts.isoformat()})
+    return pd.DataFrame(rows)

@@ -1,92 +1,47 @@
 """
-Internal identifiers and alias resolution.
-
-  team_id : {LEAGUE}_{ABBR}            e.g. CFB_NEB, NFL_KC
-  game_id : {season}_{LEAGUE}_{W|P}{week:02d}_{AWAY}_{HOME}
-
-Alias resolution is strict: an unknown provider string raises UnmatchedAlias. Callers collect these
-into validation_log and halt the job. Nothing is fuzzy-matched at write time.
+python -m pipeline.jobs.build_matchups --league NFL --season 2025 --weeks 10
+python -m pipeline.jobs.build_matchups --league CFB                      # current + next week
+Writes data/tables/analytics/matchup_edges/{league}/{season}/W{ww}.parquet
 """
 from __future__ import annotations
-import re
-from dataclasses import dataclass, field
-
-import pandas as pd
+import argparse
+import sys
 
 import config
-from pipeline import storage
+from pipeline import matchup_engine, storage
+from pipeline.log import JobRun
 
-ALIASES_PATH = config.TABLES / "ref" / "team_aliases.csv"
-
-
-class UnmatchedAlias(KeyError):
-    pass
+AN = config.TABLES / "analytics"
 
 
-def make_team_id(league: str, abbr: str) -> str:
-    clean = re.sub(r"[^A-Z0-9]", "", abbr.upper())
-    if not clean:
-        raise ValueError(f"empty abbreviation for {league}")
-    return f"{league}_{clean}"
+def main(argv=None):
+    p = argparse.ArgumentParser()
+    p.add_argument("--league", required=True, choices=config.LEAGUES)
+    p.add_argument("--season", type=int, default=config.SEASON)
+    p.add_argument("--weeks", nargs="*", default=None)
+    p.add_argument("--trigger", default="manual")
+    a = p.parse_args(argv)
+    if a.season < config.MIN_ALLOWED_SEASON:
+        sys.exit("season refused")
+    games = storage.read_table(storage.games_path(a.league, a.season))
+    if a.weeks and a.weeks[0] == "all":
+        weeks = sorted(games[games.season_type == "REG"].week.unique().tolist())
+    elif a.weeks:
+        weeks = [int(w) for w in a.weeks]
+    else:
+        sched = games[games.status == "SCHEDULED"]
+        cur = int(sched.week.min()) if not sched.empty else int(games.week.max())
+        weeks = [cur, cur + 1]
+    with JobRun(f"{a.league}_MATCHUPS", a.league, a.trigger) as job:
+        for wk in weeks:
+            df = matchup_engine.build_week(a.league, a.season, wk)
+            if df.empty:
+                print(f"{a.league} {a.season} W{wk}: no metrics for this week (run build_metrics first)"); continue
+            storage.write_parquet(AN / "matchup_edges" / a.league / str(a.season) / f"W{wk:02d}.parquet", df)
+            job.rows_written += len(df)
+            un = df[df.is_unavailable].category.value_counts().to_dict()
+            print(f"{a.league} {a.season} W{wk}: {df.game_id.nunique()} games x {df.category.nunique()} categories; unavailable: {un}")
 
 
-def make_game_id(season: int, league: str, season_type: str, week: int, away_team_id: str, home_team_id: str) -> str:
-    if season < config.MIN_ALLOWED_SEASON:
-        raise ValueError(f"season {season} predates MIN_ALLOWED_SEASON {config.MIN_ALLOWED_SEASON}")
-    if season_type not in ("REG", "POST"):
-        raise ValueError(f"bad season_type {season_type}")
-    prefix = "W" if season_type == "REG" else "P"
-    away = away_team_id.split("_", 1)[1]
-    home = home_team_id.split("_", 1)[1]
-    if away == home:
-        raise ValueError("away and home identical")
-    return f"{season}_{league}_{prefix}{week:02d}_{away}_{home}"
-
-
-def parse_game_id(game_id: str) -> dict:
-    m = re.fullmatch(r"(\d{4})_(CFB|NFL)_([WP])(\d{2})_([A-Z0-9]+)_([A-Z0-9]+)", game_id)
-    if not m:
-        raise ValueError(f"unparseable game_id {game_id}")
-    season, league, wp, week, away, home = m.groups()
-    return {"season": int(season), "league": league, "season_type": "REG" if wp == "W" else "POST",
-            "week": int(week), "away_team_id": f"{league}_{away}", "home_team_id": f"{league}_{home}"}
-
-
-@dataclass
-class AliasResolver:
-    aliases: pd.DataFrame
-    unmatched: list[dict] = field(default_factory=list)
-
-    @classmethod
-    def load(cls) -> "AliasResolver":
-        df = storage.read_table(ALIASES_PATH)
-        if df.empty:
-            df = pd.DataFrame(columns=["provider", "alias", "provider_id", "team_id", "season_from", "season_to"])
-        df["provider_id"] = df["provider_id"].astype("string")
-        return cls(df)
-
-    def resolve(self, provider: str, alias: str | None = None, provider_id: str | int | None = None,
-                season: int | None = None) -> str:
-        d = self.aliases[self.aliases.provider == provider]
-        hit = pd.DataFrame()
-        if provider_id is not None and not d.empty:
-            hit = d[d.provider_id == str(provider_id)]
-        if hit.empty and alias is not None and not d.empty:
-            hit = d[d.alias == alias]
-        if season is not None and not hit.empty:
-            hit = hit[(hit.season_from.isna() | (hit.season_from <= season)) &
-                      (hit.season_to.isna() | (hit.season_to >= season))]
-        if hit.empty:
-            self.unmatched.append({"provider": provider, "alias": alias, "provider_id": provider_id, "season": season})
-            raise UnmatchedAlias(f"{provider}: no alias for {alias!r} / id {provider_id!r}")
-        if hit.team_id.nunique() > 1:
-            raise UnmatchedAlias(f"{provider}: alias {alias!r} maps to multiple team_ids {hit.team_id.unique().tolist()}")
-        return str(hit.team_id.iloc[0])
-
-    def add(self, rows: list[dict]) -> None:
-        new = pd.DataFrame(rows)
-        self.aliases = pd.concat([self.aliases, new], ignore_index=True).drop_duplicates(["provider", "alias"])
-
-    def save(self) -> None:
-        ALIASES_PATH.parent.mkdir(parents=True, exist_ok=True)
-        self.aliases.sort_values(["provider", "team_id", "alias"]).to_csv(ALIASES_PATH, index=False)
+if __name__ == "__main__":
+    main()

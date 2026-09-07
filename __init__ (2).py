@@ -1,135 +1,163 @@
 """
-CFBD context adapter (CFB): roster, rankings, coaches, venues. One call each.
+python -m pipeline.jobs.ingest_schedules --league NFL --season 2026
+python -m pipeline.jobs.ingest_schedules --league CFB --season 2026 --weeks 1 2 3 4 5
+python -m pipeline.jobs.ingest_schedules --league NFL --season 2021   (backfill; also writes results + closing lines)
 
-  GET /roster?year               all FBS rosters (if the API requires a team param it returns 400; the job then
-                                 falls back to one call per FBS team -> 138 calls, once per season)
-  GET /rankings?year&week        AP / Coaches / CFP polls for that week (true as-of history)
-  GET /coaches?year              head coaches with season records
-  GET /venues                    lat/long/timezone/dome for every venue CFBD knows
+Steps per provider (Phase 4 contract): Connect -> Fetch -> Normalize -> Validate -> Store -> Log -> Test
 """
 from __future__ import annotations
-from datetime import datetime
+import argparse
+import sys
 
 import pandas as pd
 
-from pipeline import ids
-from providers.base import RequestManager
-from providers.cfbd import BASE, _headers, _g
+import config
+from pipeline import ids, storage, validate
+from pipeline.log import JobRun, ValidationLog
+from providers import cfbd, nflverse
+from providers.base import RequestManager, BudgetExceeded, ProviderError
 
-_POS_NORM = {"QB": "QB", "RB": "RB", "FB": "RB", "WR": "WR", "TE": "TE", "OL": "OL", "OT": "OL", "OG": "OL", "C": "OL", "G": "OL",
-             "T": "OL", "DL": "DL", "DT": "DL", "NT": "DL", "DE": "EDGE", "EDGE": "EDGE", "OLB": "LB", "LB": "LB", "ILB": "LB",
-             "MLB": "LB", "CB": "CB", "DB": "CB", "S": "S", "SAF": "S", "FS": "S", "SS": "S", "PK": "K", "K": "K", "P": "P", "LS": "LS"}
-_YEAR_CODE = {1: "FR", 2: "SO", 3: "JR", 4: "SR", 5: "GR"}   # CFBD roster.year integer code; labeled cfbd_year_code in output
-_POLL = {"AP Top 25": "AP", "Coaches Poll": "COACHES", "Playoff Committee Rankings": "CFP", "AFCA Division I Coaches Poll": "COACHES"}
-
-
-def fetch_roster(rm: RequestManager, season: int, team: str | None = None):
-    params = {"year": season}
-    if team:
-        params["team"] = team
-    return rm.get(f"{BASE}/roster", params=params, headers=_headers())
+TEAMS_PATH = config.TABLES / "ref" / "teams.parquet"
+RESULTS_DIR = config.TABLES / "results"
+CLOSING_DIR = config.TABLES / "market" / "closing_lines"
 
 
-def fetch_rankings(rm: RequestManager, season: int, week: int, season_type="regular"):
-    return rm.get(f"{BASE}/rankings", params={"year": season, "week": week, "seasonType": season_type}, headers=_headers())
+def _merge_teams(new: pd.DataFrame) -> None:
+    cur = storage.read_table(TEAMS_PATH)
+    if not cur.empty:
+        cur = cur[~cur.team_id.isin(new.team_id)]
+    storage.write_parquet(TEAMS_PATH, pd.concat([cur, new], ignore_index=True).sort_values("team_id"))
 
 
-def fetch_coaches(rm: RequestManager, season: int):
-    return rm.get(f"{BASE}/coaches", params={"year": season}, headers=_headers())
+def seed_nfl(rm: RequestManager, resolver: ids.AliasResolver) -> int:
+    raw = nflverse.fetch_teams(rm)
+    teams, aliases = nflverse.normalize_teams(raw)
+    _merge_teams(teams)
+    resolver.add(aliases)
+    resolver.save()
+    return len(teams)
 
 
-def fetch_venues(rm: RequestManager):
-    return rm.get(f"{BASE}/venues", headers=_headers())
+def seed_cfb(rm: RequestManager, resolver: ids.AliasResolver, season: int, job: JobRun) -> int:
+    res = cfbd.fetch_teams_fbs(rm, season)
+    teams, aliases, warnings = cfbd.normalize_teams(res.payload, res.retrieved_at)
+    for w in warnings:
+        print("WARN", w)
+    job.message += " ".join(warnings)[:300]
+    _merge_teams(teams)
+    resolver.add(aliases)
+    resolver.save()
+    return len(teams)
 
 
-def normalize_roster(payload: list[dict], season: int, week: int, resolver: ids.AliasResolver, retrieved_at: datetime,
-                     prior: pd.DataFrame | None, unmatched: set[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Returns (roster_snapshot rows, players rows). Non-FBS teams in the payload are skipped."""
-    ts = retrieved_at.isoformat()
-    prior_map: dict[str, str] = {}
-    if prior is not None and not prior.empty:
-        last = prior[prior.week == prior.week.max()]
-        prior_map = dict(zip(last.player_id, last.team_id))
-    ros, players = [], []
-    for p in payload:
-        team = _g(p, "team")
+def run_nfl(season: int, job: JobRun) -> None:
+    rm = RequestManager("nflverse", job.job_run_id)
+    resolver = ids.AliasResolver.load()
+    if resolver.aliases[resolver.aliases.provider == "nflverse"].empty:
+        n = seed_nfl(rm, resolver)
+        print(f"seeded {n} NFL teams")
+    raw = nflverse.fetch_schedules(rm)
+    games, closes = nflverse.normalize_schedules(raw, season, resolver)
+    vlog = ValidationLog(job.job_run_id, "games")
+    games = validate.validate_games(games, "NFL", season, vlog)
+    vlog.flush()
+    if vlog.rejects:
+        job.status = "PARTIAL"
+        job.message += f" {vlog.rejects} game rows rejected;"
+    r = storage.upsert_games("NFL", season, games)
+    for w in r["warnings"]:
+        print("WARN", w)
+    job.rows_written += r["inserted"] + r["updated"]
+    if not closes.empty:
+        storage.write_parquet(CLOSING_DIR / "NFL" / f"{season}.parquet", closes)
+        job.rows_written += len(closes)
+    results = nflverse.normalize_results(raw, season, resolver)
+    if not results.empty:
+        n = storage.append_csv(RESULTS_DIR / "NFL" / f"{season}.csv", results, key_cols=["game_id"], on_duplicate="skip")
+        job.rows_written += n
+    job.api_calls = rm.calls_this_run
+    print(f"NFL {season}: games inserted={r['inserted']} updated={r['updated']} closes={len(closes)} results={len(results)}")
+
+
+def run_cfb(season: int, weeks: list[int], season_type: str, job: JobRun, force: bool = False) -> None:
+    rm = RequestManager("cfbd", job.job_run_id, enforce_daily=(job.trigger == "backfill"))
+    resolver = ids.AliasResolver.load()
+    if resolver.aliases[resolver.aliases.provider == "cfbd"].empty:
+        n = seed_cfb(rm, resolver, season, job)
+        print(f"seeded {n} FBS teams")
+    vlog = ValidationLog(job.job_run_id, "games")
+    total_ins = total_upd = 0
+    existing = storage.read_table(storage.games_path("CFB", season))
+    st_code = "REG" if season_type == "regular" else "POST"
+    for wk in weeks:
+        if not force and not existing.empty and "week" in existing.columns:
+            have = existing[(existing.week == wk) & (existing.season_type == st_code)]
+            if len(have) and (have.status == "FINAL").all() and season < config.SEASON:
+                print(f"CFB {season} W{wk}: already loaded and final; skipping (use --force to refetch)")
+                continue
         try:
-            tid = resolver.resolve("cfbd", alias=team)
-        except ids.UnmatchedAlias:
-            resolver.unmatched.pop(); unmatched.add(str(team)); continue
-        pid = f"CFB_P_{_g(p, 'id')}"
-        yr = _g(p, "year")
-        prior_team = prior_map.get(pid)
-        arrival = None
-        if prior_map:
-            arrival = "RETURNING" if prior_team == tid else ("TRANSFER" if prior_team else ("FRESHMAN" if yr in (1, None) else "TRANSFER"))
-        ros.append({
-            "team_id": tid, "season": season, "week": week, "player_id": pid,
-            "position": _POS_NORM.get(str(_g(p, "position")).upper(), None), "jersey": _g(p, "jersey"),
-            "class_year": _YEAR_CODE.get(yr) if isinstance(yr, int) else None, "years_exp": yr if isinstance(yr, int) else None,
-            "status": "ACT", "is_new_to_team": (prior_team != tid) if prior_map else None, "arrival_type": arrival,
-            "prior_team_id": prior_team, "source": "cfbd", "retrieved_at": ts,
-        })
-        players.append({
-            "player_id": pid, "league": "CFB", "full_name": f"{_g(p, 'firstName') or ''} {_g(p, 'lastName') or ''}".strip(),
-            "position": _POS_NORM.get(str(_g(p, "position")).upper(), None), "position_raw": _g(p, "position"),
-            "birth_date": None, "height_in": _g(p, "height"), "weight_lb": _g(p, "weight"),
-            "draft_year": None, "draft_round": None, "draft_pick": None,
-            "recruit_stars": None, "recruit_rating": None, "recruit_rank_natl": None, "source": "cfbd", "retrieved_at": ts,
-        })
-    return pd.DataFrame(ros), pd.DataFrame(players)
+            res = cfbd.fetch_games(rm, season, wk, season_type)
+        except BudgetExceeded as e:
+            job.status = "PARTIAL"; job.message += f" budget stop at week {wk}: {e};"
+            break
+        if wk == weeks[0] and "--verify" in sys.argv:
+            for line in cfbd.verify_first_pull(res.payload, []):
+                print("VERIFY", line)
+        try:
+            games = cfbd.normalize_games(res.payload, season, resolver, res.retrieved_at)
+        except ids.UnmatchedAlias as e:
+            for u in resolver.unmatched:
+                vlog.reject("ALIAS_UNMATCHED", f"{season}_W{wk}", "team", u["alias"], "team_aliases row")
+            vlog.flush()
+            raise
+        games = validate.validate_games(games, "CFB", season, vlog)
+        if games.empty:
+            print(f"CFB {season} W{wk} ({season_type}): provider returned no games"); continue
+        r = storage.upsert_games("CFB", season, games)
+        for w in r["warnings"]:
+            print("WARN", w)
+        total_ins += r["inserted"]; total_upd += r["updated"]
+        # results for completed games
+        done = [g for g in res.payload if g.get("completed") and g.get("homePoints") is not None]
+        if done:
+            gid_map = {int(x["provider_game_ids"].split(":")[1].strip("}")): x["game_id"] for x in games.to_dict("records")}
+            rows = []
+            for g in done:
+                gid = gid_map.get(g["id"])
+                if gid:
+                    rows.append({"game_id": gid, "away_score": int(g["awayPoints"]), "home_score": int(g["homePoints"]),
+                                 "margin_home": int(g["homePoints"] - g["awayPoints"]), "total": int(g["homePoints"] + g["awayPoints"]),
+                                 "went_overtime": None, "q_scores": None, "attendance": g.get("attendance"),
+                                 "source": "cfbd", "retrieved_at": res.retrieved_at.isoformat(), "effective_at": g.get("startDate")})
+            if rows:
+                job.rows_written += storage.append_csv(RESULTS_DIR / "CFB" / f"{season}.csv", pd.DataFrame(rows), ["game_id"], "skip")
+    vlog.flush()
+    if vlog.rejects:
+        job.status = "PARTIAL"; job.message += f" {vlog.rejects} rows rejected;"
+    job.rows_written += total_ins + total_upd
+    job.api_calls = rm.calls_this_run
+    print(f"CFB {season} weeks {weeks}: inserted={total_ins} updated={total_upd} calls={rm.calls_this_run} remaining_month={rm.remaining_monthly()}")
 
 
-def normalize_rankings(payload: list[dict], resolver: ids.AliasResolver, retrieved_at: datetime, unmatched: set[str]) -> pd.DataFrame:
-    rows = []
-    for wk in payload:
-        season, week = _g(wk, "season"), _g(wk, "week")
-        for poll in (_g(wk, "polls") or []):
-            code = _POLL.get(_g(poll, "poll"))
-            if code is None:
-                continue
-            for r in (_g(poll, "ranks") or []):
-                try:
-                    tid = resolver.resolve("cfbd", alias=_g(r, "school"))
-                except ids.UnmatchedAlias:
-                    resolver.unmatched.pop(); unmatched.add(str(_g(r, "school"))); continue
-                rows.append({"season": season, "week": week, "poll": code, "team_id": tid, "rank": _g(r, "rank"),
-                             "points": _g(r, "points"), "first_place_votes": _g(r, "firstPlaceVotes"),
-                             "source": "cfbd", "retrieved_at": retrieved_at.isoformat(), "effective_at": retrieved_at.isoformat()})
-    return pd.DataFrame(rows)
+def main(argv=None):
+    p = argparse.ArgumentParser()
+    p.add_argument("--league", required=True, choices=config.LEAGUES)
+    p.add_argument("--season", type=int, default=config.SEASON)
+    p.add_argument("--weeks", type=int, nargs="*", help="CFB only; default = current week +/- 1")
+    p.add_argument("--season-type", default="regular", choices=["regular", "postseason"])
+    p.add_argument("--trigger", default="manual")
+    p.add_argument("--verify", action="store_true", help="print first-pull field checklist (CFB)")
+    p.add_argument("--force", action="store_true", help="refetch weeks that are already loaded and final")
+    a = p.parse_args(argv)
+    if a.season < config.MIN_ALLOWED_SEASON:
+        sys.exit(f"season {a.season} is before MIN_ALLOWED_SEASON {config.MIN_ALLOWED_SEASON}; refusing")
+    with JobRun(f"{a.league}_SCHEDULES", a.league, a.trigger) as job:
+        if a.league == "NFL":
+            run_nfl(a.season, job)
+        else:
+            weeks = a.weeks or list(range(1, 16))   # CFBD has no week 0 (late-August games are its week 1)
+            run_cfb(a.season, weeks, a.season_type, job, a.force)
 
 
-def normalize_coaches(payload: list[dict], season: int, resolver: ids.AliasResolver, retrieved_at: datetime, unmatched: set[str]) -> pd.DataFrame:
-    rows = []
-    for c in payload:
-        name = f"{_g(c, 'firstName') or ''} {_g(c, 'lastName') or ''}".strip()
-        for s in (_g(c, "seasons") or []):
-            if _g(s, "year") != season:
-                continue
-            try:
-                tid = resolver.resolve("cfbd", alias=_g(s, "school"))
-            except ids.UnmatchedAlias:
-                resolver.unmatched.pop(); unmatched.add(str(_g(s, "school"))); continue
-            rows.append({"team_id": tid, "season": season, "role": "HC", "coach_name": name,
-                         "coach_id": name.lower().replace(" ", "_").replace(".", ""),
-                         "effective_from": f"{season}-01-01", "effective_to": None, "is_first_season_in_role": None,
-                         "source": "cfbd", "entered_by": None, "retrieved_at": retrieved_at.isoformat(),
-                         "games": _g(s, "games"), "wins": _g(s, "wins"), "losses": _g(s, "losses")})
-    df = pd.DataFrame(rows)
-    if not df.empty:
-        # a team with two HC rows in one season (mid-season change) keeps both; flag for manual effective dates
-        df["needs_manual_dates"] = df.groupby("team_id").team_id.transform("count") > 1
-    return df
-
-
-def normalize_venues(payload: list[dict], retrieved_at: datetime) -> pd.DataFrame:
-    rows = []
-    for v in payload:
-        rows.append({
-            "venue_id": f"V_CFBD_{_g(v, 'id')}", "name": _g(v, "name"), "city": _g(v, "city"), "state": _g(v, "state"),
-            "country": _g(v, "countryCode") or "US", "latitude": _g(v, "latitude"), "longitude": _g(v, "longitude"),
-            "elevation_m": _g(v, "elevation"), "timezone": _g(v, "timezone"), "capacity": _g(v, "capacity"),
-            "roof": "dome" if _g(v, "dome") else "outdoors", "surface": "grass" if _g(v, "grass") else ("turf" if _g(v, "grass") is False else None),
-            "source": "cfbd", "retrieved_at": retrieved_at.isoformat(),
-        })
-    return pd.DataFrame(rows)
+if __name__ == "__main__":
+    main()

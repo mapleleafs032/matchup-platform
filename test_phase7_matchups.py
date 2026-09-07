@@ -1,63 +1,110 @@
 """
-Open-Meteo adapter. Free, no key. Forecast up to 16 days hourly; archive for completed games (backtest).
+Opponent adjustment (§18) via ridge regression, fit strictly on games with effective_at < cutoff.
 
-  forecast: https://api.open-meteo.com/v1/forecast
-  archive : https://archive-api.open-meteo.com/v1/archive
-Units requested: Fahrenheit, mph, inches, UTC hourly timestamps.
+For each adjusted metric m (per team-game, offense perspective):
+    m_ig = intercept + off_effect[team] + def_effect[opponent] + hfa * is_home + e
+Solved jointly as one least-squares system with an L2 penalty (ridge) so early-season teams with few
+games are shrunk toward average instead of exploding. Same treatment for both leagues; lambda is
+league-specific in config and will be tuned in the backtest.
 
-A game's weather row = the hourly values at the kickoff hour (UTC, floored). Indoor venues (dome, or a
-retractable roof recorded as closed) get an is_indoor=True row with all weather fields NULL, by rule.
-Retractable roofs with unknown status are fetched and flagged roof_status_unknown=True.
+Outputs, per team: off_effect (points/EPA above average offense), def_effect (below-average means better
+defense for *allowed* metrics; we store def_effect with the sign convention "positive = good defense"),
+and the intercept. Ratings on the margin scale (points) come from adjusting points_for / points_against.
 """
 from __future__ import annotations
-from datetime import datetime
 
+import numpy as np
 import pandas as pd
 
-from providers.base import RequestManager
+import config
 
-FORECAST = "https://api.open-meteo.com/v1/forecast"
-ARCHIVE = "https://archive-api.open-meteo.com/v1/archive"
-HOURLY = "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code"
-HOURLY_ARCHIVE = HOURLY.replace("precipitation_probability,", "")
-UNITS = {"temperature_unit": "fahrenheit", "wind_speed_unit": "mph", "precipitation_unit": "inch", "timezone": "UTC"}
-
-INDOOR_ROOFS = {"dome", "retractable_closed"}
+ADJUSTED_METRICS = ["off_ppa_play", "off_success_rate", "off_explosiveness", "off_ppa_pass", "off_ppa_rush",
+                    "yards_per_play_off", "points"]
 
 
-def fetch_forecast(rm: RequestManager, lat: float, lon: float, days: int = 16):
-    return rm.get(FORECAST, params={"latitude": lat, "longitude": lon, "hourly": HOURLY, "forecast_days": days, **UNITS})
+def fit_ridge(tg: pd.DataFrame, metric: str, lam: float) -> dict:
+    """
+    tg: team-game rows (one per team per game, offense perspective) with columns
+        team_id, opponent_id, is_home, <metric>, weight (FCS down-weight), and neutral_site.
+    Returns {"intercept", "hfa", "off": {team: effect}, "def": {team: effect}} where def effect is on the
+    'allowed' scale (negative = opponent produces less against you = good defense).
+    """
+    d = tg[tg[metric].notna()].copy()
+    if len(d) < 10:
+        return {"intercept": None, "hfa": None, "off": {}, "def": {}, "n": len(d)}
+    teams = sorted(set(d.team_id) | set(d.opponent_id))
+    idx = {t: i for i, t in enumerate(teams)}
+    n, k = len(d), len(teams)
+    X = np.zeros((n, 2 * k + 1))
+    for r, (t, o, h, neu) in enumerate(zip(d.team_id, d.opponent_id, d.is_home, d.neutral_site)):
+        X[r, idx[t]] = 1.0
+        X[r, k + idx[o]] = 1.0
+        X[r, 2 * k] = 0.0 if neu else (1.0 if h else -1.0)
+    y = d[metric].astype(float).to_numpy()
+    w = d.weight.astype(float).to_numpy() if "weight" in d else np.ones(n)
+    mu = np.average(y, weights=w)
+    yc = y - mu
+    sw = np.sqrt(w)[:, None]
+    Xw, yw = X * sw, yc * sw[:, 0]
+    # ridge: penalize team effects, not the HFA term (small penalty for stability)
+    pen = np.full(2 * k + 1, lam); pen[-1] = lam * 0.1
+    A = Xw.T @ Xw + np.diag(pen)
+    b = Xw.T @ yw
+    beta = np.linalg.solve(A, b)
+    off = {t: float(beta[idx[t]]) for t in teams}
+    deff = {t: float(beta[k + idx[t]]) for t in teams}
+    return {"intercept": float(mu), "hfa": float(beta[-1]), "off": off, "def": deff, "n": n}
 
 
-def fetch_archive(rm: RequestManager, lat: float, lon: float, day: str):
-    return rm.get(ARCHIVE, params={"latitude": lat, "longitude": lon, "hourly": HOURLY_ARCHIVE, "start_date": day, "end_date": day, **UNITS})
+def build_ratings(tg_all: pd.DataFrame, league: str, season: int, as_of_week: int, cutoff: pd.Timestamp) -> tuple[pd.DataFrame, dict]:
+    """
+    Returns (team_ratings rows for as_of_week, fitted effects by metric) using only rows with
+    effective_at < cutoff. Ratings are on the points scale from the 'points' fit.
+    """
+    d = tg_all[pd.to_datetime(tg_all.effective_at, utc=True) < cutoff]
+    lam = config.RIDGE_LAMBDA[league]
+    fits = {m: fit_ridge(d, m, lam) for m in ADJUSTED_METRICS if m in d.columns}
+    pts = fits.get("points", {})
+    if not pts.get("off"):
+        return pd.DataFrame(), fits
+    # HFA: fitted value is meaningless with few games (one game per team gave +10 pts in CFB week 2); shrink toward the league prior
+    k = config.HFA_SHRINK_GAMES[league]
+    n_fit = pts.get("n", 0)
+    hfa_used = (n_fit * pts["hfa"] + k * config.HFA_DEFAULT_POINTS[league]) / (n_fit + k)
+    rows = []
+    teams = sorted(pts["off"].keys())
+    for t in teams:
+        off_pts = pts["off"][t]
+        def_pts = -pts["def"][t]            # positive = allows fewer points than average
+        rows.append({"team_id": t, "season": season, "as_of_week": as_of_week, "rating_overall": off_pts + def_pts,
+                     "rating_off": off_pts, "rating_def": def_pts,
+                     "rating_pass_off": fits.get("off_ppa_pass", {}).get("off", {}).get(t),
+                     "rating_pass_def": -fits.get("off_ppa_pass", {}).get("def", {}).get(t, 0.0) if fits.get("off_ppa_pass", {}).get("def") else None,
+                     "rating_rush_off": fits.get("off_ppa_rush", {}).get("off", {}).get(t),
+                     "rating_rush_def": -fits.get("off_ppa_rush", {}).get("def", {}).get(t, 0.0) if fits.get("off_ppa_rush", {}).get("def") else None,
+                     "rating_st": None, "sos": None, "sos_rank": None, "hfa_team": None,
+                     "hfa_league": hfa_used, "hfa_fitted_raw": pts["hfa"], "games_in_fit": int((d.team_id == t).sum()),
+                     "method": "ridge_v1", "build_version": config.PIPELINE_VERSION, "built_at": pd.Timestamp.now(tz="UTC").isoformat()})
+    out = pd.DataFrame(rows)
+    # strength of schedule: mean opponent overall rating faced so far (as-of), rank descending
+    rating_map = dict(zip(out.team_id, out.rating_overall))
+    sos = d.groupby("team_id").opponent_id.apply(lambda s: float(np.mean([rating_map.get(o, 0.0) for o in s])))
+    out["sos"] = out.team_id.map(sos)
+    out["sos_rank"] = out.sos.rank(ascending=False, method="min").astype("Int64")
+    return out, fits
 
 
-def pick_hour(payload: dict, kickoff_utc: pd.Timestamp) -> dict | None:
-    """Return the hourly record at the kickoff hour, or None if not covered."""
-    h = payload.get("hourly") or {}
-    times = h.get("time") or []
-    key = kickoff_utc.floor("h").strftime("%Y-%m-%dT%H:%M")
-    if key not in times:
-        return None
-    i = times.index(key)
-
-    def v(name):
-        arr = h.get(name)
-        return arr[i] if arr and i < len(arr) else None
-
-    return {"temp_f": v("temperature_2m"), "feels_like_f": v("apparent_temperature"), "humidity_pct": v("relative_humidity_2m"),
-            "precip_prob": (v("precipitation_probability") / 100.0) if v("precipitation_probability") is not None else None,
-            "precip_in": v("precipitation"), "wind_mph": v("wind_speed_10m"), "wind_gust_mph": v("wind_gusts_10m"),
-            "wind_dir_deg": v("wind_direction_10m"), "condition_code": v("weather_code")}
-
-
-def snapshot_row(game_id: str, kickoff_utc: pd.Timestamp, roof: str | None, values: dict | None, retrieved_at: datetime) -> dict:
-    indoor = roof in INDOOR_ROOFS
-    base = {"game_id": game_id, "retrieved_at": retrieved_at.isoformat(), "forecast_for_utc": kickoff_utc.isoformat(),
-            "hours_to_kickoff": round((kickoff_utc - pd.Timestamp(retrieved_at)).total_seconds() / 3600, 1),
-            "is_indoor": indoor, "roof_status_unknown": roof == "retractable", "source": "open_meteo"}
-    empty = {k: None for k in ("temp_f", "feels_like_f", "wind_mph", "wind_gust_mph", "wind_dir_deg", "precip_prob", "precip_in", "humidity_pct", "condition_code")}
-    if indoor or values is None:
-        return {**base, **empty}
-    return {**base, **empty, **values}
+def adjust_game_values(tg: pd.DataFrame, fits: dict) -> pd.DataFrame:
+    """
+    Opponent-adjust per-game offense metrics: value - def_effect[opponent] - hfa_term.
+    Returns a copy with '<metric>_adj' columns. Metrics without a fit are left NULL.
+    """
+    out = tg.copy()
+    for m, f in fits.items():
+        if not f.get("def"):
+            out[f"{m}_adj"] = None
+            continue
+        hfa = f["hfa"] or 0.0
+        h_term = np.where(out.neutral_site, 0.0, np.where(out.is_home, hfa, -hfa))
+        out[f"{m}_adj"] = out[m].astype(float) - out.opponent_id.map(f["def"]).fillna(0.0) - h_term
+    return out

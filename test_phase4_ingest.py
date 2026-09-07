@@ -1,248 +1,338 @@
 """
-nflverse play-by-play / charting adapter (NFL). Extends providers/nflverse.py (schedules).
+As-of team metrics (Phase 3 §5). ONE function builds metrics for production and for backtesting:
 
-Sources (GitHub release assets, free):
-  pbp/play_by_play_{season}.parquet            nflfastR play-by-play, 372 cols, revised in-season
-  ftn_charting/ftn_charting_{season}.parquet   FTN charting 2022+, joined on nflverse_play_id (CC-BY-SA, attribute in UI)
-  pfr_advstats/advstats_week_pass_{season}     per QB per week: times_pressured, blitzed, hurried, hit (PFR)
-  pfr_advstats/advstats_week_def_{season}      per defender per week: def_pressures, def_sacks, ...
+    build_week(league, season, week) ->
+        team_metrics_asof rows for every team playing that week, every window, RAW and OPP_ADJ
+        team_ratings rows for that week
 
-Normalization decisions:
-  * Slim play table follows Phase 3 `plays`. play_type: pass->PASS (sack->SACK), run->RUSH, qb_kneel->KNEEL,
-    qb_spike->SPIKE, no_play->PENALTY, kickoff/punt/field_goal/extra_point kept by name.
-  * Scrambles are play_type=RUSH with is_dropback=True (nflfastR qb_scramble). Metric engine treats them as dropbacks.
-  * garbage time: pre-snap vegas_wp outside config.NFL_GARBAGE_WP_BAND.
-  * success: nflfastR `success` (EPA > 0).
-  * drives: nflfastR fixed_drive; points = posteam_score_post at last play of the drive minus posteam_score at first play.
-    Defensive TDs against the offense are not credited to the offense (points can be negative -> clipped to 0).
-  * effective_at for every row = the game's kickoff date (+4h) so the as-of builder can use it.
+Look-ahead protection is structural:
+  * every team-game row carries effective_at (game end); a window only sees rows with effective_at < cutoff
+  * cutoff for raw windows  = that game's kickoff_utc
+  * cutoff for the ridge fit = the earliest kickoff of the week (so a Thursday result never adjusts Saturday's
+    opponents in the same week; conservative by design, documented in the row as ratings_cutoff)
+  * the previous season's prior is computed with cutoff = season end and is never re-fit with current data
+
+Windows: SEASON LAST3 LAST5 HOME AWAY CONF NONCONF DAY NIGHT FAV DOG VS_RANKED BLEND
+BLEND = config.RECENCY_WEIGHTS mix of SEASON / LAST5 / LAST3 (metric by metric; NULL if any part NULL).
+Early season: SEASON and BLEND are blended with the prior-season OPP_ADJ SEASON values using
+config.PRIOR_WEIGHT_BY_WEEK[league]; prior_blend_weight is stored on the row.
 """
 from __future__ import annotations
-import io
-from datetime import timedelta
+import json
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
 
 import config
-from pipeline import ids
-from providers.base import RequestManager
+from pipeline import storage, ratings
+from pipeline.metric_registry import REGISTRY
 
-_PLAY_TYPE = {"pass": "PASS", "run": "RUSH", "qb_kneel": "KNEEL", "qb_spike": "SPIKE", "no_play": "PENALTY",
-              "kickoff": "KICKOFF", "punt": "PUNT", "field_goal": "FG", "extra_point": "XP"}
-_DRIVE_RESULT = {"Touchdown": "TD", "Field goal": "FG", "Missed field goal": "MISSED_FG", "Punt": "PUNT",
-                 "Turnover": "TURNOVER", "Turnover on downs": "DOWNS", "End of half": "END_HALF",
-                 "Opp touchdown": "TURNOVER", "Safety": "SAFETY"}
+STATS = config.TABLES / "stats"
+WINDOWS = ["SEASON", "LAST3", "LAST5", "HOME", "AWAY", "CONF", "NONCONF", "DAY", "NIGHT", "FAV", "DOG", "VS_RANKED", "BLEND"]
+_D_COLS = ["total_yards", "plays", "rush_yds", "rush_att", "pass_yds", "pass_att", "dropbacks", "third_down_conv", "third_down_att",
+           "fourth_down_conv", "fourth_down_att", "sacks_taken", "turnovers"]
 
 
-def fetch_asset(rm: RequestManager, asset: str, season: int) -> pd.DataFrame | None:
-    """Returns None (not an error) when the season file does not exist yet (e.g., before Week 1)."""
-    from providers.base import ProviderError
-    url = config.NFLVERSE_ASSETS[asset].format(season=season)
-    try:
-        res = rm.get(url, raw_bytes=True, timeout=120)
-    except ProviderError as e:
-        if "404" in str(e):
+# ---- 1. assemble team-game rows -------------------------------------------------------
+def load_team_games(league: str, season: int) -> pd.DataFrame:
+    box = storage.read_table(STATS / "team_game_stats" / league / f"{season}.parquet")
+    adv = storage.read_table(STATS / "team_game_advanced" / league / f"{season}.parquet")
+    games = storage.read_table(storage.games_path(league, season))
+    if box.empty or adv.empty or games.empty:
+        return pd.DataFrame()
+    adv = adv[adv.is_garbage_filtered == config.USE_GARBAGE_FILTERED].drop(columns=["is_garbage_filtered", "source", "retrieved_at", "effective_at", "opponent_id"], errors="ignore")
+    # opponent's box columns as d_*
+    opp = box[["game_id", "team_id"] + _D_COLS].rename(columns={"team_id": "opponent_id", **{c: f"d_{c}" for c in _D_COLS}})
+    tg = box.merge(opp, on=["game_id", "opponent_id"], how="left").merge(adv, on=["game_id", "team_id"], how="left")
+    g = games[["game_id", "week", "season_type", "kickoff_utc", "neutral_site", "conference_game", "is_fcs_game", "venue_id", "home_team_id"]]
+    tg = tg.merge(g, on="game_id", how="inner")
+    tg["kickoff_utc"] = pd.to_datetime(tg.kickoff_utc, utc=True)
+    tg["effective_at"] = pd.to_datetime(tg.effective_at, utc=True)
+    tg["neutral_site"] = tg.neutral_site.fillna(False).astype(bool)
+    tg["is_fcs_game"] = tg.is_fcs_game.fillna(False).astype(bool)
+    tg["weight"] = np.where(tg.is_fcs_game, config.FCS_GAME_WEIGHT, 1.0)
+    # derived per-game values
+    tg["scoring_margin"] = tg.points - tg.points_allowed
+    tg["points_per_game"] = tg.points; tg["points_allowed_per_game"] = tg.points_allowed
+    ypp_o = tg.total_yards / tg.plays.replace(0, np.nan); ypp_d = tg.d_total_yards / tg.d_plays.replace(0, np.nan)
+    tg["net_yards_per_play"] = ypp_o - ypp_d
+    tg["rush_yds_per_game"] = tg.rush_yds; tg["opp_rush_yds_per_game"] = tg.d_rush_yds
+    tg["pass_yds_per_game"] = tg.pass_yds; tg["opp_pass_yds_per_game"] = tg.d_pass_yds
+    tg["turnover_margin"] = tg.takeaways - tg.turnovers
+    tg["giveaways_per_game"] = tg.turnovers; tg["takeaways_per_game"] = tg.takeaways
+    tg["plays_per_game"] = tg.plays
+    tg["yards_per_play_off"] = ypp_o
+    # local kickoff hour -> DAY/NIGHT
+    venues = storage.read_table(config.TABLES / "ref" / "venues.parquet")
+    tz = dict(zip(venues.venue_id, venues.timezone)) if not venues.empty else {}
+    def local_hour(row):
+        if pd.isna(row.kickoff_utc):
             return None
-        raise
-    df = pd.read_parquet(io.BytesIO(res.payload))
-    df.attrs["raw_id"] = res.raw_id
-    df.attrs["retrieved_at"] = res.retrieved_at
-    return df
-
-
-def _game_map(games: pd.DataFrame) -> dict[str, dict]:
-    """nflverse game_id -> our game row (via provider_game_ids json)."""
-    out = {}
-    for _, g in games.iterrows():
+        z = tz.get(row.venue_id) or ("America/New_York" if league == "NFL" else "America/Chicago")
         try:
-            nv = str(g.provider_game_ids).split('"nflverse":"')[1].split('"')[0]
-        except IndexError:
+            return row.kickoff_utc.astimezone(ZoneInfo(z)).hour
+        except Exception:
+            return None
+    tg["local_hour"] = tg.apply(local_hour, axis=1)
+    tg["is_night"] = tg.local_hour.map(lambda h: None if h is None else h >= config.NIGHT_GAME_LOCAL_HOUR)
+    tg = _attach_favorite(tg, league, season)
+    tg = _attach_opp_ranked(tg, league, season)
+    return tg.sort_values(["team_id", "kickoff_utc"]).reset_index(drop=True)
+
+
+def _attach_favorite(tg: pd.DataFrame, league: str, season: int) -> pd.DataFrame:
+    """is_favorite from the closing line (NFL backfill) or the last market snapshot before kickoff."""
+    tg["is_favorite"] = None
+    cl = storage.read_table(config.TABLES / "market" / "closing_lines" / league / f"{season}.parquet")
+    spread = {}
+    if not cl.empty:
+        spread.update(dict(zip(cl.game_id, cl.spread_home)))
+    snap_dir = config.TABLES / "market" / "snapshots" / league / str(season)
+    if snap_dir.exists():
+        parts = [pd.read_csv(p) for p in sorted(snap_dir.glob("*.csv"))]
+        if parts:
+            s = pd.concat(parts, ignore_index=True)
+            s = s[s.spread_home.notna()]
+            s["retrieved_at"] = pd.to_datetime(s.retrieved_at, utc=True)
+            kick = tg.drop_duplicates("game_id").set_index("game_id").kickoff_utc
+            s = s[s.game_id.map(kick).notna()]
+            s = s[s.retrieved_at < s.game_id.map(kick)]
+            for gid, grp in s.groupby("game_id"):
+                if gid not in spread:
+                    last = grp.sort_values("retrieved_at").iloc[-1]
+                    spread[gid] = last.spread_home
+    if spread:
+        sh = tg.game_id.map(spread)
+        home_fav = sh < 0
+        tg["is_favorite"] = np.where(sh.isna(), None, np.where(tg.is_home, home_fav, ~home_fav))
+    return tg
+
+
+def _attach_opp_ranked(tg: pd.DataFrame, league: str, season: int) -> pd.DataFrame:
+    tg["opp_ranked"] = None
+    if league != "CFB":
+        return tg
+    rk = storage.read_table(config.TABLES / "context" / "rankings" / f"{season}.parquet")
+    if rk.empty:
+        return tg
+    ap = rk[rk.poll == "AP"]
+    ranked = set(zip(ap.week, ap.team_id))
+    tg["opp_ranked"] = [((w, o) in ranked) for w, o in zip(tg.week, tg.opponent_id)]
+    return tg
+
+
+# ---- 2. windows ---------------------------------------------------------------------------
+def window_rows(team_rows: pd.DataFrame, window: str, cutoff: pd.Timestamp) -> pd.DataFrame:
+    r = team_rows[team_rows.effective_at < cutoff]
+    if window == "SEASON" or window == "BLEND":
+        return r
+    if window == "LAST3":
+        return r.tail(3)
+    if window == "LAST5":
+        return r.tail(5)
+    if window == "HOME":
+        return r[r.is_home & ~r.neutral_site]
+    if window == "AWAY":
+        return r[~r.is_home & ~r.neutral_site]
+    if window == "CONF":
+        return r[r.conference_game == True]      # noqa: E712
+    if window == "NONCONF":
+        return r[r.conference_game == False]     # noqa: E712
+    if window == "DAY":
+        return r[r.is_night == False]            # noqa: E712
+    if window == "NIGHT":
+        return r[r.is_night == True]             # noqa: E712
+    if window == "FAV":
+        return r[r.is_favorite == True]          # noqa: E712
+    if window == "DOG":
+        return r[r.is_favorite == False]         # noqa: E712
+    if window == "VS_RANKED":
+        return r[r.opp_ranked == True]           # noqa: E712
+    raise ValueError(window)
+
+
+# ---- 3. aggregation per registry --------------------------------------------------------
+_PLAN = []   # compiled registry: (key, kind, a, b)
+for _, _m in REGISTRY.iterrows():
+    _agg = _m["agg"]
+    if _agg == "mean":
+        _PLAN.append((_m["metric_key"], "mean", _m["metric_key"], None))
+    elif _agg.startswith("wmean:"):
+        _PLAN.append((_m["metric_key"], "wmean", _m["metric_key"], _agg.split(":")[1]))
+    elif _agg.startswith("ratio:"):
+        _n, _d = _agg.split(":")[1].split("/")
+        _PLAN.append((_m["metric_key"], "ratio", _n, _d))
+_NEEDED = sorted({c for _, k, a, b in _PLAN for c in (a, b) if c} | {f"{k}_adj" for k, _, _, _ in _PLAN})
+
+
+def aggregate(rows: pd.DataFrame, adjusted: bool = False) -> dict[str, tuple[float | None, int]]:
+    """Returns {metric_key: (value, n)} following each metric's agg rule. NULL when no data. Vectorized."""
+    if rows.empty:
+        return {k: (None, 0) for k, _, _, _ in _PLAN}
+    cols = {c: pd.to_numeric(rows[c], errors="coerce").to_numpy(dtype=float) for c in _NEEDED if c in rows.columns}
+    w_all = rows.weight.to_numpy(dtype=float)
+    out = {}
+    for key, kind, a, b in _PLAN:
+        acol = f"{key}_adj" if (adjusted and f"{key}_adj" in cols) else a
+        if acol not in cols:
+            out[key] = (None, 0); continue
+        v = cols[acol]
+        if kind == "mean":
+            w = w_all
+        elif kind == "wmean":
+            w = (np.nan_to_num(cols[b]) if b in cols else np.ones_like(v)) * w_all
+        else:  # ratio
+            if b not in cols:
+                out[key] = (None, 0); continue
+            d = cols[b]
+            mask = ~np.isnan(v) & ~np.isnan(d) & (d > 0)
+            n = int(mask.sum())
+            out[key] = ((float((v[mask] * w_all[mask]).sum() / (d[mask] * w_all[mask]).sum()), n) if n else (None, 0))
             continue
-        out[nv] = g
+        mask = ~np.isnan(v) & (w > 0)
+        n = int(mask.sum())
+        out[key] = ((float((v[mask] * w[mask]).sum() / w[mask].sum()), n) if n else (None, 0))
     return out
 
 
-def normalize_plays(pbp: pd.DataFrame, ftn: pd.DataFrame | None, games: pd.DataFrame, resolver: ids.AliasResolver,
-                    weeks: list[int] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Returns (plays_slim, drives). Only games present in our games table are kept."""
-    gm = _game_map(games)
-    p = pbp[pbp.game_id.isin(gm.keys())].copy()
-    if weeks is not None:
-        p = p[p.week.isin(weeks)]
-    p = p[p.posteam.notna() & p.play_type.notna()]
-    if ftn is not None and not ftn.empty:
-        f = ftn[["nflverse_game_id", "nflverse_play_id", "is_play_action", "is_rpo", "n_blitzers", "n_pass_rushers",
-                 "is_interception_worthy", "qb_location", "is_motion", "is_no_huddle", "is_screen_pass"]].rename(
-            columns={"nflverse_game_id": "game_id", "nflverse_play_id": "play_id"})
-        p = p.merge(f, on=["game_id", "play_id"], how="left")
-    else:
-        for c in ("is_play_action", "is_rpo", "n_blitzers", "n_pass_rushers", "is_interception_worthy"):
-            p[c] = np.nan
-    retrieved_at = pbp.attrs["retrieved_at"].isoformat()
-    lo, hi = config.NFL_GARBAGE_WP_BAND
+def blend_values(season_v: dict, last5_v: dict, last3_v: dict) -> dict:
+    wts = config.RECENCY_WEIGHTS
+    out = {}
+    for k in season_v:
+        s, l5, l3 = season_v[k][0], last5_v[k][0], last3_v[k][0]
+        if s is None:
+            out[k] = (None, 0); continue
+        if l5 is None or l3 is None:      # not enough games: fall back to season value
+            out[k] = (s, season_v[k][1]); continue
+        out[k] = (wts["SEASON"] * s + wts["LAST5"] * l5 + wts["LAST3"] * l3, season_v[k][1])
+    return out
 
-    def team(abbr):
-        return resolver.resolve("nflverse", alias=abbr)
 
+def prior_weight(league: str, week: int) -> float:
+    sched = config.PRIOR_WEIGHT_BY_WEEK[league]
+    return float(sched.get(week, sched["default"]))
+
+
+def apply_prior(values: dict, prior: dict | None, w: float) -> tuple[dict, list[str]]:
+    flags = []
+    if prior is None or w <= 0:
+        if w > 0:
+            flags.append("PRIOR_MISSING")
+        return values, flags
+    out = {}
+    for k, (v, n) in values.items():
+        pv = prior.get(k)
+        if pv is None:
+            out[k] = (v, n); continue
+        if v is None:
+            out[k] = (pv, 0); continue
+        out[k] = (w * pv + (1 - w) * v, n)
+    flags.append("PRIOR_BLENDED")
+    return out, flags
+
+
+# ---- 4. build one week ---------------------------------------------------------------------
+def build_week(league: str, season: int, week: int, tg: pd.DataFrame | None = None, prior_season_values: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Returns (team_metrics_asof rows, team_ratings rows) for every team with a game in `week`."""
+    games = storage.read_table(storage.games_path(league, season))
+    wk = games[(games.week == week) & (games.season_type == "REG") & games.kickoff_utc.notna()].copy()
+    if wk.empty:
+        return pd.DataFrame(), pd.DataFrame()
+    wk["kickoff_utc"] = pd.to_datetime(wk.kickoff_utc, utc=True)
+    if tg is None:
+        tg = load_team_games(league, season)
+    ratings_cutoff = wk.kickoff_utc.min()
+    rat, fits = ratings.build_ratings(tg, league, season, week, ratings_cutoff) if not tg.empty else (pd.DataFrame(), {})
+    tg_adj = ratings.adjust_game_values(tg, fits) if not tg.empty else tg
+    by_team = {t: sub for t, sub in tg_adj.groupby("team_id")} if not tg_adj.empty else {}
+    pw = prior_weight(league, week)
+    built_at = datetime.now(timezone.utc).isoformat()
     rows = []
-    for _, r in p.iterrows():
-        g = gm[r.game_id]
-        off = team(r.posteam); deff = team(r.defteam)
-        pt = _PLAY_TYPE.get(r.play_type, "OTHER")
-        is_sack = bool(r.sack == 1)
-        if pt == "PASS" and is_sack:
-            pt = "SACK"
-        is_scramble = bool(r.qb_scramble == 1)
-        turnover_type = "INT" if r.interception == 1 else ("FUM" if r.fumble_lost == 1 else None)
-        rows.append({
-            "play_id": f"{g.game_id}_{int(r.play_id)}", "game_id": g.game_id,
-            "offense_team_id": off, "defense_team_id": deff,
-            "period": int(r.qtr) if pd.notna(r.qtr) else None,
-            "clock_sec_remaining": int(r.quarter_seconds_remaining) if pd.notna(r.quarter_seconds_remaining) else None,
-            "game_sec_remaining": int(r.game_seconds_remaining) if pd.notna(r.game_seconds_remaining) else None,
-            "drive_id": f"{g.game_id}_{int(r.fixed_drive)}" if pd.notna(r.fixed_drive) else None,
-            "down": int(r.down) if pd.notna(r.down) else None,
-            "distance": int(r.ydstogo) if pd.notna(r.ydstogo) else None,
-            "yardline_100": int(r.yardline_100) if pd.notna(r.yardline_100) else None,
-            "play_type": pt,
-            "yards_gained": int(r.yards_gained) if pd.notna(r.yards_gained) else 0,
-            "is_success": bool(r.success == 1) if pd.notna(r.success) else None,
-            "ppa": float(r.epa) if pd.notna(r.epa) else None,
-            "is_dropback": bool(r.qb_dropback == 1),
-            "is_scramble": is_scramble,
-            "is_sack": is_sack,
-            "is_turnover": turnover_type is not None,
-            "turnover_type": turnover_type,
-            "is_td": bool(r.touchdown == 1) and str(r.td_team) == str(r.posteam),
-            "is_complete": bool(r.complete_pass == 1),
-            "is_garbage_time": bool(pd.notna(r.vegas_wp) and not (lo <= r.vegas_wp <= hi)),
-            "score_diff_pre": int(r.score_differential) if pd.notna(r.score_differential) else None,
-            "wp_pre": float(r.vegas_wp) if pd.notna(r.vegas_wp) else None,
-            "passer_id": f"NFL_P_{r.passer_player_id}" if pd.notna(r.passer_player_id) else None,
-            "rusher_id": f"NFL_P_{r.rusher_player_id}" if pd.notna(r.rusher_player_id) else None,
-            "receiver_id": f"NFL_P_{r.receiver_player_id}" if pd.notna(r.receiver_player_id) else None,
-            "air_yards": int(r.air_yards) if pd.notna(r.air_yards) else None,
-            "run_gap": r.run_gap if pd.notna(r.run_gap) else None,
-            "run_location": r.run_location if pd.notna(r.run_location) else None,
-            "shotgun": bool(r.shotgun == 1),
-            "play_action": bool(r.is_play_action) if pd.notna(r.is_play_action) else None,
-            "rpo": bool(r.is_rpo) if pd.notna(r.is_rpo) else None,
-            "n_blitzers": int(r.n_blitzers) if pd.notna(r.n_blitzers) else None,
-            "n_pass_rushers": int(r.n_pass_rushers) if pd.notna(r.n_pass_rushers) else None,
-            "qb_hit": bool(r.qb_hit == 1),
-            "is_tfl": bool(r.tackled_for_loss == 1),
-            "is_pbu": bool(pd.notna(r.pass_defense_1_player_id)),
-            "is_ff": bool(r.fumble_forced == 1),
-            "int_worthy": bool(r.is_interception_worthy) if pd.notna(r.is_interception_worthy) else None,
-            "cpoe": float(r.cpoe) if pd.notna(r.cpoe) else None,
-            "posteam_score": int(r.posteam_score) if pd.notna(r.posteam_score) else None,
-            "posteam_score_post": int(r.posteam_score_post) if pd.notna(r.posteam_score_post) else None,
-            "source": "nflverse", "retrieved_at": retrieved_at,
-            "effective_at": (pd.Timestamp(g.kickoff_utc) + timedelta(hours=4)).isoformat() if pd.notna(g.kickoff_utc) else retrieved_at,
-        })
-    plays = pd.DataFrame(rows)
-    drives = _drives_from_plays(plays, p, gm, retrieved_at)
-    return plays, drives
-
-
-def _drives_from_plays(plays: pd.DataFrame, pbp: pd.DataFrame, gm: dict, retrieved_at: str) -> pd.DataFrame:
-    rows = []
-    src = pbp[pbp.fixed_drive.notna()]
-    for (nv_gid, drv), grp in src.groupby(["game_id", "fixed_drive"], sort=False):
-        g = gm[nv_gid]
-        grp = grp.sort_values("play_id")
-        first, last = grp.iloc[0], grp.iloc[-1]
-        drive_id = f"{g.game_id}_{int(drv)}"
-        ours = plays[plays.drive_id == drive_id]
-        if ours.empty:
-            continue
-        off = ours.offense_team_id.iloc[0]
-        result = _DRIVE_RESULT.get(str(last.fixed_drive_result), "OTHER")
-        pts = None
-        if pd.notna(first.posteam_score) and pd.notna(last.posteam_score_post):
-            pts = max(0, int(last.posteam_score_post) - int(first.posteam_score))
-        min_y100 = ours.yardline_100.min()
-        rows.append({
-            "drive_id": drive_id, "game_id": g.game_id, "offense_team_id": off,
-            "defense_team_id": ours.defense_team_id.iloc[0], "drive_number": int(drv),
-            "start_period": int(first.qtr) if pd.notna(first.qtr) else None,
-            "start_yardline_100": int(ours.yardline_100.dropna().iloc[0]) if ours.yardline_100.notna().any() else None,
-            "end_yardline_100": int(ours.yardline_100.dropna().iloc[-1]) if ours.yardline_100.notna().any() else None,
-            "plays": int(len(ours[ours.play_type.isin(["PASS", "RUSH", "SACK"])])),
-            "yards": int(ours.yards_gained.sum()),
-            "elapsed_sec": int(first.game_seconds_remaining - last.game_seconds_remaining) if pd.notna(first.game_seconds_remaining) and pd.notna(last.game_seconds_remaining) else None,
-            "result": result, "points": pts,
-            "reached_opp_40": bool(pd.notna(min_y100) and min_y100 <= 40),
-            "reached_rz": bool(pd.notna(min_y100) and min_y100 <= 20),
-            "is_garbage_time": bool(ours.is_garbage_time.iloc[0]),
-            "source": "nflverse", "retrieved_at": retrieved_at, "effective_at": ours.effective_at.iloc[0],
-        })
-    return pd.DataFrame(rows)
-
-
-def qb_game_stats(pbp: pd.DataFrame, pfr_pass: pd.DataFrame | None, games: pd.DataFrame, resolver: ids.AliasResolver,
-                  weeks: list[int] | None = None) -> pd.DataFrame:
-    """player_game_stats rows for passers (QB) from pbp, enriched with PFR pressure counts when available."""
-    gm = _game_map(games)
-    p = pbp[pbp.game_id.isin(gm.keys()) & pbp.passer_player_id.notna() & (pbp.qb_dropback == 1)]
-    if weeks is not None:
-        p = p[p.week.isin(weeks)]
-    retrieved_at = pbp.attrs["retrieved_at"].isoformat()
-    rows = []
-    for (nv_gid, team, pid), grp in p.groupby(["game_id", "posteam", "passer_player_id"]):
-        g = gm[nv_gid]
-        att = grp[grp.play_type == "pass"]
-        att_real = att[att.sack != 1]
-        rows.append({
-            "game_id": g.game_id, "team_id": resolver.resolve("nflverse", alias=team), "player_id": f"NFL_P_{pid}",
-            "position": "QB", "started": None, "snaps_off": None, "snaps_def": None,
-            "pass_att": int(len(att_real)), "pass_cmp": int((att_real.complete_pass == 1).sum()),
-            "pass_yds": int(att_real.yards_gained.sum()), "pass_td": int((att_real.pass_touchdown == 1).sum()),
-            "pass_int": int((att_real.interception == 1).sum()), "sacks_taken": int((grp.sack == 1).sum()),
-            "dropbacks": int(len(grp)), "ppa_dropback": float(grp.epa.mean()) if grp.epa.notna().any() else None,
-            "qbr": None, "cpoe": float(att_real.cpoe.mean()) if att_real.cpoe.notna().any() else None,
-            "int_worthy": None, "pressured_dropbacks": None, "pressured_ppa": None, "clean_ppa": None,
-            "rush_att": None, "rush_yds": None, "rush_td": None, "targets": None, "receptions": None, "rec_yds": None,
-            "rec_td": None, "tackles": None, "tfl": None, "sacks": None, "pressures": None, "ints": None, "pbu": None, "ff": None,
-            "source": "nflverse", "retrieved_at": retrieved_at,
-            "effective_at": (pd.Timestamp(g.kickoff_utc) + timedelta(hours=4)).isoformat() if pd.notna(g.kickoff_utc) else retrieved_at,
-        })
+    for _, g in wk.iterrows():
+        for tid in (g.home_team_id, g.away_team_id):
+            if tid.startswith("CFB_FCS"):
+                continue
+            team_rows = by_team.get(tid, tg_adj.iloc[0:0] if not tg_adj.empty else pd.DataFrame())
+            cutoff = g.kickoff_utc
+            for adjusted in (False, True):
+                vals = {w: aggregate(window_rows(team_rows, w, cutoff), adjusted) if not team_rows.empty else {k: (None, 0) for k in REGISTRY.metric_key} for w in WINDOWS if w != "BLEND"}
+                vals["BLEND"] = blend_values(vals["SEASON"], vals["LAST5"], vals["LAST3"])
+                for w in WINDOWS:
+                    v = vals[w]
+                    flags: list[str] = []
+                    pbw = 0.0
+                    if adjusted and w in ("SEASON", "BLEND") and pw > 0:
+                        # the prior is last season's OPP_ADJ values, so it is only blended into OPP_ADJ rows
+                        prior = (prior_season_values or {}).get(tid)
+                        v, f = apply_prior(v, prior, pw); flags += f
+                        pbw = pw if prior else 0.0
+                    n_games = int(len(window_rows(team_rows, w, cutoff))) if not team_rows.empty else 0
+                    if n_games < config.LOW_SAMPLE_GAMES[league]:
+                        flags.append("LOW_SAMPLE")
+                    if not team_rows.empty and window_rows(team_rows, w, cutoff).is_fcs_game.any():
+                        flags.append("FCS_OPP_IN_WINDOW")
+                    rows.append({
+                        "team_id": tid, "season": season, "as_of_game_id": g.game_id, "as_of_ts": cutoff.isoformat(),
+                        "ratings_cutoff": ratings_cutoff.isoformat(), "window": w, "games_n": n_games,
+                        "is_garbage_filtered": config.USE_GARBAGE_FILTERED, "adjustment": "OPP_ADJ" if adjusted else "RAW",
+                        "_values": v, "prior_blend_weight": pbw, "quality_flags": flags,
+                        "build_version": config.PIPELINE_VERSION, "built_at": built_at,
+                    })
     out = pd.DataFrame(rows)
-    if pfr_pass is not None and not pfr_pass.empty and not out.empty:
-        pf = pfr_pass.copy()
-        pf["game_id"] = pf.game_id.map(lambda x: gm[x].game_id if x in gm else None)
-        pf = pf[pf.game_id.notna()]
-        pf["team_id"] = pf.team.map(lambda t: resolver.resolve("nflverse", alias=t))
-        # PFR has no gsis id; join on (game, team) when a team has exactly one passer row on both sides
-        one = out.groupby(["game_id", "team_id"]).player_id.transform("count") == 1
-        pf_one = pf.groupby(["game_id", "team_id"]).pfr_player_id.transform("count") == 1
-        merged = out[one].merge(pf[pf_one][["game_id", "team_id", "times_pressured", "times_blitzed", "times_hurried", "times_hit"]],
-                                on=["game_id", "team_id"], how="left")
-        out.loc[one, "pressured_dropbacks"] = merged.times_pressured.values
+    out = _rank_and_pack(out, league)
+    return out, rat
+
+
+def _rank_and_pack(df: pd.DataFrame, league: str) -> pd.DataFrame:
+    """Ranks/percentiles within (window, adjustment) across all teams in this build; packs the JSON."""
+    if df.empty:
+        return df
+    hib = dict(zip(REGISTRY.metric_key, REGISTRY.higher_is_better))
+    min_n = dict(zip(REGISTRY.metric_key, REGISTRY.min_sample_n))
+    packed = [None] * len(df)
+    quality = [0.0] * len(df)
+    for (w, adj), grp in df.groupby(["window", "adjustment"]):
+        idx = grp.index.tolist()
+        for key in REGISTRY.metric_key:
+            vals = np.array([grp.at[i, "_values"][key][0] if grp.at[i, "_values"][key][0] is not None else np.nan for i in idx], dtype=float)
+            valid = ~np.isnan(vals)
+            ranks = np.full(len(vals), np.nan); pcts = np.full(len(vals), np.nan)
+            if valid.sum() >= 2:
+                v = vals[valid] if hib[key] else -vals[valid]
+                order = pd.Series(v).rank(ascending=False, method="min").to_numpy()
+                ranks[valid] = order
+                pcts[valid] = 1 - (order - 1) / max(valid.sum() - 1, 1)
+            for j, i in enumerate(idx):
+                if packed[i] is None:
+                    packed[i] = {}
+                val, n = grp.at[i, "_values"][key]
+                packed[i][key] = None if val is None else {"v": round(float(val), 4), "rank": int(ranks[j]) if not np.isnan(ranks[j]) else None,
+                                                             "pct": round(float(pcts[j]), 3) if not np.isnan(pcts[j]) else None,
+                                                             "n": int(n), "low_n": bool(n < min_n[key]), "adj": adj}
+    for i in range(len(df)):
+        m = packed[i] or {}
+        coverage = sum(1 for k in m if m[k] is not None) / max(len(m), 1)
+        games_n = int(df.at[i, "games_n"])
+        sample = min(games_n / config.QUALITY_TARGET_GAMES[league], 1.0)
+        quality[i] = round(0.6 * sample + 0.4 * coverage, 3)
+    df = df.copy()
+    df["metrics"] = [json.dumps(p) for p in packed]
+    df["data_quality"] = quality
+    df["quality_flags"] = df.quality_flags.map(lambda f: ",".join(f))
+    return df.drop(columns=["_values"])
+
+
+def prior_season_values(league: str, prior_season: int) -> dict | None:
+    """Final OPP_ADJ SEASON metrics of the previous season, per team: {team_id: {metric_key: value}}."""
+    tg = load_team_games(league, prior_season)
+    if tg.empty:
+        return None
+    cutoff = tg.effective_at.max() + pd.Timedelta(days=1)
+    _, fits = ratings.build_ratings(tg, league, prior_season, 99, cutoff)
+    tg_adj = ratings.adjust_game_values(tg, fits)
+    out = {}
+    for tid, sub in tg_adj.groupby("team_id"):
+        out[tid] = {k: v for k, (v, n) in aggregate(sub[sub.effective_at < cutoff], adjusted=True).items()}
     return out
-
-
-def team_pressure_rates(pfr_pass: pd.DataFrame | None, pfr_def: pd.DataFrame | None, games: pd.DataFrame,
-                        resolver: ids.AliasResolver) -> pd.DataFrame:
-    """Per team-game pressure counts from PFR weekly files. NULL where absent.
-    off_pressures_allowed = sum of times_pressured across the team's passers (one count per dropback -> true rate).
-    def_pressures         = sum of individual defenders' pressures; several defenders can be credited on one
-                            dropback, so def_pressure_rate can exceed the play-level rate. Labeled as such in
-                            metric_definitions ("PFR individual pressures per opponent dropback")."""
-    gm = _game_map(games)
-    rows = {}
-    if pfr_pass is not None and not pfr_pass.empty:
-        pf = pfr_pass[pfr_pass.game_id.isin(gm.keys())]
-        agg = pf.groupby(["game_id", "team"]).agg(pressured=("times_pressured", "sum"), dropbacks=("times_pressured_pct", "size"))
-        # times_pressured_pct is per-player; recompute team rate as pressured / (attempts + sacks) using pbp later.
-        for (nv, team), r in agg.iterrows():
-            key = (gm[nv].game_id, resolver.resolve("nflverse", alias=team))
-            rows.setdefault(key, {})["off_pressures_allowed"] = int(r.pressured)
-    if pfr_def is not None and not pfr_def.empty:
-        pd_ = pfr_def[pfr_def.game_id.isin(gm.keys())]
-        agg = pd_.groupby(["game_id", "team"]).def_pressures.sum()
-        for (nv, team), v in agg.items():
-            key = (gm[nv].game_id, resolver.resolve("nflverse", alias=team))
-            rows.setdefault(key, {})["def_pressures"] = int(v)
-    return pd.DataFrame([{"game_id": k[0], "team_id": k[1], **v} for k, v in rows.items()])
