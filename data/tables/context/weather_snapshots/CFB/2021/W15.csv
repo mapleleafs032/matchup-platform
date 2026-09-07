@@ -1,0 +1,2 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2021_CFB_W15_NAVY_ARMY,2026-09-07T06:53:04.789203+00:00,2021-12-11T20:00:00+00:00,-41530.9,False,False,open_meteo_archive,60.5,55.4,17.4,30.9,209.0,,0.0,88.0,3.0,True
