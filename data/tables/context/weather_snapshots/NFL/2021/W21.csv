@@ -1,0 +1,3 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2021_NFL_P21_CIN_KC,2026-09-07T05:46:15.574458+00:00,2022-01-30T20:00:00+00:00,-40329.8,False,False,open_meteo_archive,40.1,33.7,4.1,12.3,311.0,,0.0,56.0,3.0,True
+2021_NFL_P21_SF_LAR,2026-09-07T05:46:15.574814+00:00,2022-01-30T23:30:00+00:00,-40326.3,True,False,open_meteo_archive,,,,,,,,,,True

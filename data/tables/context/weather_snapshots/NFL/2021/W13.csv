@@ -1,0 +1,15 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2021_NFL_W13_DAL_NO,2026-09-07T05:45:53.513607+00:00,2021-12-03T01:20:00+00:00,-41740.4,True,False,open_meteo_archive,,,,,,,,,,True
+2021_NFL_W13_TB_ATL,2026-09-07T05:45:53.767181+00:00,2021-12-05T18:00:00+00:00,-41675.8,False,True,open_meteo_archive,66.4,65.1,7.4,14.8,185.0,,0.0,69.0,3.0,True
+2021_NFL_W13_ARI_CHI,2026-09-07T05:45:54.021056+00:00,2021-12-05T18:00:00+00:00,-41675.8,False,False,open_meteo_archive,36.9,26.8,14.2,25.1,152.0,,0.047,77.0,55.0,True
+2021_NFL_W13_LAC_CIN,2026-09-07T05:45:54.275980+00:00,2021-12-05T18:00:00+00:00,-41675.8,False,False,open_meteo_archive,53.6,47.0,8.5,18.3,150.0,,0.0,53.0,3.0,True
+2021_NFL_W13_MIN_DET,2026-09-07T05:45:54.276360+00:00,2021-12-05T18:00:00+00:00,-41675.8,True,False,open_meteo_archive,,,,,,,,,,True
+2021_NFL_W13_IND_HOU,2026-09-07T05:45:54.527681+00:00,2021-12-05T18:00:00+00:00,-41675.8,False,True,open_meteo_archive,77.0,78.2,12.8,21.7,183.0,,0.004,72.0,51.0,True
+2021_NFL_W13_NYG_MIA,2026-09-07T05:45:54.779728+00:00,2021-12-05T18:00:00+00:00,-41675.8,False,False,open_meteo_archive,81.4,84.7,6.3,14.3,107.0,,0.0,58.0,1.0,True
+2021_NFL_W13_PHI_NYJ,2026-09-07T05:45:55.032157+00:00,2021-12-05T18:00:00+00:00,-41675.8,False,False,open_meteo_archive,45.7,40.4,1.1,7.6,180.0,,0.0,43.0,2.0,True
+2021_NFL_W13_JAX_LAR,2026-09-07T05:45:55.032538+00:00,2021-12-05T21:05:00+00:00,-41672.7,True,False,open_meteo_archive,,,,,,,,,,True
+2021_NFL_W13_WAS_LV,2026-09-07T05:45:55.032830+00:00,2021-12-05T21:05:00+00:00,-41672.7,True,False,open_meteo_archive,,,,,,,,,,True
+2021_NFL_W13_BAL_PIT,2026-09-07T05:45:55.286698+00:00,2021-12-05T21:25:00+00:00,-41672.3,False,False,open_meteo_archive,49.6,41.9,10.0,19.5,138.0,,0.0,56.0,3.0,True
+2021_NFL_W13_SF_SEA,2026-09-07T05:45:55.540090+00:00,2021-12-05T21:25:00+00:00,-41672.3,False,False,open_meteo_archive,42.2,36.3,4.3,9.6,51.0,,0.0,64.0,3.0,True
+2021_NFL_W13_DEN_KC,2026-09-07T05:45:55.793559+00:00,2021-12-06T01:20:00+00:00,-41668.4,False,False,open_meteo_archive,51.7,42.2,15.5,29.1,342.0,,0.0,58.0,3.0,True
+2021_NFL_W13_NE_BUF,2026-09-07T05:45:56.064218+00:00,2021-12-07T01:15:00+00:00,-41644.5,False,False,open_meteo_archive,35.7,19.5,26.2,52.8,263.0,,0.008,56.0,71.0,True

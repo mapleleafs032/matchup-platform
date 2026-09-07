@@ -1,0 +1,15 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2021_NFL_W10_BAL_MIA,2026-09-07T05:45:44.412039+00:00,2021-11-12T01:20:00+00:00,-42244.4,False,False,open_meteo_archive,71.7,79.6,1.4,4.9,321.0,,0.063,98.0,61.0,True
+2021_NFL_W10_ATL_DAL,2026-09-07T05:45:44.661130+00:00,2021-11-14T18:00:00+00:00,-42179.8,False,True,open_meteo_archive,64.0,61.1,6.7,15.4,30.0,,0.0,54.0,3.0,True
+2021_NFL_W10_JAX_IND,2026-09-07T05:45:44.909167+00:00,2021-11-14T18:00:00+00:00,-42179.8,False,True,open_meteo_archive,38.9,29.9,14.1,25.7,234.0,,0.004,90.0,51.0,True
+2021_NFL_W10_CLE_NE,2026-09-07T05:45:45.161432+00:00,2021-11-14T18:00:00+00:00,-42179.8,False,False,open_meteo_archive,49.4,42.7,6.7,17.7,244.0,,0.0,51.0,3.0,True
+2021_NFL_W10_BUF_NYJ,2026-09-07T05:45:45.414619+00:00,2021-11-14T18:00:00+00:00,-42179.8,False,False,open_meteo_archive,47.3,40.4,7.9,15.7,205.0,,0.0,58.0,3.0,True
+2021_NFL_W10_DET_PIT,2026-09-07T05:45:45.661715+00:00,2021-11-14T18:00:00+00:00,-42179.8,False,False,open_meteo_archive,39.4,29.5,12.5,27.1,209.0,,0.0,60.0,3.0,True
+2021_NFL_W10_NO_TEN,2026-09-07T05:45:45.911987+00:00,2021-11-14T18:00:00+00:00,-42179.8,False,False,open_meteo_archive,55.0,47.0,11.3,22.4,248.0,,0.0,49.0,3.0,True
+2021_NFL_W10_TB_WAS,2026-09-07T05:45:46.166946+00:00,2021-11-14T18:00:00+00:00,-42179.8,False,False,open_meteo_archive,46.9,39.0,8.0,18.3,193.0,,0.0,45.0,3.0,True
+2021_NFL_W10_CAR_ARI,2026-09-07T05:45:46.432348+00:00,2021-11-14T21:05:00+00:00,-42176.7,False,True,open_meteo_archive,86.6,81.3,2.3,11.0,107.0,,0.0,11.0,0.0,True
+2021_NFL_W10_MIN_LAC,2026-09-07T05:45:46.432755+00:00,2021-11-14T21:05:00+00:00,-42176.7,True,False,open_meteo_archive,,,,,,,,,,True
+2021_NFL_W10_PHI_DEN,2026-09-07T05:45:46.680491+00:00,2021-11-14T21:25:00+00:00,-42176.3,False,False,open_meteo_archive,69.1,62.8,4.0,11.2,304.0,,0.0,20.0,3.0,True
+2021_NFL_W10_SEA_GB,2026-09-07T05:45:46.931154+00:00,2021-11-14T21:25:00+00:00,-42176.3,False,False,open_meteo_archive,37.3,27.9,11.6,25.7,337.0,,0.0,66.0,2.0,True
+2021_NFL_W10_KC_LV,2026-09-07T05:45:46.931548+00:00,2021-11-15T01:20:00+00:00,-42172.4,True,False,open_meteo_archive,,,,,,,,,,True
+2021_NFL_W10_LAR_SF,2026-09-07T05:45:47.184735+00:00,2021-11-16T01:15:00+00:00,-42148.5,False,False,open_meteo_archive,56.8,57.4,2.3,4.9,281.0,,0.0,95.0,3.0,True

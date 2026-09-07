@@ -1,0 +1,14 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2024_NFL_W12_PIT_CLE,2026-09-07T05:53:18.832251+00:00,2024-11-22T01:15:00+00:00,-15700.6,False,False,open_meteo_archive,35.7,25.9,14.2,20.8,236.0,,0.012,88.0,73.0,True
+2024_NFL_W12_KC_CAR,2026-09-07T05:53:19.159489+00:00,2024-11-24T18:00:00+00:00,-15635.9,False,False,open_meteo_archive,59.5,56.4,3.1,10.7,224.0,,0.0,53.0,1.0,True
+2024_NFL_W12_MIN_CHI,2026-09-07T05:53:19.496213+00:00,2024-11-24T18:00:00+00:00,-15635.9,False,False,open_meteo_archive,45.1,40.3,5.8,15.2,133.0,,0.0,82.0,3.0,True
+2024_NFL_W12_TEN_HOU,2026-09-07T05:53:19.807273+00:00,2024-11-24T18:00:00+00:00,-15635.9,False,True,open_meteo_archive,79.2,77.2,11.6,27.5,191.0,,0.0,50.0,1.0,True
+2024_NFL_W12_DET_IND,2026-09-07T05:53:20.120540+00:00,2024-11-24T18:00:00+00:00,-15635.9,False,True,open_meteo_archive,51.3,46.4,6.7,16.6,165.0,,0.0,70.0,2.0,True
+2024_NFL_W12_NE_MIA,2026-09-07T05:53:20.433557+00:00,2024-11-24T18:00:00+00:00,-15635.9,False,False,open_meteo_archive,75.8,77.6,4.1,13.4,69.0,,0.0,51.0,0.0,True
+2024_NFL_W12_TB_NYG,2026-09-07T05:53:20.747392+00:00,2024-11-24T18:00:00+00:00,-15635.9,False,False,open_meteo_archive,50.5,40.6,13.9,35.3,292.0,,0.0,46.0,3.0,True
+2024_NFL_W12_DAL_WAS,2026-09-07T05:53:21.063029+00:00,2024-11-24T18:00:00+00:00,-15635.9,False,False,open_meteo_archive,54.0,48.4,7.4,19.9,266.0,,0.0,59.0,1.0,True
+2024_NFL_W12_DEN_LV,2026-09-07T05:53:21.063410+00:00,2024-11-24T21:05:00+00:00,-15632.8,True,False,open_meteo_archive,,,,,,,,,,True
+2024_NFL_W12_SF_GB,2026-09-07T05:53:21.405974+00:00,2024-11-24T21:25:00+00:00,-15632.5,False,False,open_meteo_archive,41.6,33.7,9.9,23.5,81.0,,0.0,70.0,3.0,True
+2024_NFL_W12_ARI_SEA,2026-09-07T05:53:21.726715+00:00,2024-11-24T21:25:00+00:00,-15632.5,False,False,open_meteo_archive,45.9,41.1,5.9,12.1,126.0,,0.004,82.0,51.0,True
+2024_NFL_W12_PHI_LAR,2026-09-07T05:53:21.727070+00:00,2024-11-25T01:20:00+00:00,-15628.6,True,False,open_meteo_archive,,,,,,,,,,True
+2024_NFL_W12_BAL_LAC,2026-09-07T05:53:21.727375+00:00,2024-11-26T01:15:00+00:00,-15604.6,True,False,open_meteo_archive,,,,,,,,,,True

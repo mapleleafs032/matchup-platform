@@ -1,0 +1,3 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2025_NFL_P21_NE_DEN,2026-09-07T05:56:05.893762+00:00,2026-01-25T20:00:00+00:00,-5385.9,False,False,open_meteo_archive,24.2,16.8,2.5,8.9,13.0,,0.0,48.0,3.0,True
+2025_NFL_P21_LAR_SEA,2026-09-07T05:56:06.250834+00:00,2026-01-25T23:30:00+00:00,-5382.4,False,False,open_meteo_archive,41.2,36.0,2.6,7.6,340.0,,0.0,66.0,3.0,True

@@ -1,0 +1,14 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2025_NFL_W08_MIN_LAC,2026-09-07T05:55:15.644969+00:00,2025-10-24T00:15:00+00:00,-7637.7,True,False,open_meteo_archive,,,,,,,,,,True
+2025_NFL_W08_MIA_ATL,2026-09-07T05:55:15.989770+00:00,2025-10-26T17:00:00+00:00,-7572.9,False,True,open_meteo_archive,61.0,53.4,10.9,25.1,79.0,,0.0,41.0,3.0,True
+2025_NFL_W08_CHI_BAL,2026-09-07T05:55:16.320569+00:00,2025-10-26T17:00:00+00:00,-7572.9,False,False,open_meteo_archive,59.5,55.6,1.4,8.5,351.0,,0.0,40.0,3.0,True
+2025_NFL_W08_BUF_CAR,2026-09-07T05:55:16.648478+00:00,2025-10-26T17:00:00+00:00,-7572.9,False,False,open_meteo_archive,61.1,55.1,7.1,20.4,71.0,,0.0,41.0,3.0,True
+2025_NFL_W08_NYJ_CIN,2026-09-07T05:55:16.978376+00:00,2025-10-26T17:00:00+00:00,-7572.9,False,False,open_meteo_archive,57.1,51.4,7.2,18.3,92.0,,0.0,49.0,2.0,True
+2025_NFL_W08_SF_HOU,2026-09-07T05:55:17.317875+00:00,2025-10-26T17:00:00+00:00,-7572.9,False,True,open_meteo_archive,74.5,82.3,0.7,8.5,301.0,,0.0,81.0,0.0,True
+2025_NFL_W08_CLE_NE,2026-09-07T05:55:17.671951+00:00,2025-10-26T17:00:00+00:00,-7572.9,False,False,open_meteo_archive,54.0,47.6,7.1,16.8,325.0,,0.0,44.0,2.0,True
+2025_NFL_W08_NYG_PHI,2026-09-07T05:55:18.011789+00:00,2025-10-26T17:00:00+00:00,-7572.9,False,False,open_meteo_archive,61.9,57.3,3.5,12.8,342.0,,0.0,33.0,2.0,True
+2025_NFL_W08_TB_NO,2026-09-07T05:55:18.012145+00:00,2025-10-26T20:05:00+00:00,-7569.8,True,False,open_meteo_archive,,,,,,,,,,True
+2025_NFL_W08_DAL_DEN,2026-09-07T05:55:18.341452+00:00,2025-10-26T20:25:00+00:00,-7569.5,False,False,open_meteo_archive,71.4,64.8,3.4,10.1,67.0,,0.0,15.0,3.0,True
+2025_NFL_W08_TEN_IND,2026-09-07T05:55:18.670413+00:00,2025-10-26T20:25:00+00:00,-7569.5,False,True,open_meteo_archive,61.3,53.7,9.4,22.4,94.0,,0.0,35.0,3.0,True
+2025_NFL_W08_GB_PIT,2026-09-07T05:55:18.999499+00:00,2025-10-27T00:20:00+00:00,-7565.6,False,False,open_meteo_archive,47.8,42.2,6.0,11.9,35.0,,0.0,64.0,0.0,True
+2025_NFL_W08_WAS_KC,2026-09-07T05:55:19.350547+00:00,2025-10-28T00:15:00+00:00,-7541.7,False,False,open_meteo_archive,53.6,51.5,5.3,11.0,90.0,,0.0,89.0,3.0,True

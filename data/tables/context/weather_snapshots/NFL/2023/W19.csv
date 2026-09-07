@@ -1,0 +1,7 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2023_NFL_P19_CLE_HOU,2026-09-07T05:51:09.789288+00:00,2024-01-13T21:30:00+00:00,-23216.4,False,True,open_meteo_archive,62.4,55.0,11.9,20.1,180.0,,0.0,43.0,1.0,True
+2023_NFL_P19_MIA_KC,2026-09-07T05:51:10.113732+00:00,2024-01-14T01:00:00+00:00,-23212.9,False,False,open_meteo_archive,-2.0,-15.0,13.7,27.3,308.0,,0.0,58.0,3.0,True
+2023_NFL_P19_GB_DAL,2026-09-07T05:51:10.414665+00:00,2024-01-14T21:30:00+00:00,-23192.4,False,True,open_meteo_archive,22.9,11.5,11.3,20.8,22.0,,0.0,38.0,3.0,True
+2023_NFL_P19_LAR_DET,2026-09-07T05:51:10.415029+00:00,2024-01-15T01:00:00+00:00,-23188.9,True,False,open_meteo_archive,,,,,,,,,,True
+2023_NFL_P19_PIT_BUF,2026-09-07T05:51:10.712963+00:00,2024-01-15T21:30:00+00:00,-23168.4,False,False,open_meteo_archive,18.7,6.9,12.9,28.0,230.0,,0.0,61.0,3.0,True
+2023_NFL_P19_PHI_TB,2026-09-07T05:51:11.017031+00:00,2024-01-16T01:00:00+00:00,-23164.9,False,False,open_meteo_archive,64.3,67.4,4.4,8.5,30.0,,0.012,98.0,51.0,True

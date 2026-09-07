@@ -1,0 +1,15 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2021_NFL_W14_PIT_MIN,2026-09-07T05:45:56.064595+00:00,2021-12-10T01:20:00+00:00,-41572.4,True,False,open_meteo_archive,,,,,,,,,,True
+2021_NFL_W14_ATL_CAR,2026-09-07T05:45:56.318482+00:00,2021-12-12T18:00:00+00:00,-41507.8,False,False,open_meteo_archive,50.4,41.3,8.8,19.7,15.0,,0.0,28.0,0.0,True
+2021_NFL_W14_BAL_CLE,2026-09-07T05:45:56.570035+00:00,2021-12-12T18:00:00+00:00,-41507.8,False,False,open_meteo_archive,45.3,34.1,15.9,25.3,230.0,,0.0,48.0,0.0,True
+2021_NFL_W14_SEA_HOU,2026-09-07T05:45:56.821165+00:00,2021-12-12T18:00:00+00:00,-41507.8,False,True,open_meteo_archive,54.1,49.8,5.8,14.8,54.0,,0.0,59.0,0.0,True
+2021_NFL_W14_LV_KC,2026-09-07T05:45:57.074580+00:00,2021-12-12T18:00:00+00:00,-41507.8,False,False,open_meteo_archive,49.3,39.2,12.4,25.7,197.0,,0.0,37.0,0.0,True
+2021_NFL_W14_NO_NYJ,2026-09-07T05:45:57.325163+00:00,2021-12-12T18:00:00+00:00,-41507.8,False,False,open_meteo_archive,46.6,35.8,12.9,24.8,296.0,,0.0,35.0,0.0,True
+2021_NFL_W14_JAX_TEN,2026-09-07T05:45:57.577485+00:00,2021-12-12T18:00:00+00:00,-41507.8,False,False,open_meteo_archive,46.2,40.6,3.1,10.5,86.0,,0.0,51.0,0.0,True
+2021_NFL_W14_DAL_WAS,2026-09-07T05:45:57.831565+00:00,2021-12-12T18:00:00+00:00,-41507.8,False,False,open_meteo_archive,47.0,37.9,9.5,23.9,294.0,,0.0,37.0,0.0,True
+2021_NFL_W14_DET_DEN,2026-09-07T05:45:58.087368+00:00,2021-12-12T21:05:00+00:00,-41504.7,False,False,open_meteo_archive,59.2,50.4,5.5,11.0,14.0,,0.0,11.0,0.0,True
+2021_NFL_W14_NYG_LAC,2026-09-07T05:45:58.087735+00:00,2021-12-12T21:05:00+00:00,-41504.7,True,False,open_meteo_archive,,,,,,,,,,True
+2021_NFL_W14_SF_CIN,2026-09-07T05:45:58.361231+00:00,2021-12-12T21:25:00+00:00,-41504.3,False,False,open_meteo_archive,46.1,37.7,8.3,18.8,218.0,,0.0,41.0,0.0,True
+2021_NFL_W14_BUF_TB,2026-09-07T05:45:58.613983+00:00,2021-12-12T21:25:00+00:00,-41504.3,False,False,open_meteo_archive,78.6,81.6,8.6,16.1,307.0,,0.008,68.0,51.0,True
+2021_NFL_W14_CHI_GB,2026-09-07T05:45:58.867860+00:00,2021-12-13T01:20:00+00:00,-41500.4,False,False,open_meteo_archive,36.1,26.5,12.1,21.7,220.0,,0.0,70.0,3.0,True
+2021_NFL_W14_LAR_ARI,2026-09-07T05:45:59.123229+00:00,2021-12-14T01:15:00+00:00,-41476.5,False,True,open_meteo_archive,65.6,60.5,3.2,5.4,326.0,,0.0,29.0,3.0,True

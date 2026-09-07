@@ -1,0 +1,7 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2022_NFL_P19_SEA_SF,2026-09-07T05:48:38.018284+00:00,2023-01-14T21:30:00+00:00,-31952.3,False,False,open_meteo_archive,57.1,54.2,6.3,14.1,253.0,,0.071,74.0,61.0,True
+2022_NFL_P19_LAC_JAX,2026-09-07T05:48:38.297626+00:00,2023-01-15T01:15:00+00:00,-31948.6,False,False,open_meteo_archive,41.7,34.8,6.8,11.6,304.0,,0.0,64.0,0.0,True
+2022_NFL_P19_MIA_BUF,2026-09-07T05:48:38.599669+00:00,2023-01-15T18:00:00+00:00,-31931.8,False,False,open_meteo_archive,29.5,22.7,2.7,10.1,355.0,,0.0,58.0,1.0,True
+2022_NFL_P19_NYG_MIN,2026-09-07T05:48:38.600025+00:00,2023-01-15T21:50:00+00:00,-31928.0,True,False,open_meteo_archive,,,,,,,,,,True
+2022_NFL_P19_BAL_CIN,2026-09-07T05:48:38.880957+00:00,2023-01-16T01:15:00+00:00,-31924.6,False,False,open_meteo_archive,31.1,22.4,7.5,13.9,127.0,,0.0,58.0,3.0,True
+2022_NFL_P19_DAL_TB,2026-09-07T05:48:39.171942+00:00,2023-01-17T01:15:00+00:00,-31900.6,False,False,open_meteo_archive,50.8,47.7,5.1,7.8,304.0,,0.0,85.0,0.0,True

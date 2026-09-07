@@ -1,0 +1,5 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2023_NFL_P20_HOU_BAL,2026-09-07T05:51:11.331226+00:00,2024-01-20T21:30:00+00:00,-23048.4,False,False,open_meteo_archive,22.3,10.6,13.1,25.9,290.0,,0.0,58.0,1.0,True
+2023_NFL_P20_GB_SF,2026-09-07T05:51:11.648356+00:00,2024-01-21T01:15:00+00:00,-23044.6,False,False,open_meteo_archive,55.9,54.2,5.7,16.1,141.0,,0.016,87.0,51.0,True
+2023_NFL_P20_TB_DET,2026-09-07T05:51:11.648727+00:00,2024-01-21T20:00:00+00:00,-23025.9,True,False,open_meteo_archive,,,,,,,,,,True
+2023_NFL_P20_KC_BUF,2026-09-07T05:51:11.986504+00:00,2024-01-21T23:30:00+00:00,-23022.4,False,False,open_meteo_archive,24.7,13.7,13.1,26.4,250.0,,0.0,76.0,2.0,True

@@ -1,0 +1,16 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2022_NFL_W13_BUF_NE,2026-09-07T05:48:17.116498+00:00,2022-12-02T01:15:00+00:00,-33004.6,False,False,open_meteo_archive,35.4,25.6,10.4,23.7,279.0,,0.0,52.0,0.0,True
+2022_NFL_W13_PIT_ATL,2026-09-07T05:48:17.396761+00:00,2022-12-04T18:00:00+00:00,-32939.8,False,True,open_meteo_archive,57.5,53.4,5.8,13.6,293.0,,0.0,59.0,3.0,True
+2022_NFL_W13_DEN_BAL,2026-09-07T05:48:17.692054+00:00,2022-12-04T18:00:00+00:00,-32939.8,False,False,open_meteo_archive,45.1,38.5,5.2,11.9,275.0,,0.0,50.0,1.0,True
+2022_NFL_W13_GB_CHI,2026-09-07T05:48:17.969104+00:00,2022-12-04T18:00:00+00:00,-32939.8,False,False,open_meteo_archive,36.1,23.6,15.4,23.9,231.0,,0.0,39.0,0.0,True
+2022_NFL_W13_JAX_DET,2026-09-07T05:48:17.969484+00:00,2022-12-04T18:00:00+00:00,-32939.8,True,False,open_meteo_archive,,,,,,,,,,True
+2022_NFL_W13_CLE_HOU,2026-09-07T05:48:18.246982+00:00,2022-12-04T18:00:00+00:00,-32939.8,False,True,open_meteo_archive,64.5,65.4,5.2,10.5,355.0,,0.004,83.0,51.0,True
+2022_NFL_W13_NYJ_MIN,2026-09-07T05:48:18.247390+00:00,2022-12-04T18:00:00+00:00,-32939.8,True,False,open_meteo_archive,,,,,,,,,,True
+2022_NFL_W13_WAS_NYG,2026-09-07T05:48:18.526621+00:00,2022-12-04T18:00:00+00:00,-32939.8,False,False,open_meteo_archive,43.8,35.6,7.4,15.7,299.0,,0.0,42.0,1.0,True
+2022_NFL_W13_TEN_PHI,2026-09-07T05:48:18.802857+00:00,2022-12-04T18:00:00+00:00,-32939.8,False,False,open_meteo_archive,45.7,39.0,4.8,13.0,292.0,,0.0,46.0,0.0,True
+2022_NFL_W13_SEA_LAR,2026-09-07T05:48:18.803207+00:00,2022-12-04T21:05:00+00:00,-32936.7,True,False,open_meteo_archive,,,,,,,,,,True
+2022_NFL_W13_MIA_SF,2026-09-07T05:48:19.081106+00:00,2022-12-04T21:05:00+00:00,-32936.7,False,False,open_meteo_archive,57.8,54.2,6.9,16.3,205.0,,0.012,67.0,51.0,True
+2022_NFL_W13_KC_CIN,2026-09-07T05:48:19.364946+00:00,2022-12-04T21:25:00+00:00,-32936.4,False,False,open_meteo_archive,40.7,33.7,3.4,10.7,238.0,,0.0,37.0,0.0,True
+2022_NFL_W13_LAC_LV,2026-09-07T05:48:19.365303+00:00,2022-12-04T21:25:00+00:00,-32936.4,True,False,open_meteo_archive,,,,,,,,,,True
+2022_NFL_W13_IND_DAL,2026-09-07T05:48:19.640896+00:00,2022-12-05T01:20:00+00:00,-32932.5,False,True,open_meteo_archive,52.6,49.5,5.5,8.9,159.0,,0.008,81.0,51.0,True
+2022_NFL_W13_NO_TB,2026-09-07T05:48:19.934123+00:00,2022-12-06T01:15:00+00:00,-32908.6,False,False,open_meteo_archive,68.5,72.8,3.5,6.9,325.0,,0.0,90.0,3.0,True

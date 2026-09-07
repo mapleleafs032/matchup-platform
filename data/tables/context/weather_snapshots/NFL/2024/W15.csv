@@ -1,0 +1,17 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2024_NFL_W15_LAR_SF,2026-09-07T05:53:29.585570+00:00,2024-12-13T01:15:00+00:00,-15196.6,False,False,open_meteo_archive,53.0,52.6,1.4,6.9,145.0,,0.008,92.0,51.0,True
+2024_NFL_W15_DAL_CAR,2026-09-07T05:53:29.915821+00:00,2024-12-15T18:00:00+00:00,-15131.9,False,False,open_meteo_archive,45.5,39.7,6.4,17.2,17.0,,0.0,71.0,3.0,True
+2024_NFL_W15_KC_CLE,2026-09-07T05:53:30.247196+00:00,2024-12-15T18:00:00+00:00,-15131.9,False,False,open_meteo_archive,40.3,30.0,17.2,25.1,166.0,,0.0,88.0,3.0,True
+2024_NFL_W15_MIA_HOU,2026-09-07T05:53:30.570952+00:00,2024-12-15T18:00:00+00:00,-15131.9,False,True,open_meteo_archive,77.7,79.5,10.5,23.5,166.0,,0.008,68.0,51.0,True
+2024_NFL_W15_NYJ_JAX,2026-09-07T05:53:30.886622+00:00,2024-12-15T18:00:00+00:00,-15131.9,False,False,open_meteo_archive,71.2,70.4,10.4,22.1,69.0,,0.012,70.0,51.0,True
+2024_NFL_W15_WAS_NO,2026-09-07T05:53:30.886968+00:00,2024-12-15T18:00:00+00:00,-15131.9,True,False,open_meteo_archive,,,,,,,,,,True
+2024_NFL_W15_BAL_NYG,2026-09-07T05:53:31.204926+00:00,2024-12-15T18:00:00+00:00,-15131.9,False,False,open_meteo_archive,37.3,30.4,5.1,14.5,65.0,,0.0,61.0,3.0,True
+2024_NFL_W15_CIN_TEN,2026-09-07T05:53:31.522884+00:00,2024-12-15T18:00:00+00:00,-15131.9,False,False,open_meteo_archive,56.0,50.4,13.6,30.4,185.0,,0.0,81.0,3.0,True
+2024_NFL_W15_NE_ARI,2026-09-07T05:53:31.852741+00:00,2024-12-15T21:25:00+00:00,-15128.5,False,True,open_meteo_archive,67.9,61.4,2.9,9.8,274.0,,0.0,16.0,0.0,True
+2024_NFL_W15_IND_DEN,2026-09-07T05:53:32.170255+00:00,2024-12-15T21:25:00+00:00,-15128.5,False,False,open_meteo_archive,51.1,43.4,5.2,13.2,317.0,,0.0,27.0,0.0,True
+2024_NFL_W15_BUF_DET,2026-09-07T05:53:32.170642+00:00,2024-12-15T21:25:00+00:00,-15128.5,True,False,open_meteo_archive,,,,,,,,,,True
+2024_NFL_W15_TB_LAC,2026-09-07T05:53:32.170928+00:00,2024-12-15T21:25:00+00:00,-15128.5,True,False,open_meteo_archive,,,,,,,,,,True
+2024_NFL_W15_PIT_PHI,2026-09-07T05:53:32.487156+00:00,2024-12-15T21:25:00+00:00,-15128.5,False,False,open_meteo_archive,36.9,30.1,5.5,10.7,31.0,,0.0,69.0,3.0,True
+2024_NFL_W15_GB_SEA,2026-09-07T05:53:32.810478+00:00,2024-12-16T01:20:00+00:00,-15124.6,False,False,open_meteo_archive,43.7,39.3,4.1,7.6,93.0,,0.0,83.0,3.0,True
+2024_NFL_W15_CHI_MIN,2026-09-07T05:53:32.810826+00:00,2024-12-17T01:00:00+00:00,-15100.9,True,False,open_meteo_archive,,,,,,,,,,True
+2024_NFL_W15_ATL_LV,2026-09-07T05:53:32.811104+00:00,2024-12-17T01:30:00+00:00,-15100.4,True,False,open_meteo_archive,,,,,,,,,,True

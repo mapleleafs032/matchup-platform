@@ -1,0 +1,2 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2024_NFL_P22_KC_PHI,2026-09-07T05:53:49.647473+00:00,2025-02-09T23:30:00+00:00,-13782.4,True,False,open_meteo_archive,,,,,,,,,,True

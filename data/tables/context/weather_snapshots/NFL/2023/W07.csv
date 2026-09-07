@@ -1,0 +1,14 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2023_NFL_W07_JAX_NO,2026-09-07T05:50:25.270806+00:00,2023-10-20T00:15:00+00:00,-25277.6,True,False,open_meteo_archive,,,,,,,,,,True
+2023_NFL_W07_DET_BAL,2026-09-07T05:50:25.567549+00:00,2023-10-22T17:00:00+00:00,-25212.8,False,False,open_meteo_archive,59.7,50.7,15.8,30.4,301.0,,0.0,49.0,0.0,True
+2023_NFL_W07_LV_CHI,2026-09-07T05:50:25.851011+00:00,2023-10-22T17:00:00+00:00,-25212.8,False,False,open_meteo_archive,51.8,46.9,7.2,16.3,5.0,,0.0,71.0,1.0,True
+2023_NFL_W07_CLE_IND,2026-09-07T05:50:26.133572+00:00,2023-10-22T17:00:00+00:00,-25212.8,False,True,open_meteo_archive,52.6,47.4,6.6,15.9,12.0,,0.0,52.0,0.0,True
+2023_NFL_W07_BUF_NE,2026-09-07T05:50:26.445692+00:00,2023-10-22T17:00:00+00:00,-25212.8,False,False,open_meteo_archive,57.2,49.6,13.0,30.4,282.0,,0.0,54.0,1.0,True
+2023_NFL_W07_WAS_NYG,2026-09-07T05:50:26.729764+00:00,2023-10-22T17:00:00+00:00,-25212.8,False,False,open_meteo_archive,56.2,47.4,14.8,28.6,301.0,,0.0,53.0,3.0,True
+2023_NFL_W07_ATL_TB,2026-09-07T05:50:27.013626+00:00,2023-10-22T17:00:00+00:00,-25212.8,False,False,open_meteo_archive,80.2,81.4,1.6,10.3,8.0,,0.0,36.0,3.0,True
+2023_NFL_W07_PIT_LAR,2026-09-07T05:50:27.013971+00:00,2023-10-22T20:05:00+00:00,-25209.8,True,False,open_meteo_archive,,,,,,,,,,True
+2023_NFL_W07_ARI_SEA,2026-09-07T05:50:27.317236+00:00,2023-10-22T20:05:00+00:00,-25209.8,False,False,open_meteo_archive,55.2,51.8,8.3,15.7,346.0,,0.0,83.0,3.0,True
+2023_NFL_W07_GB_DEN,2026-09-07T05:50:27.602913+00:00,2023-10-22T20:25:00+00:00,-25209.4,False,False,open_meteo_archive,73.9,67.3,7.0,15.9,22.0,,0.0,19.0,1.0,True
+2023_NFL_W07_LAC_KC,2026-09-07T05:50:27.885850+00:00,2023-10-22T20:25:00+00:00,-25209.4,False,False,open_meteo_archive,69.4,64.3,9.3,20.1,111.0,,0.0,42.0,2.0,True
+2023_NFL_W07_MIA_PHI,2026-09-07T05:50:28.179994+00:00,2023-10-23T00:20:00+00:00,-25205.5,False,False,open_meteo_archive,52.6,45.0,9.1,20.8,295.0,,0.0,46.0,3.0,True
+2023_NFL_W07_SF_MIN,2026-09-07T05:50:28.180386+00:00,2023-10-24T00:15:00+00:00,-25181.6,True,False,open_meteo_archive,,,,,,,,,,True

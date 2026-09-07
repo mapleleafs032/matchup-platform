@@ -1,0 +1,14 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2023_NFL_W13_SEA_DAL,2026-09-07T05:50:46.880718+00:00,2023-12-01T01:15:00+00:00,-24268.6,False,True,open_meteo_archive,62.1,62.0,7.8,12.1,192.0,,0.0,92.0,0.0,True
+2023_NFL_W13_DEN_HOU,2026-09-07T05:50:47.170377+00:00,2023-12-03T18:00:00+00:00,-24203.8,False,True,open_meteo_archive,67.9,65.8,3.6,11.0,270.0,,0.0,45.0,3.0,True
+2023_NFL_W13_LAC_NE,2026-09-07T05:50:47.471629+00:00,2023-12-03T18:00:00+00:00,-24203.8,False,False,open_meteo_archive,43.2,37.0,10.5,21.9,63.0,,0.083,100.0,61.0,True
+2023_NFL_W13_DET_NO,2026-09-07T05:50:47.471977+00:00,2023-12-03T18:00:00+00:00,-24203.8,True,False,open_meteo_archive,,,,,,,,,,True
+2023_NFL_W13_ATL_NYJ,2026-09-07T05:50:47.781307+00:00,2023-12-03T18:00:00+00:00,-24203.8,False,False,open_meteo_archive,49.9,44.7,11.5,20.6,84.0,,0.016,95.0,51.0,True
+2023_NFL_W13_ARI_PIT,2026-09-07T05:50:48.077532+00:00,2023-12-03T18:00:00+00:00,-24203.8,False,False,open_meteo_archive,59.3,54.9,10.1,22.4,227.0,,0.0,70.0,3.0,True
+2023_NFL_W13_IND_TEN,2026-09-07T05:50:48.368975+00:00,2023-12-03T18:00:00+00:00,-24203.8,False,False,open_meteo_archive,59.4,53.9,10.4,24.2,263.0,,0.0,61.0,2.0,True
+2023_NFL_W13_MIA_WAS,2026-09-07T05:50:48.665058+00:00,2023-12-03T18:00:00+00:00,-24203.8,False,False,open_meteo_archive,58.6,58.9,4.3,10.5,267.0,,0.0,94.0,3.0,True
+2023_NFL_W13_CAR_TB,2026-09-07T05:50:48.970280+00:00,2023-12-03T21:05:00+00:00,-24200.8,False,False,open_meteo_archive,73.8,77.2,10.1,22.6,307.0,,0.024,87.0,53.0,True
+2023_NFL_W13_CLE_LAR,2026-09-07T05:50:48.970669+00:00,2023-12-03T21:25:00+00:00,-24200.4,True,False,open_meteo_archive,,,,,,,,,,True
+2023_NFL_W13_SF_PHI,2026-09-07T05:50:49.260234+00:00,2023-12-03T21:25:00+00:00,-24200.4,False,False,open_meteo_archive,52.8,52.2,2.4,8.7,68.0,,0.0,95.0,3.0,True
+2023_NFL_W13_KC_GB,2026-09-07T05:50:49.574129+00:00,2023-12-04T01:20:00+00:00,-24196.5,False,False,open_meteo_archive,30.3,22.5,7.2,13.0,346.0,,0.0,82.0,3.0,True
+2023_NFL_W13_CIN_JAX,2026-09-07T05:50:49.866748+00:00,2023-12-05T01:15:00+00:00,-24172.6,False,False,open_meteo_archive,62.2,60.3,6.2,10.1,244.0,,0.0,70.0,3.0,True

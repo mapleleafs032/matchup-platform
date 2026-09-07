@@ -1,0 +1,2 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2025_NFL_P22_SEA_NE,2026-09-07T05:56:06.631160+00:00,2026-02-08T23:30:00+00:00,-5046.4,False,False,open_meteo_archive,64.6,62.6,5.9,14.5,320.0,,0.0,63.0,3.0,True

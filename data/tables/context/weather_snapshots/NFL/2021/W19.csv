@@ -1,0 +1,7 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code,is_actual
+2021_NFL_P19_LV_CIN,2026-09-07T05:46:13.218618+00:00,2022-01-15T21:30:00+00:00,-40688.3,False,False,open_meteo_archive,32.8,23.4,9.7,20.4,61.0,,0.0,60.0,3.0,True
+2021_NFL_P19_NE_BUF,2026-09-07T05:46:13.480183+00:00,2022-01-16T01:15:00+00:00,-40684.5,False,False,open_meteo_archive,5.3,-5.0,8.1,14.5,62.0,,0.0,65.0,0.0,True
+2021_NFL_P19_PHI_TB,2026-09-07T05:46:13.738606+00:00,2022-01-16T18:00:00+00:00,-40667.8,False,False,open_meteo_archive,65.8,55.4,24.1,39.4,263.0,,0.0,55.0,2.0,True
+2021_NFL_P19_SF_DAL,2026-09-07T05:46:13.996630+00:00,2022-01-16T21:30:00+00:00,-40664.3,False,True,open_meteo_archive,51.8,45.7,3.0,12.1,283.0,,0.0,35.0,0.0,True
+2021_NFL_P19_PIT_KC,2026-09-07T05:46:14.262208+00:00,2022-01-17T01:15:00+00:00,-40660.5,False,False,open_meteo_archive,28.1,20.3,6.9,13.0,295.0,,0.0,82.0,3.0,True
+2021_NFL_P19_ARI_LAR,2026-09-07T05:46:14.262590+00:00,2022-01-18T01:15:00+00:00,-40636.5,True,False,open_meteo_archive,,,,,,,,,,True
