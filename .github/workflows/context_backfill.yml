@@ -1,0 +1,39 @@
+name: Context backfill (historical QB / injuries / weather / closing lines)
+on:
+  workflow_dispatch:
+    inputs:
+      league:  { description: "NFL or CFB", default: "NFL", required: true }
+      seasons: { description: "seasons, space separated (2021-2025)", default: "2025", required: true }
+concurrency: { group: data-write, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Per season
+        run: |
+          L=${{ github.event.inputs.league }}
+          for S in ${{ github.event.inputs.seasons }}; do
+            echo "=================== $L $S"
+            if [ "$L" = "NFL" ]; then
+              python -m pipeline.jobs.ingest_context --league NFL --season $S --what players rosters injuries coaches qbr --trigger backfill
+            else
+              python -m pipeline.jobs.ingest_context --league CFB --season $S --what rosters coaches --trigger backfill
+              python -m pipeline.jobs.ingest_odds --league CFB --season $S --closing-backfill --trigger backfill
+            fi
+            python -m pipeline.jobs.build_roster --league $L --season $S --what fetch --trigger backfill
+            python -m pipeline.jobs.build_roster --league $L --season $S --what derive --weeks all --trigger backfill
+            python -m pipeline.jobs.ingest_context --league $L --season $S --what weather_archive --trigger backfill
+            python -m pipeline.jobs.build_matchups --league $L --season $S --weeks all --trigger backfill
+          done
+      - name: Summary
+        run: python -m pipeline.jobs.report_status
+      - uses: ./.github/actions/commit
+        with: { message: "data: context backfill ${{ github.event.inputs.league }} ${{ github.event.inputs.seasons }}" }
