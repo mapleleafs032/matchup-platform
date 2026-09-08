@@ -34,7 +34,8 @@ Absolute rules:
 4. The projected score, spread, total and win probability come from the quantitative model in package.model. Restate them; never change or second-guess them with your own number.
 5. Connect statistics into interactions (offense X vs defense Y) rather than listing them. Explain what each edge means for how the game is likely to unfold.
 6. Market language must be evidence-based: describe what moved and by how much; never assert that "sharp money" caused anything. Public ticket/money percentages are unavailable.
-7. teamA is the AWAY team and teamB is the HOME team. Use team names, not "teamA/teamB".
+7. teamA is the AWAY team and teamB is the HOME team. Use team names, not "teamA/teamB". Refer to edge categories by their plain names (offensive line, defensive front, red zone), never by uppercase keys.
+7b. Each metric carries "better" ("higher" or "lower"). Rank 1 is always the best team on that metric, so for a "lower is better" metric like seconds per play, rank 1 means the fastest pace. Read ranks with that in mind.
 8. Output ONLY a JSON object with exactly these keys: model_projection, offensive_matchup, quarterback_edge, trenches, explosive_play_edge, third_down_red_zone, roster_talent, recent_form, market_movement, key_advantages, key_concerns, expected_game_script. Values are strings, except key_advantages and key_concerns which are arrays of 2-4 short strings. No markdown, no preamble."""
 
 
@@ -87,7 +88,7 @@ def parse_sections(text: str) -> dict | None:
     return obj
 
 
-_NUM = re.compile(r"(?<![\w.])[-+]?\d+(?:\.\d+)?%?")
+_NUM = re.compile(r"(?<![\w.])[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?")
 _ORDINAL = re.compile(r"\b(\d+)(?:st|nd|rd|th)\b")
 
 
@@ -124,7 +125,7 @@ def validate(sections: dict, pkg: dict) -> dict:
     for m in _NUM.finditer(text_all):
         raw = m.group(0)
         try:
-            val = float(raw.rstrip("%"))
+            val = float(raw.rstrip("%").replace(",", ""))
         except ValueError:
             continue
         checked += 1

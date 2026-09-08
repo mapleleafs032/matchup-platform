@@ -36,6 +36,9 @@ def test_hash_ignores_timestamps_and_notes():
 def test_validate_accepts_package_numbers_and_percent_forms():
     v = ai_agent.validate(_sections(), _pkg())
     assert v["ok"], v
+    pkg = _pkg(); pkg["teamA"]["quarterback"]["career_attempts"] = 2948
+    v = ai_agent.validate(_sections(quarterback_edge="Insufficient reliable data on the home starter; the away QB has 2,948 career attempts."), pkg)
+    assert v["ok"], v
 
 
 def test_validate_rejects_invented_numbers_and_confident_unavailable():

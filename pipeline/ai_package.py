@@ -26,7 +26,7 @@ PACKAGE_METRICS = ["points_per_game", "points_allowed_per_game", "off_ppa_play",
                    "off_pass_rate", "off_neutral_pass_rate", "off_sec_per_play", "off_play_action_rate", "def_blitz_rate", "def_pressure_no_blitz_rate", "plays_per_game"]
 
 
-def _metrics_for(m: pd.DataFrame, team_id: str, game_id: str, window: str, adj: str, labels: dict) -> tuple[dict, list[str]]:
+def _metrics_for(m: pd.DataFrame, team_id: str, game_id: str, window: str, adj: str, labels: dict, hib: dict | None = None) -> tuple[dict, list[str]]:
     sub = m[(m.team_id == team_id) & (m.as_of_game_id == game_id) & (m.window == window) & (m.adjustment == adj)]
     if sub.empty:
         return {}, PACKAGE_METRICS
@@ -36,7 +36,8 @@ def _metrics_for(m: pd.DataFrame, team_id: str, game_id: str, window: str, adj: 
         v = d.get(k)
         if v is None:
             unavailable.append(k); continue
-        out[k] = {"label": labels.get(k, k), "value": v["v"], "rank": v["rank"], "pct": v["pct"], "games": v["n"], "low_sample": v["low_n"]}
+        out[k] = {"label": labels.get(k, k), "value": v["v"], "rank": v["rank"], "pct": v["pct"], "games": v["n"], "low_sample": v["low_n"],
+                  "better": ("higher" if (hib or {}).get(k, True) else "lower")}
     return out, unavailable
 
 
@@ -49,6 +50,7 @@ def build_package(league: str, season: int, week: int, game_id: str) -> dict | N
     teams = storage.read_table(config.TABLES / "ref" / "teams.parquet").set_index("team_id")
     reg = storage.read_table(config.TABLES / "ref" / "metric_definitions.csv")
     labels = dict(zip(reg.metric_key, reg.label)) if not reg.empty else {}
+    hib = dict(zip(reg.metric_key, reg.higher_is_better.astype(bool))) if not reg.empty else {}
     descs = dict(zip(reg.metric_key, reg.description)) if not reg.empty else {}
     m = storage.read_table(AN / "team_metrics_asof" / league / str(season) / f"W{week:02d}.parquet")
     edges = storage.read_table(AN / "matchup_edges" / league / str(season) / f"W{week:02d}.parquet")
@@ -73,9 +75,9 @@ def build_package(league: str, season: int, week: int, game_id: str) -> dict | N
 
     def team_block(tid: str, side: str) -> dict:
         t = teams.loc[tid] if tid in teams.index else None
-        blend, unav = _metrics_for(m, tid, game_id, "BLEND", "OPP_ADJ", labels)
-        season_raw, _ = _metrics_for(m, tid, game_id, "SEASON", "RAW", labels)
-        last3, _ = _metrics_for(m, tid, game_id, "LAST3", "RAW", labels)
+        blend, unav = _metrics_for(m, tid, game_id, "BLEND", "OPP_ADJ", labels, hib)
+        season_raw, _ = _metrics_for(m, tid, game_id, "SEASON", "RAW", labels, hib)
+        last3, _ = _metrics_for(m, tid, game_id, "LAST3", "RAW", labels, hib)
         n_games = int(m[(m.team_id == tid) & (m.as_of_game_id == game_id) & (m.window == "SEASON")].games_n.max()) if not m.empty else 0
         q = qb.loc[tid] if not qb.empty and tid in qb.index else None
         c = cont.loc[tid] if not cont.empty and tid in cont.index else None
