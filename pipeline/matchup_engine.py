@@ -322,7 +322,7 @@ def build_game(w: Week, g, weights: dict) -> list[dict]:
     add("TURNOVER", None if tm is None else tm * config.TURNOVER_REGRESSION, {"home": w.val(H, gid, "turnover_margin"), "away": w.val(A, gid, "turnover_margin"), "regression": config.TURNOVER_REGRESSION})
     add("SPECIAL_TEAMS", None, {"note": "special-teams metrics not yet ingested (Phase 4D)"}, unavailable=True)
     # coaching / roster / talent
-    cont = w.cont.set_index("team_id") if not w.cont.empty else pd.DataFrame()
+    cont = w.cont.drop_duplicates("team_id", keep="last").set_index("team_id") if not w.cont.empty else pd.DataFrame()
     hc = lambda t: (None if cont.empty or t not in cont.index or pd.isna(cont.loc[t].hc_changed) else (-1.0 if cont.loc[t].hc_changed else 0.0))
     add("COACHING", _sub(hc(H), hc(A)), {"home_hc_changed": None if hc(H) is None else hc(H) < 0, "away_hc_changed": None if hc(A) is None else hc(A) < 0}, unavailable=(hc(H) is None or hc(A) is None))
     if w.league == "CFB" and not w.talent.empty:

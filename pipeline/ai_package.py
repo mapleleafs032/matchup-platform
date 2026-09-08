@@ -62,9 +62,9 @@ def build_package(league: str, season: int, week: int, game_id: str) -> dict | N
     qbp = ROSTER / "qb_status" / league / str(season) / f"W{week:02d}.parquet"
     qb = pd.read_parquet(qbp).set_index("team_id") if qbp.exists() else pd.DataFrame()
     cont = storage.read_table(ROSTER / "continuity" / league / f"{season}.parquet")
-    cont = cont.set_index("team_id") if not cont.empty else cont
+    cont = cont.drop_duplicates("team_id", keep="last").set_index("team_id") if not cont.empty else cont
     rp = storage.read_table(ROSTER / "returning_production" / league / f"{season}.parquet")
-    rp = rp[rp.method == "derived_position_weighted"].set_index("team_id") if not rp.empty else rp
+    rp = rp[rp.method == "derived_position_weighted"].sort_values("as_of_week").drop_duplicates("team_id", keep="last").set_index("team_id") if not rp.empty else rp
     tal = storage.read_table(ROSTER / "talent_scores.parquet") if league == "CFB" else pd.DataFrame()
     tal = tal[tal.season == season].set_index("team_id") if not tal.empty else tal
     inj = storage.read_table(ROSTER / "injuries" / league / f"{season}.csv")

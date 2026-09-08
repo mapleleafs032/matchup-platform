@@ -73,9 +73,9 @@ class Season:
         self.reg = storage.read_table(config.TABLES / "ref" / "metric_definitions.csv")
         ai = storage.read_table(config.TABLES / "model" / "ai_analyses_index.csv")
         self.ai_idx = ai[ai.league == league] if not ai.empty else ai
-        cont = storage.read_table(ROSTER / "continuity" / league / f"{season}.parquet"); self.cont = cont.set_index("team_id") if not cont.empty else cont
+        cont = storage.read_table(ROSTER / "continuity" / league / f"{season}.parquet"); self.cont = cont.drop_duplicates("team_id", keep="last").set_index("team_id") if not cont.empty else cont
         rp = storage.read_table(ROSTER / "returning_production" / league / f"{season}.parquet")
-        self.rp = rp[rp.method == "derived_position_weighted"].set_index("team_id") if not rp.empty else rp
+        self.rp = rp[rp.method == "derived_position_weighted"].sort_values("as_of_week").drop_duplicates("team_id", keep="last").set_index("team_id") if not rp.empty else rp
         self.mv = self._model_versions()
 
     def _records(self) -> dict:
