@@ -56,8 +56,8 @@ class AnthropicClient:
                               json={"model": m, "max_tokens": max_tokens, "temperature": 0.2, "system": system, "messages": [{"role": "user", "content": user}]}, timeout=120)
             if r.status_code == 404 or (r.status_code == 400 and "model" in r.text.lower()):
                 last = f"{m}: {r.text[:120]}"; continue
-            r.raise_for_status()
-            data = r.json(); self.model = m
+            if r.status_code >= 400:
+                raise RuntimeError(f"Anthropic API {r.status_code}: {r.text[:300]}")            data = r.json(); self.model = m
             text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
             return text, {"model": m, "tokens_in": data.get("usage", {}).get("input_tokens"), "tokens_out": data.get("usage", {}).get("output_tokens")}
         raise RuntimeError(f"no usable model among {self.candidates}: {last}")
