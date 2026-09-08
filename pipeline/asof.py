@@ -179,6 +179,9 @@ def aggregate(rows: pd.DataFrame, adjusted: bool = False) -> dict[str, tuple[flo
         if acol not in cols:
             out[key] = (None, 0); continue
         v = cols[acol]
+        if kind == "ratio" and acol != a:
+            # an opponent-adjusted ratio is already a per-game rate: average it weighted by the denominator, don't divide again
+            kind, b = "wmean", b
         if kind == "mean":
             w = w_all
         elif kind == "wmean":

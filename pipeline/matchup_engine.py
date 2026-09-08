@@ -63,6 +63,8 @@ class Week:
         self.venues = storage.read_table(config.TABLES / "ref" / "venues.parquet")
         wdir = config.TABLES / "context" / "weather_snapshots" / league / str(season)
         self.weather = pd.read_csv(wdir / f"W{week:02d}.csv") if (wdir / f"W{week:02d}.csv").exists() else pd.DataFrame()
+        pl = storage.read_table(config.TABLES / "ref" / "players" / f"{league}.parquet")
+        self.player_names = dict(zip(pl.player_id, pl.full_name)) if not pl.empty else {}
         self._z_cache: dict = {}
 
     # ---- metric access ----------------------------------------------------------------
@@ -235,7 +237,7 @@ def cat_injury(w: Week, g) -> tuple[float | None, dict, bool]:
             mult = 1.0 if is_starter else 0.35
             sev = 1.0 if r.status in ("OUT", "IR") else 0.6
             tot += wgt * mult * sev
-            items.append({"player": r.get("player_name") if pd.notna(r.get("player_name")) else r.get("player_id"), "pos": pos, "status": r.status, "starter": bool(is_starter), "impact": round(wgt * mult * sev, 2)})
+            items.append({"player": r.get("player_name") if pd.notna(r.get("player_name")) else w.player_names.get(r.get("player_id"), r.get("player_id")), "pos": pos, "status": r.status, "starter": bool(is_starter), "impact": round(wgt * mult * sev, 2)})
         return tot, sorted(items, key=lambda x: -x["impact"])[:8]
     hb, hi = burden(g.home_team_id); ab, ai = burden(g.away_team_id)
     return (ab - hb) / config.INJURY_SD_POINTS, {"home_burden": hb, "away_burden": ab, "home": hi, "away": ai}, False

@@ -25,7 +25,7 @@ def run(league: str, season: int, weeks: list[int], job: JobRun, client=None, li
         client = ai_agent.AnthropicClient(config.ANTHROPIC_API_KEY, config.AI_MODEL_CANDIDATES)
     games = storage.read_table(storage.games_path(league, season))
     idx = storage.read_table(INDEX)
-    done = set(idx.analysis_id) if not idx.empty else set()
+    done = set(idx[~idx.validation_failed.astype(bool)].analysis_id) if not idx.empty else set()   # failed analyses are retried
     now = pd.Timestamp.now(tz="UTC")
     n_gen = n_skip = n_fail = 0
     budget = limit or config.AI_MAX_GAMES_PER_RUN

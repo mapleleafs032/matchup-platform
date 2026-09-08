@@ -95,3 +95,18 @@ def test_lock_freezes_pregame_record(tmp_path, monkeypatch):
     assert ev.prediction_id == "p2" and ev.margin_error == -3.0 and ev.winner_correct and ev.model_ats_result == "WIN" and ev.model_ou_result == "LOSS"
     assert storage.read_table(storage.games_path("NFL", 2026)).iloc[0].status == "FINAL"
     assert json.loads((tmp_path / "snapshots" / "pregame_2026_NFL_W01_NE_SEA.json").read_text())["prediction"]["proj_margin_home"] == 4.0
+
+
+def test_build_site_smoke(tmp_path, monkeypatch):
+    """The site builder must not crash on an empty season and must write manifest + status."""
+    import config
+    from pipeline.jobs import build_site
+    import pipeline.log as L
+    monkeypatch.setattr(config, "TABLES", tmp_path / "tables"); monkeypatch.setattr(config, "SNAPSHOTS", tmp_path / "snapshots")
+    monkeypatch.setattr(config, "SITE_DIR", tmp_path / "site"); monkeypatch.setattr(config, "SITE_JSON", tmp_path / "site" / "json")
+    monkeypatch.setattr(build_site, "OUT", tmp_path / "site" / "json"); monkeypatch.setattr(build_site, "AN", tmp_path / "tables" / "analytics"); monkeypatch.setattr(build_site, "ROSTER", tmp_path / "tables" / "roster")
+    monkeypatch.setattr(L, "JOB_LOG", tmp_path / "tables" / "ops" / "job_log.csv")
+    (tmp_path / "site" / "json").mkdir(parents=True)
+    with L.JobRun("SITE", "BOTH") as job:
+        build_site.run(["NFL", "CFB"], 2026, None, job)
+    assert (tmp_path / "site" / "json" / "manifest.json").exists() and (tmp_path / "site" / "json" / "status.json").exists()

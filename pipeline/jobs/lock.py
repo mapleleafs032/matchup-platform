@@ -87,8 +87,12 @@ def lock_league(league: str, season: int, job: JobRun, now: pd.Timestamp) -> int
         }
         config.SNAPSHOTS.mkdir(parents=True, exist_ok=True)
         spath = config.SNAPSHOTS / f"pregame_{gid}.json"
-        if spath.exists():
-            continue    # a snapshot is written once, ever
+        if spath.exists():   # snapshot is written once, ever; but make sure the status reflects it (a lost commit can revert it)
+            games.loc[games.game_id == gid, "status"] = "LOCKED"
+            if pd.isna(games.loc[games.game_id == gid, "locked_at"]).all():
+                games.loc[games.game_id == gid, "locked_at"] = now.isoformat()
+            n += 1
+            continue
         body = json.dumps(snapshot, default=str, indent=0)
         spath.write_text(body)
         sha = hashlib.sha256(body.encode()).hexdigest()

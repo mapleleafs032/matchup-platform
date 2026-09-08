@@ -39,7 +39,7 @@ Absolute rules:
 
 
 def build_prompt(pkg: dict) -> str:
-    return ("Package:\n" + json.dumps(pkg, default=str) +
+    return ("Package:\n" + json.dumps(pkg, default=str, allow_nan=False) +
             "\n\nWrite the analysis JSON now. Keep each section to 2-5 sentences (expected_game_script may be up to 7). Use plain language a knowledgeable fan understands; explain an advanced metric briefly the first time you use it.")
 
 
@@ -91,13 +91,30 @@ _ORDINAL = re.compile(r"\b(\d+)(?:st|nd|rd|th)\b")
 def validate(sections: dict, pkg: dict) -> dict:
     """Numeric-citation check: every number in the prose must exist in the package (with rounding/percent tolerance)."""
     allowed = flat_numbers(pkg)
-    allowed_expanded = set()
+    head = []
+    mdl = pkg.get("model") or {}
+    for v in ((mdl.get("projected_score") or {}).values() if isinstance(mdl.get("projected_score"), dict) else []):
+        head.append(v)
+    for k in ("projected_margin_home", "projected_total", "market_spread_home", "market_total", "spread_diff_vs_market", "total_diff_vs_market"):
+        if mdl.get(k) is not None:
+            head.append(mdl[k])
+    mk = pkg.get("market") or {}
+    for blk in ("open", "current"):
+        for k in ("spread_home", "total"):
+            v = (mk.get(blk) or {}).get(k) if isinstance(mk.get(blk), dict) else None
+            if v is not None:
+                head.append(v)
+    head = [float(x) for x in head if isinstance(x, (int, float))]
+    for i, a in enumerate(head):            # "an 8-point gap", "a 3.5-point move": arithmetic on headline numbers is legitimate
+        for b in head[i + 1:]:
+            allowed.update({round(abs(a - b), 3), round(a + b, 3)})
+    # exact-ish sets: decimals must match to one decimal place; integers may match a rounded package value
+    allowed_1dp = {round(v, 1) for v in allowed} | {round(-v, 1) for v in allowed} | {round(abs(v), 1) for v in allowed}
+    allowed_int = {round(v, 0) for v in allowed if abs(v) >= 1.0} | {round(abs(v), 0) for v in allowed if abs(v) >= 1.0}
+    allowed_pct = set()
     for v in allowed:
-        allowed_expanded.update({round(v, 3), round(v, 2), round(v, 1), round(abs(v), 1)})
         if -1.0 <= v <= 1.0:
-            allowed_expanded.update({round(v * 100, 1), round(v * 100, 0), round(abs(v) * 100, 0)})   # rates may be written as percentages
-        if abs(v) >= 1.0:
-            allowed_expanded.update({round(v, 0), round(abs(v), 0)})                                  # 24.5 may be written as 24 or 25? no: only 24.5 -> 24.5/25 tolerance below
+            allowed_pct.update({round(abs(v) * 100, 1), round(abs(v) * 100, 0)})
     year_like = {float(y) for y in range(1990, 2040)}
     violations, checked = [], 0
     text_all = " ".join(v if isinstance(v, str) else " ".join(v) for v in sections.values())
@@ -108,14 +125,20 @@ def validate(sections: dict, pkg: dict) -> dict:
         except ValueError:
             continue
         checked += 1
-        if val in year_like or val in (1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 100.0) and not raw.endswith("."):
-            continue     # ordinal-ish small integers and years: too ambiguous to police
-        cands = {round(val, 1), round(-val, 1), round(abs(val), 1)}
-        if abs(val) >= 1.0:
-            cands.add(round(val, 0))
-        if raw.endswith("%") or (0 < val <= 100 and val == int(val) and text_all[m.end():m.end() + 1] == "%"):
-            cands.update({round(val / 100, 2), round(val / 100, 3)})
-        if not (cands & allowed_expanded):
+        is_pct = raw.endswith("%")
+        is_int = "." not in raw
+        if val in year_like:
+            continue
+        if not is_pct and is_int and 0 <= val <= 30:
+            continue     # ranks, downs, yardages, small counts: contextual, not statistics
+        ok = False
+        if is_pct:
+            ok = round(val, 1) in allowed_pct or round(val, 0) in allowed_pct or round(val / 100, 3) in {round(v, 3) for v in allowed}
+        elif is_int:
+            ok = val in allowed_int or val in allowed_1dp or val in allowed_pct
+        else:
+            ok = round(val, 1) in allowed_1dp or round(val, 1) in allowed_pct
+        if not ok:
             violations.append(raw)
     unavailable = set(pkg.get("unavailable", []))
     confident_unavailable = []

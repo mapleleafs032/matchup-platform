@@ -71,3 +71,13 @@ def test_parse_sections_requires_exact_keys():
     assert ai_agent.parse_sections("```json\n" + good + "\n```") is not None
     partial = json.dumps({k: "x" for k in ai_agent.SECTIONS[:5]})
     assert ai_agent.parse_sections(partial) is None
+
+
+def test_site_builder_status_and_manifest(tmp_path, monkeypatch):
+    """Smoke: status/manifest build on an empty data dir without raising (tables absent -> empty structures)."""
+    import config
+    from pipeline import site_builder
+    monkeypatch.setattr(config, "TABLES", tmp_path / "tables"); monkeypatch.setattr(config, "SITE_JSON", tmp_path / "site" / "json"); monkeypatch.setattr(site_builder, "OUT", tmp_path / "site" / "json")
+    monkeypatch.setattr(site_builder, "MODEL", tmp_path / "tables" / "model"); monkeypatch.setattr(site_builder, "AN", tmp_path / "tables" / "analytics"); monkeypatch.setattr(site_builder, "ROSTER", tmp_path / "tables" / "roster")
+    counts = site_builder.build_all(["NFL"], 2026)
+    assert counts == {} and (tmp_path / "site" / "json" / "manifest.json").exists() and (tmp_path / "site" / "json" / "status.json").exists()

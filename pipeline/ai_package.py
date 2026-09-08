@@ -7,6 +7,7 @@ so the model can say "Insufficient reliable data" for exactly the right things.
 from __future__ import annotations
 import hashlib
 import json
+import re
 
 import pandas as pd
 
@@ -138,8 +139,32 @@ def build_package(league: str, season: int, week: int, game_id: str) -> dict | N
                               | ({"weather"} if weather is None else set()) | ({"market"} if market is None or not market.get("available") else set())
                               | ({"quarterback_home"} if home["quarterback"] is None else set()) | ({"quarterback_away"} if away["quarterback"] is None else set())),
     }
+    pkg = clean(pkg)
     pkg["inputs_hash"] = package_hash(pkg)
     return pkg
+
+
+def clean(obj):
+    """NaN/NA -> None recursively; numpy scalars -> Python scalars. The API rejects NaN tokens (invalid JSON)."""
+    if isinstance(obj, dict):
+        return {k: clean(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [clean(v) for v in obj]
+    if isinstance(obj, (str, bytes)):
+        return obj
+    if hasattr(obj, "item") and not isinstance(obj, (str, bytes)):
+        try:
+            obj = obj.item()
+        except (ValueError, TypeError):
+            pass
+    if isinstance(obj, float) and obj != obj:
+        return None
+    try:
+        if obj is not None and not isinstance(obj, (str, bytes, bool, int, float, dict, list)) and pd.isna(obj):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return obj
 
 
 def package_hash(pkg: dict) -> str:
@@ -152,8 +177,12 @@ def package_hash(pkg: dict) -> str:
     return hashlib.sha256(json.dumps(core, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
+_NUM_IN_TEXT = re.compile(r"[-+]?\d+(?:\.\d+)?")
+
+
 def flat_numbers(obj, out: set | None = None) -> set:
-    """Every numeric value in the package (as floats rounded to 3 dp) for citation validation."""
+    """Every numeric value in the package (rounded to 3 dp) PLUS numbers written inside the package's own text
+    (metric descriptions, market notes, flags), for citation validation."""
     out = set() if out is None else out
     if isinstance(obj, dict):
         for v in obj.values():
@@ -165,4 +194,10 @@ def flat_numbers(obj, out: set | None = None) -> set:
         pass
     elif isinstance(obj, (int, float)) and obj == obj:
         out.add(round(float(obj), 3))
+    elif isinstance(obj, str):
+        for m in _NUM_IN_TEXT.findall(obj):
+            try:
+                out.add(round(float(m), 3))
+            except ValueError:
+                pass
     return out
