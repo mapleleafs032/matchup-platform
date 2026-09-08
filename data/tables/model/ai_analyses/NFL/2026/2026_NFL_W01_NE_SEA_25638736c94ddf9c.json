@@ -5,17 +5,41 @@
 "model_version": "NFL_v1.0",
 "llm_model": "claude-sonnet-4-6",
 "prompt_version": "ai_v1.0",
-"sections": null,
-"validation": {
-"ok": false,
-"violations": [
-"<unparseable JSON>"
+"sections": {
+"model_projection": "The model projects Seattle 25.68, New England 21.56, for a final margin of 4.12 points in favor of the Seahawks. The projected total of 47.24 sits 2.74 points above the market number of 44.5, suggesting the model sees more scoring than the current line implies. Seattle's win probability is 62.4%, consistent with the market's implied 60.4% no-vig probability. The spread has held steady at Seattle -3.5 since the first recorded snapshot with no movement across 153 book snapshots.",
+"offensive_matchup": "Both offenses grade similarly in EPA per play (expected points added, measuring how much each play improves scoring odds) \u2014 New England at 0.0801 ranks 9th while Seattle sits at 0.0784 ranking 10th \u2014 so neither unit holds a clear edge in overall efficiency. The sharper contrast is in how each offense is built: New England passes on 62% of neutral-script plays (5th), while Seattle is one of the league's most run-heavy teams at 53% neutral-script pass rate (31st). Seattle's offense converts at a 47.7% success rate (5th) versus New England's 46.5% (9th), giving the Seahawks a modest but real edge in moving the chains on a per-play basis. Seattle also generates 3.37 points per scoring opportunity (5th) compared to New England's 3.20 (9th), meaning once the Seahawks get into position they tend to come away with more.",
+"quarterback_edge": "Drake Maye holds a meaningful edge over Sam Darnold by career EPA per dropback \u2014 Maye at 0.084 versus Darnold at 0.017 \u2014 translating to a QB edge score that favors New England worth an estimated 0.35 points in the model. Maye also leads in career yards per attempt (7.87 vs. 7.61) and completion percentage (68% vs. 64.2%), though Darnold has nearly double the career starts (58 vs. 31). Both are listed as returning starters with 0.8 confidence on the depth chart, and neither has logged a snap this season, so the edge is based entirely on career track record. The Patriots' passing attack ranks 5th in offensive passing EPA per play (0.192), giving Maye a strong supporting context if he can stay upright behind a line that allows sacks on 9% of dropbacks \u2014 the 28th-worst rate in the league.",
+"trenches": "The most decisive trench battle of this game runs through Seattle's run defense, which ranks 1st in the league in both defensive rushing EPA per play (-0.2306) and line yards allowed (2.56 per rush), making it the top run-stopping front in the dataset. New England's run-blocking grades out poorly \u2014 24th in line yards (2.73) and 22nd in offensive rushing EPA per play (-0.0799) \u2014 so the Patriots are likely to struggle establishing anything on the ground against this front. Seattle's pass rush generates pressure on 27.5% of dropbacks (6th) without leaning heavily on the blitz (blitz rate 23%, 29th), meaning it creates disruption with its base four-man rush. New England's offensive line allows pressure on 21.7% of dropbacks (18th) and a sack rate of 9% (28th), which sets up a favorable matchup for Seattle's front seven. On the flip side, New England's defensive front generates pressure on 21.9% of dropbacks and holds a sack rate of 6.3% (16th), a more modest pass-rush profile against a Seattle line that allows pressure on 22.9% of snaps.",
+"explosive_play_edge": "New England holds a slight edge in the explosive play category \u2014 defined as rushes of 10-plus yards or passes of 20-plus yards. The Patriots generate explosive plays on 10% of their offensive snaps (7th) and limit opponents to 7.5% (8th), while Seattle produces explosives on 9.5% of plays (10th) and allows them on just 6.6% (2nd). Seattle's defense is elite at suppressing big plays, ranking 2nd in explosive plays allowed, which will make it difficult for New England to manufacture chunk gains through the air. New England's defense is also solid in this area at 8th, so both teams should expect a game where explosive plays are relatively scarce. The edge score slightly favors New England (-0.09 toward home), but the gap is narrow enough that a single big play could swing the category.",
+"third_down_red_zone": "Seattle owns the most dominant third-down defense in the dataset, holding opponents to a 32.8% conversion rate (1st), compared to New England's 36.3% allowed (7th). New England converts at 41.4% on offense (11th) while Seattle converts at 40.7% (16th), so the Patriots' offense will face its stiffest third-down test of the season against this Seahawks defense. In the red zone, Seattle's defense allows touchdowns on only 47.6% of opponent trips (2nd), while New England's defense allows 54% (7th) \u2014 a gap that could prove costly if Seattle reaches the red zone at its typical rate. Seattle scores touchdowns on 62.9% of its own red-zone trips (14th) and generates 3.37 points per scoring opportunity (5th), giving it a clear finishing edge over New England's 3.20 (9th). The combined third-down and red-zone edge scores both favor Seattle by a margin of 2.",
+"roster_talent": "Insufficient reliable data \u2014 NFL talent ratings are not modeled in this package. What is available is roster continuity: Seattle returns 93% of its production base (continuity index 0.93) versus New England's 87% (0.87), with the Seahawks also returning 100% of passing production and 91% of receiving production. New England returns 98% of passing production but only 63% of receiving production, suggesting some turnover at the skill positions on that side of the ball. Seattle's offensive line logged 85 returning starts versus New England's 64, giving the Seahawks a more experienced front heading into Week 1.",
+"recent_form": "Both teams are entering Week 1 of the 2026 season with zero games played, so no in-season form data exists. The model's recent-form adjustment shows a shift of 0.0 for both teams, contributing nothing to the projected margin. All metrics in this package carry a low-sample flag and are derived from prior-season blended and opponent-adjusted data rather than current-season results. Any momentum or trajectory narratives would require data not present in this package.",
+"market_movement": "The spread has held at Seattle -3.5 from open to current across 153 snapshots on DraftKings and eight other books, with zero points of movement. The total has similarly held at 44.5 with no movement recorded. The moneyline has shifted slightly \u2014 Seattle moved from -180 to -170 and New England from +150 to +142 \u2014 a modest tightening of about half a cent on the implied probability. No steam moves or sharp-action signals are recorded. The model's spread projection of -4.12 sits 0.62 points beyond the market number, and its total projection of 47.24 is 2.74 points above the market, the largest divergence in this package.",
+"key_advantages": [
+"Seattle's run defense ranks 1st in rushing EPA allowed and 1st in line yards allowed, directly neutralizing New England's already-weak ground game",
+"Seattle's third-down defense (32.8% allowed, 1st) and red-zone defense (47.6% TD rate allowed, 2nd) give it elite finishing ability on both sides of the ball",
+"Home field at Lumen Field contributes 1.5 points to the model projection, the single largest individual category contribution",
+"Drake Maye's career EPA per dropback (0.084) is nearly five times Darnold's (0.017), giving New England a quarterback edge worth an estimated 0.35 points"
 ],
-"confident_about_unavailable": []
+"key_concerns": [
+"New England's offensive line allows sacks on 9% of dropbacks (28th), a serious vulnerability against Seattle's pass rush that generates pressure on 27.5% of snaps without heavy blitzing",
+"All metrics carry a low-sample flag with zero 2026 games played, meaning projections rely entirely on prior-season blended data",
+"Seattle's neutral-script pass rate of 53% (31st) is the most run-heavy profile in the league, and New England's rush defense ranks 7th \u2014 the Seahawks' preferred attack runs into a stout front",
+"The model's total projection (47.24) is 2.74 points above the market (44.5), creating uncertainty about whether the scoring environment will match the model's expectations"
+],
+"expected_game_script": "Seattle figures to establish its identity early by leaning on the run game, though New England's 7th-ranked rush defense will make that a grind \u2014 both offensive lines grade poorly in run-blocking (Seattle 25th, New England 24th in line yards), so neither team is likely to gash the other on the ground. When Seattle does pass, Sam Darnold operates behind a line that allows pressure on 22.9% of dropbacks, facing a New England defense that generates havoc on 15.8% of plays (9th) \u2014 manageable but not comfortable. New England's best path to staying in this game runs through Drake Maye's arm, where the Patriots rank 5th in passing EPA per play, but the Patriots' sack-prone line (9% sack rate, 28th) against Seattle's front (27.5% pressure rate, 6th) could force Maye into quick decisions all afternoon. Seattle's defense should make third downs miserable for New England \u2014 holding opponents to 32.8% conversions \u2014 which will limit the Patriots' possession time and scoring opportunities. If New England falls behind, its pass-heavy neutral-script tendency (62%, 5th) will be amplified by game script, but Seattle's secondary has allowed explosive passing plays on only 6.6% of snaps (2nd), capping the ceiling on big plays. The model sees a competitive but controlled Seahawks win, with Seattle's defensive dominance in the run game, third downs, and red zone being the decisive factors. A final score in the range of 26-22 would fit the projected margin and total, with the game remaining within one score into the fourth quarter."
 },
-"validation_failed": true,
-"attempts": 2,
-"generated_at": "2026-09-08T02:32:05.922362+00:00",
-"tokens_in": 10926,
-"tokens_out": 1967
+"validation": {
+"numbers_checked": 154,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T03:05:48.257881+00:00",
+"tokens_in": 10888,
+"tokens_out": 2489,
+"stop_reason": "end_turn",
+"raw_text": null
 }

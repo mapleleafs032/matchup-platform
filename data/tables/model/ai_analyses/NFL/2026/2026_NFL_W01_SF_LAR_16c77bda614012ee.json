@@ -5,17 +5,41 @@
 "model_version": "NFL_v1.0",
 "llm_model": "claude-sonnet-4-6",
 "prompt_version": "ai_v1.0",
-"sections": null,
-"validation": {
-"ok": false,
-"violations": [
-"<unparseable JSON>"
+"sections": {
+"model_projection": "The model projects the Los Angeles Rams to win 28.55 to 20.59, a home margin of 7.96 points, with a projected total of 49.14. The Rams' win probability sits at 72.75%. The market opened and remains at Rams -3.5 with a total of 48.5, meaning the model sees the Rams as roughly 4.5 points stronger than the market implies. This game is played at a neutral site \u2014 Melbourne Cricket Ground \u2014 so no traditional home-field advantage is applied.",
+"offensive_matchup": "The Rams own the top-ranked offensive EPA per play (expected points added, a measure of how much each play improves scoring odds) at 0.208, compared to San Francisco's 0.137, which ranks 3rd. Los Angeles also leads the league in offensive success rate \u2014 the share of plays generating positive EPA \u2014 at 51.7%, while the 49ers sit at 50.3%. The Rams' offense runs into a San Francisco defense that ranks 28th in defensive success rate (48.1% of opponent plays succeed) and 25th in defensive EPA per play (0.071, meaning opponents gain value on most plays), creating a significant mismatch. San Francisco's offense, meanwhile, faces a Rams defense that is meaningfully better, ranking 11th in defensive EPA per play at -0.027, indicating it actually takes value away from opponents on average.",
+"quarterback_edge": "Brock Purdy holds a clear statistical edge in career efficiency: his career EPA per dropback is 0.204 versus Matthew Stafford's 0.131, and his career yards per attempt is 8.51 versus Stafford's 7.73. The model translates this into a slight edge favoring the 49ers at the QB position, worth roughly 0.39 points toward San Francisco. Stafford is the returning starter with 84 qualifying career games to Purdy's 53, giving him a durability and experience edge, though both carry a depth-chart confidence rating of 0.8. Neither quarterback has logged a snap this season, so both profiles are built entirely on prior-year data flagged as low sample.",
+"trenches": "The Rams' offensive line is the single largest driver of the model's margin, contributing 1.32 points toward Los Angeles. The Rams rank 1st in line yards per rush (3.41, the yards credited to the offensive line before a ball-carrier contributes) and 3rd in sack rate allowed (3.87%), while protecting against a San Francisco pass rush that ranks dead last \u2014 32nd \u2014 in both sack rate (3.34%) and pressure rate (16.4%). That combination produces a pass-protection-versus-pass-rush composite that heavily favors Los Angeles. On the other side, San Francisco's offensive line ranks 4th in sack rate allowed (4.27%) and 8th in pressure rate allowed (18.9%), but faces a Rams defensive front that generates pressure on 27.9% of dropbacks without the blitz at a top-5 rate (15.7%), making it a more competitive trench battle for the 49ers.",
+"explosive_play_edge": "The Rams generate explosive plays \u2014 defined as rushes of 10-plus yards or passes of 20-plus yards \u2014 on 12.25% of their offensive plays, the best rate in the league, while San Francisco allows explosive plays on just 7.36% of opponent snaps, ranking 4th-best defensively. That creates a genuine tension: Los Angeles's big-play offense meets one of the better explosive-play defenses in the league. San Francisco's offense generates explosives at only an 8.54% rate (17th), and the Rams allow them on 7.45% of plays (7th), so the 49ers are unlikely to win the chunk-play battle. The model gives the Rams a moderate edge here worth 0.31 points, reflecting that their explosive rate is elite enough to stress even a good defense.",
+"third_down_red_zone": "San Francisco's third-down conversion rate of 51.1% ranks 1st in the league, and this is the one area where the 49ers hold a decisive edge \u2014 the model scores it a -3 favoring San Francisco, though it contributes only -0.04 net points due to offsetting factors. The Rams convert just 38.2% of third downs (22nd), meaning Los Angeles will need to avoid third-and-long situations to keep drives alive. In the red zone, the Rams score touchdowns on 67.4% of trips (6th) and generate 3.74 points per scoring opportunity (1st), while San Francisco allows touchdowns on 61.0% of red-zone visits (20th). San Francisco scores touchdowns on 65.6% of its red-zone trips (8th) but faces a Rams defense that allows only 56.7% (11th), so both teams are capable of finishing drives, with Los Angeles holding a slight edge in converting opportunities into maximum points.",
+"roster_talent": "The Rams carry a roster continuity index of 0.96 \u2014 meaning nearly the entire unit returns intact \u2014 compared to San Francisco's 0.60, and this returning-production edge contributes 0.66 points toward Los Angeles in the model. Los Angeles returns 100% of its passing and receiving production, 98% of its rushing production, and 79% of its defensive production, with 78 offensive line starts returning. San Francisco returns 100% of passing production but only 69% of receiving production and 65% of defensive production, with 72 offensive line starts back. Talent ratings are not modeled for NFL teams in this package, so a deeper talent-tier comparison is unavailable.",
+"recent_form": "Insufficient reliable data. This is Week 1 of the 2026 season and neither team has played a game, so no recent-form shift is recorded for either the Rams or the 49ers. The model assigns a neutral form score to both sides.",
+"market_movement": "The spread has held at Rams -3.5 since the first recorded snapshot, with zero movement across 153 snapshots on 9 books. The total has similarly held at 48.5 with no movement. The moneyline has shifted slightly \u2014 the Rams opened at -198 and sit at -185, while San Francisco moved from +164 to +154 \u2014 representing a modest drift toward the 49ers on the moneyline without any spread adjustment. Public ticket and money percentages are unavailable, so the cause of the moneyline drift cannot be attributed to any specific betting group.",
+"key_advantages": [
+"Rams offensive line ranks 1st in line yards and 3rd in sack rate allowed, facing the 32nd-ranked 49ers pass rush",
+"Rams lead the NFL in offensive EPA per play (0.208), success rate (51.7%), and points per scoring opportunity (3.74)",
+"Rams hold a +0.70 turnover margin per game (2nd) versus San Francisco's -0.68 (30th)",
+"Rams roster continuity index of 0.96 versus San Francisco's 0.60 gives Los Angeles a significant familiarity edge"
 ],
-"confident_about_unavailable": []
+"key_concerns": [
+"San Francisco's 51.1% third-down conversion rate (1st) can extend drives against a Rams defense that allows 38.7% (12th)",
+"Brock Purdy's career EPA per dropback (0.204) outpaces Stafford's (0.131), giving the 49ers a QB efficiency edge",
+"San Francisco's defensive EPA per play allowed (0.071) is poor (25th), but the Rams' own pass defense (0.007 EPA allowed per pass, 13th) is solid enough to limit Purdy's ceiling",
+"San Francisco allows explosive plays on only 7.36% of snaps (4th), which could cap the Rams' big-play upside"
+],
+"expected_game_script": "With the Rams' superior offensive efficiency and a dominant offensive line matchup, Los Angeles is likely to establish early control of the line of scrimmage, generating positive rushing EPA (0.028 per carry, 6th) against a San Francisco run defense that ranks only 17th. Stafford should have time to operate \u2014 the Rams allow a sack on just 3.87% of dropbacks \u2014 and with a play-action rate of 30.9% (3rd) against a 49ers defense that generates pressure without the blitz at a league-worst rate, Los Angeles's passing game should find consistent openings. San Francisco's offense will keep the game competitive: Purdy's efficiency and the 49ers' league-best third-down conversion rate (51.1%) mean the 49ers can sustain drives and stay on the field, but they'll be fighting against a Rams defense that is meaningfully better than San Francisco's. The turnover margin disparity \u2014 Rams at +0.70 per game versus 49ers at -0.68 \u2014 is a significant structural risk for San Francisco; if the 49ers give the ball away even once or twice, it could prove decisive in a game the model already projects as a 28-21 Rams win. Expect the Rams to lead at halftime and manage the game in the second half, with San Francisco's third-down efficiency keeping the final margin closer than the underlying metrics suggest it should be."
 },
-"validation_failed": true,
-"attempts": 2,
-"generated_at": "2026-09-08T02:33:40.893093+00:00",
-"tokens_in": 10877,
-"tokens_out": 2000
+"validation": {
+"numbers_checked": 138,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T03:06:40.787762+00:00",
+"tokens_in": 10835,
+"tokens_out": 2191,
+"stop_reason": "end_turn",
+"raw_text": null
 }

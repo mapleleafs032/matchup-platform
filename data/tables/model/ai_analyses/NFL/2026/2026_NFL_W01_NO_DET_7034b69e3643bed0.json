@@ -5,17 +5,43 @@
 "model_version": "NFL_v1.0",
 "llm_model": "claude-sonnet-4-6",
 "prompt_version": "ai_v1.0",
-"sections": null,
-"validation": {
-"ok": false,
-"violations": [
-"<unparseable JSON>"
+"sections": {
+"model_projection": "The model projects Detroit 25.16, New Orleans 20.37, for a Lions margin of 4.79 points and a combined total of 45.53. Detroit's win probability sits at 64.21%. The market opened and remains at Lions -7.0 with a total of 49.5, meaning the model is 2.2 points softer on the spread and 4.0 points under the market total.",
+"offensive_matchup": "Detroit's offense grades out at an EPA per play (expected points added per play, measuring value above average) of +0.08, ranking 8th, while New Orleans checks in at -0.13, ranking 29th. The Lions' passing attack is especially potent at +0.20 EPA per pass play (4th), and it runs into a Saints pass defense that allows +0.01 EPA per pass play allowed, only middling at 15th. New Orleans' offense generates a success rate (share of plays with positive EPA) of just 40.4%, 28th in the league, while Detroit's defense holds opponents to a 42.9% success rate. The structural gap between these two units is the single largest driver of the Lions' projected scoring advantage.",
+"quarterback_edge": "Jared Goff brings 86 career games with 10-plus attempts, 2,948 career attempts, a 68% completion rate, 7.67 yards per attempt, and a career EPA per dropback of +0.135, all pointing to a proven, above-average starter. Tyler Shough has 10 such career games, 325 attempts, a 68% completion rate, 7.34 yards per attempt, and a career EPA per dropback of -0.028, reflecting a quarterback still establishing himself at this level. The model assigns this matchup an edge score of 2 in Detroit's favor, contributing 0.86 points to the Lions' projected margin, the largest single edge category in the model's output.",
+"trenches": "The offensive line matchup slightly favors New Orleans: Detroit's pass protection (pressure rate allowed of 24.0%, 24th) faces a Saints pass rush that generates pressure on 25.7% of dropbacks (9th) and sacks on 8.0% of dropbacks (6th), creating a meaningful mismatch. New Orleans' offensive line, however, allows havoc (plays with a sack, TFL, forced fumble, or turnover) on 16.2% of plays (27th), which is a concern against Detroit's defense. On the ground, New Orleans' run defense posts a rushing EPA allowed of -0.117 per play (5th-best), which limits Detroit's run game that already grades at -0.075 EPA per rush (21st). The OFFENSIVE_LINE edge scores -1 toward Detroit and the DEFENSIVE_FRONT edge scores 0, netting a modest away-team lean in the trenches.",
+"explosive_play_edge": "Detroit's explosive play rate (plays gaining 10-plus rushing or 20-plus passing yards) is 10.4%, ranking 4th, while New Orleans generates explosives on just 5.5% of plays, dead last at 32nd. The Saints' defense allows explosives on 8.2% of plays (15th), but Detroit's defense gives up explosives on 10.2% of plays (27th), meaning Lions receivers should find room for chunk gains. This category carries an edge score of 3 in Detroit's favor, the highest single-category score in the matchup, contributing 0.25 points to the projected margin.",
+"third_down_red_zone": "New Orleans' third-down defense is a genuine strength, holding opponents to a 34.9% conversion rate (4th-best), and the Saints convert at 39.6% themselves (18th), creating a slight away-team edge in this category (edge score -2 toward New Orleans). Red zone execution flips the script sharply: Detroit converts red-zone trips into touchdowns at a 68.3% rate (5th), earning 3.16 points per scoring opportunity (10th), while New Orleans scores touchdowns on just 45.5% of red-zone trips (32nd, last in the league) and generates only 2.20 points per scoring opportunity (31st). Detroit's red-zone defense, however, allows touchdowns on 69.1% of opponent trips (also 32nd), so if New Orleans can reach the red zone, they have a real chance to score. The net red-zone edge scores 3 in Detroit's favor, adding 0.20 points to the Lions' margin.",
+"roster_talent": "Insufficient reliable data on NFL talent ratings. New Orleans shows a higher roster continuity index (0.90 vs. Detroit's 0.84) and returning production total (83% vs. 75%), giving the Saints a modest familiarity edge that contributes -0.10 points toward Detroit in the model. Detroit's returning receiving production is strong at 85%, while New Orleans leads in returning passing production at 99% and rushing production at 83%. Detroit's returning defensive production is 63% versus New Orleans' 75%, suggesting the Lions' defense may have more new faces to integrate.",
+"recent_form": "Both teams enter Week 1 with zero games played in the 2026 season, so no in-season form data is available. The recent form edge scores 0 for both sides, contributing no directional points to the model. Insufficient reliable data exists to assess momentum or trajectory heading into this opener.",
+"market_movement": "The spread has held at Lions -7.0 from open to current across 153 snapshots on 9 books, with zero movement in either direction. The total has similarly held at 49.5 with no movement. There is a 0.5-point book disagreement on the spread. The model's implied home win probability of 64.21% sits below the market's no-vig implied probability of 72.21%, a gap of roughly 8 percentage points.",
+"key_advantages": [
+"Detroit passing offense (+0.20 EPA/pass play, 4th) vs. a middling Saints pass defense",
+"Lions red-zone TD rate of 68.3% (5th) against Saints red-zone offense ranked last at 45.5%",
+"Goff's career EPA per dropback (+0.135) dwarfs Shough's (-0.028) across a much larger sample",
+"Detroit explosive play rate of 10.4% (4th) against a Saints offense generating explosives at just 5.5% (32nd)"
 ],
-"confident_about_unavailable": []
+"key_concerns": [
+"New Orleans' third-down defense allows only 34.9% conversions (4th), capable of stalling Detroit drives",
+"Detroit's run defense allows +0.012 EPA per rush (27th), leaving the ground game vulnerable if Saints establish it",
+"Detroit's defense allows explosive plays on 10.2% of opponent plays (27th), keeping New Orleans in striking distance",
+"Model projects a 4.79-point margin, well short of the market's -7.0 line, suggesting the model sees a closer game"
+],
+"expected_game_script": "Detroit should control the tempo early, leveraging Goff's experience and the Lions' top-four passing attack to move the chains and build a lead. New Orleans' defense has genuine strengths, particularly its third-down conversion rate allowed (34.9%, 4th) and rush defense EPA (-0.117 per play, 5th), so the Lions may face more resistance than their offensive numbers suggest. Shough and the Saints offense will likely struggle to generate consistent positive plays given their 29th-ranked EPA per play and last-place explosive rate, making sustained drives difficult. However, if New Orleans reaches the red zone, Detroit's 32nd-ranked red-zone defense (69.1% TD rate allowed) gives the Saints a real chance to convert those trips into touchdowns. The Saints' slow pace (28.6 seconds per play, 1st in the league) could help them control clock and keep the score manageable. The model sees Detroit winning by roughly 5 points in a lower-scoring game than the 49.5-point market total implies, with the Lions' passing efficiency and red-zone execution being the decisive factors. A Saints upset would likely require Shough to limit turnovers and the defense to force Detroit into third-and-long situations where New Orleans' third-down defense can shine."
+},
+"validation": {
+"numbers_checked": 128,
+"violations": [
+"948"
+],
+"confident_about_unavailable": [],
+"ok": false
 },
 "validation_failed": true,
 "attempts": 2,
-"generated_at": "2026-09-08T02:38:46.414154+00:00",
-"tokens_in": 10836,
-"tokens_out": 2000
+"generated_at": "2026-09-08T03:11:13.868772+00:00",
+"tokens_in": 10832,
+"tokens_out": 1965,
+"stop_reason": "end_turn",
+"raw_text": null
 }
