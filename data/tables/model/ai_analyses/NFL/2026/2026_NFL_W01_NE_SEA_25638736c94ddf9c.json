@@ -1,0 +1,21 @@
+{
+"analysis_id": "2026_NFL_W01_NE_SEA_25638736c94ddf9c",
+"game_id": "2026_NFL_W01_NE_SEA",
+"inputs_hash": "25638736c94ddf9c",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": null,
+"validation": {
+"ok": false,
+"violations": [
+"<unparseable JSON>"
+],
+"confident_about_unavailable": []
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T02:32:05.922362+00:00",
+"tokens_in": 10926,
+"tokens_out": 1967
+}

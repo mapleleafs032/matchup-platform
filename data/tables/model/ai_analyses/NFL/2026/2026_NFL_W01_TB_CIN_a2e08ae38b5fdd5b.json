@@ -1,0 +1,21 @@
+{
+"analysis_id": "2026_NFL_W01_TB_CIN_a2e08ae38b5fdd5b",
+"game_id": "2026_NFL_W01_TB_CIN",
+"inputs_hash": "a2e08ae38b5fdd5b",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": null,
+"validation": {
+"ok": false,
+"violations": [
+"<unparseable JSON>"
+],
+"confident_about_unavailable": []
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T02:37:04.133094+00:00",
+"tokens_in": 10923,
+"tokens_out": 2000
+}
