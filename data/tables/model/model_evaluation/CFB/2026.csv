@@ -1,0 +1,2 @@
+prediction_id,game_id,model_version,league,season,week,is_backtest,actual_margin_home,actual_total,margin_error,abs_margin_error,total_error,abs_total_error,away_pts_abs_err,home_pts_abs_err,winner_correct,favorite_side,favorite_correct,model_ats_result,model_ou_result,clv_spread,win_prob_bin,evaluated_at
+2026_CFB_W01_SMU_FSU_CFB_v1.0_2026-09-07T12:30:57.868270+00:00,2026_CFB_W01_SMU_FSU,CFB_v1.0,CFB,2026,1,False,-3,51,5.09,5.09,3.35,3.35,0.87,4.22,False,AWAY,True,PUSH,WIN,,5,2026-09-08T10:44:23.595750+00:00
