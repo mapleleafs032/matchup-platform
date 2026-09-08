@@ -122,4 +122,51 @@ def validate(sections: dict, pkg: dict) -> dict:
     for m in _NUM.finditer(text_all):
         raw = m.group(0)
         try:
-            val =
+            val = float(raw.rstrip("%"))
+        except ValueError:
+            continue
+        checked += 1
+        is_pct = raw.endswith("%")
+        is_int = "." not in raw
+        if val in year_like:
+            continue
+        if not is_pct and is_int and 0 <= val <= 30:
+            continue     # ranks, downs, yardages, small counts: contextual, not statistics
+        ok = False
+        if is_pct:
+            ok = round(val, 1) in allowed_pct or round(val, 0) in allowed_pct or round(val / 100, 3) in {round(v, 3) for v in allowed}
+        elif is_int:
+            ok = val in allowed_int or val in allowed_1dp or val in allowed_pct
+        else:
+            ok = round(val, 1) in allowed_1dp or round(val, 1) in allowed_pct
+        if not ok:
+            violations.append(raw)
+    unavailable = set(pkg.get("unavailable", []))
+    confident_unavailable = []
+    for topic, keys in (("quarterback_edge", {"quarterback_home", "quarterback_away"}), ("market_movement", {"market"})):
+        if keys & unavailable and "insufficient reliable data" not in sections.get(topic, "").lower():
+            confident_unavailable.append(topic)
+    return {"numbers_checked": checked, "violations": sorted(set(violations)), "confident_about_unavailable": confident_unavailable,
+            "ok": not violations and not confident_unavailable}
+
+
+def generate(pkg: dict, client, max_attempts: int = 2) -> dict:
+    """Returns {sections, validation, meta, validation_failed, attempts}. Retries once with the violations listed."""
+    prompt = build_prompt(pkg)
+    last = None
+    prior_violations: list[str] = []
+    for attempt in range(max_attempts):
+        user = prompt if attempt == 0 else (prompt + "\n\nYour previous answer contained numbers not present in the package: " + ", ".join(prior_violations) +
+                                            ". Rewrite using only package numbers, and use 'Insufficient reliable data' where a value is missing.")
+        text, meta = client.complete(SYSTEM, user)
+        sections = parse_sections(text)
+        if sections is None:
+            last = {"sections": None, "validation": {"ok": False, "violations": ["<unparseable JSON>"], "confident_about_unavailable": []}, "meta": meta}
+            prior_violations = ["<unparseable JSON>"]
+            continue
+        v = validate(sections, pkg)
+        last = {"sections": sections, "validation": v, "meta": meta}
+        if v["ok"]:
+            return {**last, "validation_failed": False, "attempts": attempt + 1, "generated_at": datetime.now(timezone.utc).isoformat()}
+        prior_violations = v["violations"] + v["confident_about_unavailable"]
+    return {**last, "validation_failed": True, "attempts": max_attempts, "generated_at": datetime.now(timezone.utc).isoformat()}
