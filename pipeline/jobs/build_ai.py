@@ -49,7 +49,8 @@ def run(league: str, season: int, weeks: list[int], job: JobRun, client=None, li
             (AI_DIR / league / str(season) / f"{aid}.json").write_text(json.dumps({"analysis_id": aid, "game_id": g.game_id, "inputs_hash": pkg["inputs_hash"],
                 "model_version": pkg["model"]["model_version"], "llm_model": out["meta"].get("model"), "prompt_version": config.AI_PROMPT_VERSION,
                 "sections": out["sections"], "validation": out["validation"], "validation_failed": out["validation_failed"], "attempts": out["attempts"],
-                "generated_at": out["generated_at"], "tokens_in": out["meta"].get("tokens_in"), "tokens_out": out["meta"].get("tokens_out")}, default=str, indent=0))
+                "generated_at": out["generated_at"], "tokens_in": out["meta"].get("tokens_in"), "tokens_out": out["meta"].get("tokens_out"),
+                "stop_reason": out["meta"].get("stop_reason"), "raw_text": out.get("raw_text")}, default=str, indent=0))
             storage.append_csv(INDEX, pd.DataFrame([{"analysis_id": aid, "game_id": g.game_id, "league": league, "season": season, "week": wk, "inputs_hash": pkg["inputs_hash"],
                                                      "llm_model": out["meta"].get("model"), "validation_failed": out["validation_failed"], "violations": ",".join(out["validation"].get("violations", [])),
                                                      "tokens_in": out["meta"].get("tokens_in"), "tokens_out": out["meta"].get("tokens_out"), "generated_at": out["generated_at"]}]),

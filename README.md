@@ -3,8 +3,8 @@
 Data-accuracy-first matchup research platform. Architecture: Python jobs in GitHub Actions → Parquet/CSV
 tables in this repo (DuckDB for queries) → prebuilt JSON → static site on GitHub Pages.
 
-Phase status: **Phase 4B** — schedules, results, closing lines, odds snapshots, and game-level stats
-(plays, drives, box, advanced metrics, QB game stats) for both leagues.
+Phase status: **Phase 11** — full pipeline: ingestion, metrics, roster engine, matchup engine, fitted model + backtest,
+lock/evaluate, market engine, AI analysis, and the static site (site/) published to GitHub Pages.
 
 ## Layout
 ```

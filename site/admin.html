@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Status</title>
+<meta name="repo" content="mapleleafs032/matchup-platform">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="brand" href="index.html">Matchup board<small>status and data freshness</small></a></div></header>
+<main class="wrap" id="admin"><div class="empty">Loading…</div></main>
+<script src="app.js"></script>
+<script>
+(async () => {
+  const { el, fmt } = App;
+  const root = document.getElementById("admin");
+  const s = await App.loadJSON("json/status.json");
+  const repo = (document.querySelector('meta[name=repo]') || {}).content || "";
+  root.replaceChildren();
+  const sec = (t, ...k) => { const x = el("section", { class: "block" }, el("h2", {}, t)); x.append(...k); root.append(x); };
+  const fresh = el("table", { class: "plain" }, el("tr", {}, el("th", {}, "Dataset"), el("th", {}, "Last updated")));
+  for (const [k, v] of Object.entries(s.freshness)) { const h = v ? (Date.now() - new Date(v)) / 36e5 : null; fresh.append(el("tr", {}, el("td", {}, k), el("td", { class: h == null ? "stale" : h > 36 ? "stale" : "ok" }, v ? fmt.ago(v) : "never"))); }
+  sec("Data freshness", fresh);
+  const jobs = el("table", { class: "plain" }, el("tr", {}, el("th", {}, "Job"), el("th", {}, "Last run"), el("th", {}, "Status"), el("th", {}, "Last success"), el("th", {}, "Message")));
+  for (const j of s.jobs) jobs.append(el("tr", {}, el("td", {}, j.job), el("td", {}, fmt.ago(j.last_run)), el("td", { class: j.last_status === "SUCCESS" ? "ok" : "stale" }, j.last_status), el("td", {}, j.last_success ? fmt.ago(j.last_success) : "never"), el("td", {}, j.last_message || "")));
+  sec("Jobs", jobs);
+  const b = el("table", { class: "plain" }, el("tr", {}, el("th", {}, "Provider"), el("th", {}, "Calls this month"), el("th", {}, "Credits / limit"), el("th", {}, "Failures"), el("th", {}, "Provider reports remaining")));
+  for (const r of s.api_budget) b.append(el("tr", {}, el("td", {}, r.provider), el("td", {}, r.calls), el("td", { class: r.monthly_limit && r.credits / r.monthly_limit > 0.85 ? "stale" : "" }, `${r.credits} / ${r.monthly_limit ?? "—"}`), el("td", {}, r.failures), el("td", {}, r.remaining_reported ?? "—")));
+  sec("API budget", b);
+  const m = el("table", { class: "plain" }, el("tr", {}, el("th", {}, "Model"), el("th", {}, "Active"), el("th", {}, "Trained on"), el("th", {}, "Out-of-sample MAE"), el("th", {}, "Winner accuracy"), el("th", {}, "Closing-line MAE")));
+  for (const r of s.models) m.append(el("tr", {}, el("td", {}, r.model_version), el("td", {}, r.active ? "yes" : ""), el("td", {}, r.trained_on.join(", ")), el("td", {}, r.oos_mae ?? "—"), el("td", {}, r.oos_winner_acc ?? "—"), el("td", {}, r.market_mae ?? "—")));
+  sec("Models", m);
+  if (s.live_evaluation.length) { const t = el("table", { class: "plain" }, el("tr", {}, el("th", {}, "League"), el("th", {}, "Graded games"), el("th", {}, "MAE"), el("th", {}, "Winner accuracy"), el("th", {}, "Vs closing spread"))); for (const r of s.live_evaluation) t.append(el("tr", {}, el("td", {}, r.league), el("td", {}, r.n), el("td", {}, r.mae), el("td", {}, r.winner_acc), el("td", {}, r.ats == null ? "—" : `${(100 * r.ats).toFixed(0)}% (${r.ats_n})`))); sec("This season, graded so far", t); }
+  const v = el("table", { class: "plain" }, el("tr", {}, el("th", {}, "When"), el("th", {}, "Table"), el("th", {}, "Rule"), el("th", {}, "Severity"), el("th", {}, "Record"), el("th", {}, "Observed")));
+  for (const r of s.validation_recent.slice(-25).reverse()) v.append(el("tr", {}, el("td", {}, fmt.ago(r.logged_at)), el("td", {}, r.table_name), el("td", {}, r.rule), el("td", { class: r.severity === "REJECT" ? "stale" : "" }, r.severity), el("td", {}, r.record_key), el("td", {}, r.observed)));
+  sec("Recent validation events", v, el("p", { class: "sub-note" }, `Unmatched team names (mostly non-FBS opponents in roster feeds): ${s.unmatched_aliases.length ? s.unmatched_aliases.slice(0, 30).join(", ") + (s.unmatched_aliases.length > 30 ? "…" : "") : "none"}`));
+  const btns = el("div", { class: "btns" });
+  for (const [label, wf] of Object.entries(s.workflows)) btns.append(el("a", { href: `https://github.com/${repo}/actions/workflows/${wf}`, target: "_blank", rel: "noopener" }, label));
+  sec("Refresh", el("p", { class: "sub-note" }, "Each button opens the GitHub Actions page for that job; press “Run workflow” there. Results appear here after the next site build."), btns);
+  root.append(el("footer", { class: "foot" }, `Status generated ${fmt.ago(s.generated_at)}.`));
+})().catch(e => { document.getElementById("admin").innerHTML = '<div class="empty">Status could not load: ' + e.message + '</div>'; });
+</script>
+</body>
+</html>

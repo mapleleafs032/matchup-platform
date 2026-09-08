@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matchup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="index.html">Matchup board<small>back to the board</small></a>
+  <nav class="pages"><a href="admin.html">Status</a></nav>
+</div></header>
+<main class="wrap" id="matchup"><div class="empty">Loading…</div></main>
+<script src="app.js"></script>
+<script src="matchup.js"></script>
+<script>matchupMain().catch(e => { document.getElementById("matchup").innerHTML = '<div class="empty">This page could not load: ' + e.message + '</div>'; });</script>
+</body>
+</html>

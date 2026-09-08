@@ -11,7 +11,8 @@ DATA = ROOT / "data"
 TABLES = DATA / "tables"
 RAW = DATA / "raw"
 SNAPSHOTS = DATA / "snapshots"
-SITE_JSON = ROOT / "site" / "json"
+SITE_DIR = ROOT / "site"
+SITE_JSON = SITE_DIR / "json"
 
 SEASON = 2026
 LEAGUES = ("CFB", "NFL")

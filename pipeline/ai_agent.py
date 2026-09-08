@@ -49,7 +49,7 @@ class AnthropicClient:
     def __init__(self, api_key: str, model_candidates: list[str]):
         self.api_key = api_key; self.candidates = list(model_candidates); self.model = None
 
-    def complete(self, system: str, user: str, max_tokens: int = 2000) -> tuple[str, dict]:
+    def complete(self, system: str, user: str, max_tokens: int = 4500) -> tuple[str, dict]:
         last = None
         for m in ([self.model] if self.model else self.candidates):
             r = requests.post(self.URL, headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
@@ -60,13 +60,15 @@ class AnthropicClient:
                 raise RuntimeError(f"Anthropic API {r.status_code}: {r.text[:300]}")
             data = r.json(); self.model = m
             text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
-            return text, {"model": m, "tokens_in": data.get("usage", {}).get("input_tokens"), "tokens_out": data.get("usage", {}).get("output_tokens")}
+            return text, {"model": m, "tokens_in": data.get("usage", {}).get("input_tokens"), "tokens_out": data.get("usage", {}).get("output_tokens"),
+                          "stop_reason": data.get("stop_reason")}
         raise RuntimeError(f"no usable model among {self.candidates}: {last}")
 
 
 def parse_sections(text: str) -> dict | None:
     t = text.strip()
     t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t)
+    t = re.sub(r"(?<!\\)[\x00-\x08\x0b\x0c\x0e-\x1f]", " ", t)   # stray control characters inside strings
     try:
         obj = json.loads(t)
     except json.JSONDecodeError:
@@ -161,8 +163,9 @@ def generate(pkg: dict, client, max_attempts: int = 2) -> dict:
         text, meta = client.complete(SYSTEM, user)
         sections = parse_sections(text)
         if sections is None:
-            last = {"sections": None, "validation": {"ok": False, "violations": ["<unparseable JSON>"], "confident_about_unavailable": []}, "meta": meta}
-            prior_violations = ["<unparseable JSON>"]
+            reason = "<truncated: raise max_tokens>" if meta.get("stop_reason") == "max_tokens" else "<unparseable JSON>"
+            last = {"sections": None, "validation": {"ok": False, "violations": [reason], "confident_about_unavailable": []}, "meta": meta, "raw_text": text[:6000]}
+            prior_violations = [reason]
             continue
         v = validate(sections, pkg)
         last = {"sections": sections, "validation": v, "meta": meta}
