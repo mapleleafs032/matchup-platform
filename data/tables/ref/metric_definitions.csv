@@ -70,8 +70,8 @@ off_td_rate_opp_territory,TD Rate in Opp Territory,Touchdowns per drive that rea
 off_avg_start_yardline,Avg Starting Field Position,Average own-yardline where offensive drives start.,yardline,True,OFF,mean,"CFB,NFL",derived,True,10.0,60.0,1,FIELD_POSITION
 def_avg_start_yardline_allowed,Opp Avg Starting Field Position,Average own-yardline where opponent drives start.,yardline,False,DEF,mean,"CFB,NFL",derived,True,10.0,60.0,1,FIELD_POSITION
 plays_per_game,Plays/Game,Offensive scrimmage plays per game.,count,True,OFF,mean,"CFB,NFL",derived,True,30.0,120.0,1,PACE
-off_sec_per_play,Seconds/Play,Average seconds between offensive snaps within a drive.,seconds,False,OFF,wmean:off_plays,"CFB,NFL",derived,True,10.0,60.0,1,PACE
-off_neutral_sec_per_play,Neutral-Script Seconds/Play,Seconds per play when the score is within 8 in the first three quarters.,seconds,False,OFF,wmean:off_plays,"CFB,NFL",derived,True,10.0,60.0,1,PACE
+off_sec_per_play,Seconds/Play,Average seconds between offensive snaps within a drive (lower = faster pace).,seconds,False,OFF,wmean:off_plays,"CFB,NFL",derived,True,10.0,60.0,1,PACE
+off_neutral_sec_per_play,Neutral-Script Seconds/Play,Seconds per play when the score is within 8 in the first three quarters (lower = faster pace).,seconds,False,OFF,wmean:off_plays,"CFB,NFL",derived,True,10.0,60.0,1,PACE
 off_pass_rate,Pass Rate,Dropbacks per scrimmage play.,pct,True,OFF,wmean:off_plays,"CFB,NFL",derived,True,0.0,1.0,1,STYLE
 off_early_down_pass_rate,Early-Down Pass Rate,Dropbacks per play on 1st and 2nd down.,pct,True,OFF,wmean:off_plays,"CFB,NFL",derived,True,0.0,1.0,1,STYLE
 off_neutral_pass_rate,Neutral-Script Pass Rate,Dropbacks per play when the game is within 8 points in the first three quarters.,pct,True,OFF,wmean:off_plays,"CFB,NFL",derived,True,0.0,1.0,1,STYLE
