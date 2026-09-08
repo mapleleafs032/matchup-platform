@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_BUF_FIU_a96b7e0f6824aa5b",
+"game_id": "2026_CFB_W02_BUF_FIU",
+"inputs_hash": "a96b7e0f6824aa5b",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Florida International to win at home 26.54-22.1, a margin of 4.4 points in favor of the Panthers. FIU's win probability sits at 61.8%, reflecting a competitive but clear home advantage. The projected total of 48.64 sits just above the current market total of 47.5. Notably, the market has FIU as a 10.5-point favorite, a full 6.1 points wider than the model's projected margin, suggesting the model sees this as a closer game than the spread implies.",
+"offensive_matchup": "Buffalo's offense is one of the least efficient in the country by opponent-adjusted metrics, ranking 131st in EPA per play (expected points added per play, a measure of how much each play moves the scoreboard) at just 0.014, while FIU's defense sits at a middling 51st in defensive EPA per play at 0.104. That means the Panthers' defense is not elite enough to completely shut down the Bulls, but Buffalo's offense is so limited that even average resistance should keep them in check. FIU's offense is more functional at 80th in offensive EPA per play (0.165), facing a Buffalo defense that ranks a solid 38th in defensive EPA per play (0.078), meaning the Panthers should be able to move the ball but won't do so easily. The key tension is that both offenses struggle to sustain drives, with FIU converting just 33.7% of third downs and Buffalo at 37.7%, so field position and turnovers could loom large.",
+"quarterback_edge": "FIU's JJ Kohl holds a meaningful experience edge over Buffalo's Elijah Holmes. Kohl is a transfer starter with 277 career attempts, a 62.5% completion rate, and 6.46 yards per attempt across seven career games with significant attempts, giving the model enough career box-score data to assign him a slight positive index. Holmes, flagged as a rookie with no prior data, has just 47 career attempts at a 55.3% completion rate and 4.02 yards per attempt, leaving the model to rely on team passing EPA as a fallback. That gap in experience and efficiency is why the quarterback edge scores in FIU's favor, though neither signal is strong enough to be a game-defining advantage on its own.",
+"trenches": "The offensive line edge scores slightly in Buffalo's favor, driven by the Bulls' pass protection holding up better against FIU's pass rush than the inverse. Buffalo's opponent-adjusted sack rate allowed is 3.5% (31st), while FIU's sack rate is just 5.9% (78th), meaning the Panthers' front does not generate pressure at an elite rate. On the ground, both offensive lines are below average in line yards (yards credited to the line per rush), with FIU at 2.71 (104th) and Buffalo at 2.69 (107th), so neither team is winning the run-blocking battle. The defensive front edge also leans slightly toward Buffalo, as the Bulls' front generates havoc (plays producing a tackle for loss, sack, or turnover) at a 10.5% rate (43rd) against an FIU offensive line that allows havoc on 8.6% of plays (56th).",
+"explosive_play_edge": "FIU holds the explosive play edge, combining a higher explosive play rate (10.9%, 101st) with a Buffalo defense that allows explosives at a 9.5% rate (26th best, meaning the Bulls are actually solid here). Buffalo's offense generates explosives on just 9.3% of plays (125th), and FIU's defense allows them at a 12.4% rate (83rd), so the Panthers have the better chance of hitting a big play on either side of the ball. The style-fit analysis reinforces this, showing FIU's explosive tendencies match up slightly better against Buffalo's defensive profile than the reverse.",
+"third_down_red_zone": "Third down is a clear Buffalo edge: the Bulls convert 37.7% of their own third downs while holding opponents to just 32.6% (23rd in the country), compared to FIU converting only 33.7% (111th) and allowing 39.9% (89th). This means Buffalo's defense should be able to get off the field, while FIU's defense may struggle to do the same against a Bulls offense that, despite its overall inefficiency, is more patient on third down. In the red zone, FIU flips the script with a 74.8% touchdown rate per trip (42nd, though flagged as a low sample), while Buffalo's defense allows touchdowns on 68.8% of red-zone visits (86th). If FIU can get into scoring position, they are more likely to come away with seven than Buffalo is.",
+"roster_talent": "Both programs are essentially equal in raw talent, with Buffalo at the 35th percentile and FIU at the 34th percentile, and neither team has any blue-chip recruits in their four-year window. FIU holds a meaningful continuity advantage, with a roster continuity index of 0.43 versus Buffalo's 0.28, and FIU returns 48% of receiving production and 41% of defensive production compared to Buffalo's 29% and 25% respectively. That familiarity within FIU's system gives the Panthers a structural edge in execution, particularly on the defensive side where returning players tend to process faster.",
+"recent_form": "Both teams enter Week 2 with one game played and no multi-game trend to evaluate, so recent form is effectively neutral. The model assigns a form-shift of 0.0 for both teams, meaning neither has shown a measurable improvement or decline relative to their baseline. With only one game of 2026 data, the opponent-adjusted blended metrics carry significant weight from prior-season context, and both teams faced very different competition levels in Week 1.",
+"market_movement": "The spread has held firm at FIU -10.5 since the first recorded snapshot on DraftKings, with no movement. The total, however, has dropped 4.0 points from an open of 51.5 down to 47.5, a significant move that suggests the market has revised its scoring expectations downward for this matchup. The model's projected total of 48.64 sits just above the current market total of 47.5, a difference of only 1.1 points, so the model and market are largely aligned on scoring volume. The larger disagreement is on the side: the model's 4.4-point home margin is 6.1 points narrower than the market's 10.5-point spread, with the model leaning toward the away team relative to the line. Public ticket and money percentages are unavailable, so the cause of the total movement cannot be attributed to any specific betting group.",
+"key_advantages": [
+"FIU home field worth approximately 6.1 points per the model, a significant structural edge",
+"FIU red zone efficiency: 74.8% TD rate per trip vs. Buffalo's 68.8% allowed rate",
+"Buffalo third-down defense ranks 23rd, holding opponents to 32.6% conversion rate",
+"FIU roster continuity index (0.43) meaningfully higher than Buffalo's (0.28), especially on defense"
+],
+"key_concerns": [
+"Model projects FIU winning by only 4.4 points despite being a 10.5-point market favorite, a 6.1-point gap",
+"FIU's turnover margin was -3.0 in Week 1 and opponent-adjusted sits at -0.75 per game (112th), a serious risk",
+"FIU's third-down defense allowed 39.9% conversions (89th), vulnerable to Buffalo's more patient approach",
+"Both offenses are below average in line yards and rushing EPA, making scoring drives difficult to sustain"
+],
+"expected_game_script": "FIU should control the early tempo at Pitbull Stadium, leaning on home-field advantage and the experience edge of JJ Kohl to establish modest offensive rhythm against a Buffalo defense that is solid but not dominant. Buffalo's offense, ranked 131st in opponent-adjusted EPA per play, will likely struggle to generate consistent first downs, particularly on standard downs where their 35.1% success rate (131st) is among the worst in the country. The Bulls' best path to staying competitive is their third-down defense, which should help them get stops and keep possessions short for FIU. FIU's turnover issues from Week 1 are the wildcard: if the Panthers give the ball away again, Buffalo's defense is capable enough (38th in defensive EPA per play) to make those turnovers count. Expect a low-to-mid scoring game with FIU building a lead through red-zone efficiency rather than explosive drives, while Buffalo grinds out enough possessions to keep it from becoming a blowout. The total moving from 51.5 to 47.5 aligns with what the data suggests: two offenses that will work hard for every point. A final score in the range of 24-20 or 27-21 in FIU's favor fits the model's projection and the overall profile of both teams."
+},
+"validation": {
+"numbers_checked": 104,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:52:24.282968+00:00",
+"tokens_in": 18746,
+"tokens_out": 2155,
+"stop_reason": "end_turn",
+"raw_text": null
+}

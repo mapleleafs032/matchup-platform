@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_TTU_ORST_8d187c2017dea6fe",
+"game_id": "2026_CFB_W02_TTU_ORST",
+"inputs_hash": "8d187c2017dea6fe",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Texas Tech to win 40.98-11.0, a margin of nearly 30 points in favor of the Red Raiders. The projected total is 51.98, sitting just above the market total of 51.5. Texas Tech's win probability is 96.0% per the model, with the market implied probability at 93.96% for the Red Raiders. The model's projected margin of -30.0 (home perspective) is about 3.5 points more favorable to Texas Tech than the current market spread of Oregon State +26.5.",
+"offensive_matchup": "Texas Tech's offense (EPA per play of +0.24, ranking 37th opponent-adjusted) runs into an Oregon State defense that has allowed a positive EPA per play of +0.22 (ranking 108th), meaning the Beavers have been actively hurt by opposing offenses on a per-play basis. Oregon State's defensive success rate \u2014 the share of plays where the opponent gains a successful gain \u2014 sits at 41.6%, ranking 80th, while Texas Tech's offensive success rate is 44.7%, ranking 41st; the Red Raiders should move the chains consistently. Oregon State's pass defense has been particularly porous, allowing a passing EPA per play of +0.35 (ranking 104th), which sets up well for Texas Tech's passing attack that generates +0.36 EPA per pass play (ranking 37th). The Beavers' offense, meanwhile, generates only +0.13 EPA per play (ranking 98th) against a Texas Tech defense that has allowed just -0.09 EPA per play (ranking 2nd), making sustained Oregon State scoring drives unlikely.",
+"quarterback_edge": "Texas Tech's Will Hammond carries a career completion percentage of 66.5% and 7.05 yards per attempt over 164 career attempts, flagged as a new starter within the same program. Oregon State's Braden Atkinson has just 81 career attempts with a 60.5% completion rate and 7.23 yards per attempt, flagged as a rookie-level starter with very limited data. Neither quarterback has a career EPA per dropback on record, so the edge is rated neutral by the model, though Hammond's larger career sample and the surrounding team context favor Texas Tech's passing game in practice.",
+"trenches": "The offensive line edge favors Texas Tech: the Red Raiders' pass protection (sack rate allowed of 3.0%, ranking 16th opponent-adjusted) faces an Oregon State defensive front that generates sacks on only 4.3% of dropbacks (ranking 120th), meaning Hammond should have time to operate. On the ground, Texas Tech's defensive line yards allowed (2.17, ranking 9th) will challenge Oregon State's run blocking, which produces only 2.75 line yards per carry (ranking 96th) \u2014 line yards measure the portion of rushing production credited to the offensive line. Texas Tech's own run blocking (3.03 line yards, ranking 57th) faces an Oregon State run defense that has allowed 2.71 line yards (ranking 50th), a more competitive matchup that may limit Red Raider rushing upside. Overall, the trenches edge leans clearly toward Texas Tech, particularly in pass protection and run defense.",
+"explosive_play_edge": "Texas Tech limits explosive plays \u2014 defined as rushes of 10-plus yards or passes of 20-plus yards \u2014 at a rate of just 7.1% (ranking 5th opponent-adjusted), while Oregon State's offense generates explosives on only 9.8% of plays (ranking 119th), making big plays for the Beavers unlikely. In the other direction, Oregon State has allowed explosive plays on 15.5% of opponent plays (ranking 131st), and Texas Tech generates explosives on 13.5% of its plays (ranking 44th), creating a meaningful mismatch that should produce chunk gains for the Red Raiders. This explosive edge is one of the larger structural advantages in the matchup and contributes significantly to the projected scoring gap.",
+"third_down_red_zone": "Texas Tech converts third downs at a 47.9% rate (ranking 18th opponent-adjusted) against an Oregon State defense that allows conversions on 37.6% of third downs (ranking 69th); the Red Raiders' conversion ability should keep drives alive. Oregon State converts just 33.6% of its own third downs (ranking 113th) against a Texas Tech defense that holds opponents to a 33.4% conversion rate (ranking 29th), meaning the Beavers will face persistent three-and-out situations. In the red zone, both teams' figures carry a low-sample flag after one game, so those numbers should be treated cautiously; the model does show Texas Tech's red zone defense (allowing touchdowns on 53.9% of opponent trips, ranking 31st) as superior to Oregon State's red zone defense (allowing touchdowns on 70.5% of trips, ranking 93rd).",
+"roster_talent": "Texas Tech holds a significant talent advantage: the Red Raiders' roster talent sits at the 82nd percentile with a four-year blue-chip ratio of 28%, compared to Oregon State's 49th percentile and a blue-chip ratio of just 4%. Texas Tech also has a higher continuity index (0.44 vs. 0.21), meaning more returning contributors are in place, while Oregon State has undergone a head coach change that further disrupts roster familiarity. Oregon State's returning production in receiving (17%) and rushing (20%) is notably low, suggesting many key skill-position contributors are new to their roles.",
+"recent_form": "Both teams have played exactly one game entering Week 2, so recent form data is limited to a single-game sample and the model rates this category as neutral with no form shift for either side. Texas Tech scored 33 points and allowed 10 in its opener (raw), while Oregon State scored 20 and allowed 33. With only one game of data, these results are directionally consistent with the broader metrics but should not be over-weighted.",
+"market_movement": "The spread opened at Oregon State +27.5 and has moved one point toward the home team, settling at +26.5 on DraftKings. The total moved in the opposite direction, rising from 49.5 to 51.5, a two-point increase. The model's projected margin of -30.0 (home) is 3.5 points beyond the current market spread, leaning further toward Texas Tech than the posted line. Public betting percentages are unavailable, so the direction of the spread movement cannot be attributed to any specific betting group.",
+"key_advantages": [
+"Texas Tech defense ranks 2nd in opponent-adjusted EPA allowed per play, suffocating Oregon State's already-limited offense",
+"Red Raiders hold a dominant explosive play edge: Oregon State allows explosives on 15.5% of plays while generating them on only 9.8%",
+"Texas Tech's roster talent (82nd percentile, 28% blue-chip ratio) dwarfs Oregon State's (49th percentile, 4% blue-chip ratio)",
+"Texas Tech's third-down conversion rate (47.9%) against Oregon State's porous third-down defense creates a significant drive-extension edge"
+],
+"key_concerns": [
+"Oregon State plays at home at Reser Stadium, worth approximately 6.1 points in the model's home-field adjustment",
+"Will Hammond is a new starter with only 164 career attempts and no EPA per dropback on record, introducing quarterback uncertainty",
+"Both teams have played only one game, making all metrics low-sample and subject to significant revision",
+"Oregon State's raw turnover margin was +2.0 in Week 1, and if that trend continues it could create short fields against Texas Tech"
+],
+"expected_game_script": "Texas Tech should establish early control by moving the chains efficiently \u2014 their 47.9% third-down rate against Oregon State's permissive defense means sustained drives and clock consumption. The Red Raiders' defense, ranking 2nd in EPA allowed per play, is likely to force Oregon State into quick three-and-outs, keeping the Beavers' offense off the field and limiting scoring opportunities. Oregon State's pass-heavy identity (71.2% pass rate in raw data) runs directly into a Texas Tech secondary that has allowed only -0.04 EPA per pass play (ranking 4th opponent-adjusted), making the Beavers' primary weapon largely ineffective. Texas Tech's pace \u2014 averaging 74.4 plays per game (ranking 6th opponent-adjusted) at 24.4 seconds per play (ranking 12th) \u2014 should generate a high volume of snaps and widen the scoring margin as the game progresses. Explosive plays are likely to come from the Texas Tech side, given Oregon State's 15.5% explosive play allowance rate, potentially producing several chunk gains that push the score out of reach by halftime. The home crowd at Reser Stadium provides Oregon State its most meaningful structural advantage, but a 6-point home-field boost is unlikely to offset a 30-point talent and efficiency gap. The game script points toward a Texas Tech wire-to-wire victory with the margin expanding through the second half."
+},
+"validation": {
+"numbers_checked": 109,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:54:24.229549+00:00",
+"tokens_in": 18736,
+"tokens_out": 2117,
+"stop_reason": "end_turn",
+"raw_text": null
+}

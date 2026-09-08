@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_UTSA_TXST_20acbced1b543c2f",
+"game_id": "2026_CFB_W02_UTSA_TXST",
+"inputs_hash": "20acbced1b543c2f",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Texas State 30.6, UTSA 28.6, a home margin of roughly 2 points and a combined total of 59.2. Texas State's win probability sits at 55.4%, making this essentially a coin-flip game. The market opened Texas State -1.5 with a total of 64.5 and has not moved off those numbers, meaning the model and market agree closely on the spread but the model projects a game roughly 5 points lower-scoring than the market implies.",
+"offensive_matchup": "Texas State's offense grades as a legitimate strength, ranking 13th in opponent-adjusted EPA per play (0.332) and 10th in passing EPA per play (0.478), and it will run into a UTSA defense that ranks only 57th in defensive EPA per play (0.123) and 69th in pass defense EPA (0.242). That gap is significant: the Bobcats' passing attack should find room against a UTSA secondary that has allowed positive EPA on passing plays. On the other side, UTSA's offense ranks 53rd in EPA per play (0.209) and will face a Texas State defense that ranks 125th in defensive EPA per play (0.272) \u2014 so the Roadrunners should be able to move the ball, but the Bobcats' defense is the weaker unit by a wide margin. The net result is a game where both offenses are expected to produce, but Texas State's offense has the clearer edge against a softer UTSA defense.",
+"quarterback_edge": "Texas State's Brad Jackson carries a career yards-per-attempt of 9.06 on 366 career attempts across 13 games with 10-plus attempts, giving him a higher QB index (1.65) than UTSA's Owen McCown (0.24). McCown has more experience \u2014 972 career attempts over 29 such games \u2014 but his career yards-per-attempt of 7.13 and career completion rate of 64.7% trail Jackson's 70.2% completion rate and 9.06 yards per attempt. The model awards a modest edge to Texas State at quarterback, worth roughly 0.6 points toward the home side.",
+"trenches": "UTSA's offensive line is a genuine strength, ranking 9th in opponent-adjusted sack rate allowed (2.5%) \u2014 meaning the Roadrunners protect their quarterback at an elite level. Texas State's defensive front ranks 110th in sack rate (4.8%), so UTSA's pass protection advantage should neutralize any pressure threat. In run blocking, both teams are middling, with UTSA's line yards per rush at 2.99 (67th) and Texas State's defensive line yards allowed at 2.66 (42nd), a slight edge to the Bobcats' run defense. The offensive line edge overall is a narrow lean to Texas State, but UTSA's pass protection is the standout individual factor in the trenches.",
+"explosive_play_edge": "Texas State generates explosive plays (10-plus rushing or 20-plus passing yards) at a 14.7% rate (25th), while UTSA allows them at a 10.7% rate (53rd) \u2014 a meaningful mismatch that favors the Bobcats' ability to hit chunk plays. UTSA's offense produces explosives at only a 12.1% rate (77th), and Texas State's defense allows them at a 13.5% rate (109th), so the Roadrunners can also find big plays against a porous Bobcat defense. The explosive edge is essentially neutral in the model (edge score of 0), as both teams can generate chunk plays against defenses that struggle to prevent them.",
+"third_down_red_zone": "Third down is a clear UTSA defensive advantage: the Roadrunners hold opponents to a 35.5% conversion rate (50th), while Texas State's defense allows opponents to convert at a 51.0% rate (133rd, near the bottom of all teams). UTSA's own offense converts at only 38.0% (94th), so the Roadrunners will need to be efficient on early downs to avoid putting themselves in difficult third-down situations. In the red zone, UTSA's defense is the standout \u2014 allowing touchdowns on only 46.7% of opponent red-zone trips (11th), compared to Texas State's defense, which surrenders touchdowns on 82.4% of red-zone trips (129th). Texas State's offense scores on 65.1% of its red-zone trips (88th), so when the Bobcats do get inside the 20, they are likely to score, but UTSA's red-zone defense is a significant brake on Texas State's scoring ceiling.",
+"roster_talent": "Both programs are closely matched in roster talent: Texas State's talent percentile is 31.1% with zero blue-chip recruits in the four-year window, while UTSA sits at 29.7% with a 2% blue-chip ratio. Roster continuity is nearly identical \u2014 Texas State at 72.0% and UTSA at 70.6%. Texas State returns 99% of its passing production and 72% of receiving production, giving the Bobcats strong skill-position continuity, while UTSA returns 100% of passing production but only 45% of receiving production. Neither program has a meaningful talent edge; the model scores this category as essentially neutral.",
+"recent_form": "Both teams have played exactly one game, so recent form data is limited to a single-game sample. UTSA scored 45 points and allowed 16 in its opener (raw), while Texas State scored only 7 points and allowed 59 in its opener (raw). The opponent-adjusted metrics temper both results significantly \u2014 UTSA's strength of schedule ranks 105th while Texas State faced a schedule ranked 13th, meaning Texas State's blowout loss came against a much tougher opponent. The model assigns a neutral recent-form edge to both teams given the single-game sample and the divergent opponent quality.",
+"market_movement": "The spread opened at Texas State -1.5 and has remained at -1.5 with no movement across two snapshots on DraftKings. The total opened at 64.5 and has also held firm with zero movement. With no line movement to analyze, there is no directional signal from the market beyond the opening number itself.",
+"key_advantages": [
+"UTSA red-zone defense: allows touchdowns on only 46.7% of opponent red-zone trips (11th nationally)",
+"UTSA pass protection: sack rate allowed of 2.5% ranks 9th, keeping McCown clean against a weak Texas State pass rush",
+"Texas State passing offense: EPA per pass play of 0.478 ranks 10th, exploiting a UTSA pass defense ranked 69th",
+"Texas State third-down offense: 49.1% conversion rate (12th) against a UTSA defense that holds opponents to 35.5%"
+],
+"key_concerns": [
+"Texas State's defense is historically porous: 129th in red-zone TD rate allowed (82.4%) and 133rd in third-down conversion rate allowed (51.0%)",
+"UTSA's third-down offense converts at only 38.0% (94th), limiting drive sustainability",
+"Texas State's turnover margin is -0.83 per game (118th) versus UTSA's +0.40 (24th), a meaningful giveaway risk for the Bobcats",
+"Texas State's raw opener (7 points scored, 59 allowed) raises questions about execution, even accounting for a top-13 SOS opponent"
+],
+"expected_game_script": "Texas State's up-tempo offense \u2014 running 73 plays per game (10th) at 27.3 seconds per play (51st) \u2014 should keep the game at a fast pace, which benefits a Bobcat offense that generates positive EPA on both passing and rushing plays. UTSA will try to control the ball with its efficient rushing attack (37th in rushing EPA per play at 0.174) and lean on its elite pass protection to give McCown time, but the Roadrunners' 38.0% third-down conversion rate means they may struggle to sustain drives. Texas State's passing game, led by Jackson's 9.06 career yards per attempt, is the most dangerous weapon on the field and should find openings against a UTSA pass defense ranked 69th in EPA allowed per pass play. The red zone becomes the decisive battleground: UTSA's defense is built to limit scoring once opponents cross the 20, while Texas State's defense is likely to surrender touchdowns at a high rate when UTSA gets there. Turnovers could be pivotal \u2014 Texas State's negative turnover margin against UTSA's positive margin is worth roughly 1.2 points in the model. The game projects as a low-margin contest decided in the fourth quarter, with Texas State's home-field advantage (worth 6.1 model points before other adjustments) and superior quarterback play providing a narrow edge, but UTSA's red-zone defense and turnover advantage keeping the Roadrunners competitive throughout."
+},
+"validation": {
+"numbers_checked": 118,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:51:30.742547+00:00",
+"tokens_in": 18672,
+"tokens_out": 2142,
+"stop_reason": "end_turn",
+"raw_text": null
+}

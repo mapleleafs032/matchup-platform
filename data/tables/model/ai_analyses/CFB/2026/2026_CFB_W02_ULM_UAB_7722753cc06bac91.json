@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_ULM_UAB_7722753cc06bac91",
+"game_id": "2026_CFB_W02_ULM_UAB",
+"inputs_hash": "7722753cc06bac91",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects UAB to win at home 32-24, a margin of 8.2 points in favor of the Blazers. The projected total is 56.7 points. UAB's win probability sits at 70.8%. The market currently has UAB as a 10.5-point favorite, which is 2.3 points stronger than the model's implied margin, meaning the model leans slightly toward UL Monroe relative to the spread.",
+"offensive_matchup": "UAB's offense holds a meaningful edge over UL Monroe's defense across nearly every efficiency category. The Blazers generated 0.196 EPA per play (expected points added, a measure of how much each play improves scoring odds) on offense compared to ULM's defense allowing 0.306 EPA per play \u2014 both units are below average, but UAB's offense is far less broken than ULM's defense. UAB's rushing attack is particularly dangerous here: the Blazers rank 25th in offensive rushing EPA per play at 0.215, while ULM's run defense ranks 130th in line yards allowed (3.26 per rush) and 130th in defensive rushing EPA allowed. ULM's offense, meanwhile, ranks 129th in offensive success rate (35.4%) and 122nd in offensive EPA per play, giving UAB's defense \u2014 poor as it is \u2014 a manageable assignment.",
+"quarterback_edge": "UAB's Ryder Burton is a new starter with only 4 career games of 10-plus attempts and 129 career attempts, but his career yards per attempt of 7.19 and 62% completion rate compare favorably to ULM's Aidan Armenta, who has 20 career games and 456 attempts but posts a 56.8% completion rate and 6.54 yards per attempt. The model gives UAB a slight edge at quarterback worth about 0.2 points. Neither quarterback has a recorded EPA per dropback, limiting the depth of this comparison. Burton's inexperience is a real risk, but his raw efficiency numbers edge Armenta's career marks.",
+"trenches": "The offensive line edge clearly favors UAB. The Blazers rank 36th in line yards (3.19 per rush, a Football Outsiders metric crediting yards to the offensive line rather than the ball carrier) while ULM's defensive front ranks 132nd in havoc rate \u2014 meaning ULM generates disruptive plays on fewer than 7% of defensive snaps. UAB's pass protection also holds an advantage, with the Blazers allowing a lower havoc rate on offense (9.1%, rank 74th) compared to ULM's offensive line, which allows havoc on 12.1% of plays (rank 123rd). ULM's defensive front earns a slight edge over UAB's offensive line in the defensive front category, but the overall trench battle tilts toward UAB.",
+"explosive_play_edge": "This category is essentially a wash, with the model giving UAB a marginal edge worth 0.2 points. ULM's offense actually posts a slightly higher explosive play rate (11.2% vs UAB's 10.3%), but ULM's defense allows explosives at a 12.4% clip while UAB's defense allows them at 13.0%. Neither team is generating or preventing big plays at an elite level, so this game is unlikely to be decided by chunk plays in either direction.",
+"third_down_red_zone": "Third down is a significant UAB advantage. The Blazers convert at a 47.8% rate (rank 20th), while ULM converts only 28.9% of third downs (rank 127th) and allows opponents to convert at a 44.2% clip (rank 119th). That combination means UAB should sustain drives while ULM will struggle to move the chains. Red zone data carries a low-sample flag for both teams after just one game, so those figures should be treated cautiously; the model scores this category as essentially neutral.",
+"roster_talent": "Both programs sit near the bottom of the talent distribution, but UAB holds a slight edge. The Blazers' talent percentile is 15th compared to ULM's 12th, and UAB carries a 1% blue-chip ratio (four-star or better recruits) versus ULM's 0%. The model values this at roughly 0.4 points toward UAB. Notably, ULM holds a large returning production advantage: the Warhawks return 64% of their production continuity versus UAB's 28%, which the model credits as a 1-point edge toward ULM \u2014 UAB's roster has turned over significantly.",
+"recent_form": "Both teams have played exactly one game, so recent form data is limited to a single result each. The model registers no form-based edge for either side. ULM allowed 62 points in their opener while scoring 13, and UAB allowed 42 while scoring 23 \u2014 both teams showed defensive vulnerabilities in Week 1, though ULM's opener was considerably more lopsided. With only one game of data, these results are factored into the efficiency metrics rather than treated as a trend.",
+"market_movement": "The spread opened at UAB -7.5 and has moved to -10.5, a 3-point shift toward the home team that crosses the key number 10. The total moved from 54.5 to 55.5, up 1 point. The model's projected margin of 8.2 points sits 2.3 points below the current market spread of 10.5, meaning the model sees UAB as a smaller favorite than the market does. There is book disagreement of 0.5 points on the spread. Public betting percentages are unavailable, so the cause of the line movement cannot be attributed to any specific source.",
+"key_advantages": [
+"UAB rushing offense (rank 25th EPA/rush) vs. ULM run defense (rank 130th line yards allowed)",
+"UAB third-down conversion rate (47.8%, rank 20th) vs. ULM's 28.9% offensive rate",
+"UAB offensive line (rank 36th line yards) vs. ULM defensive havoc rate (rank 132nd)",
+"UAB home-field advantage worth approximately 6.1 model points"
+],
+"key_concerns": [
+"UAB's defense ranks 135th in defensive EPA per play \u2014 ULM's offense, though poor, could find openings",
+"UAB's roster continuity index is just 0.28, the lowest in this matchup, creating execution uncertainty",
+"Ryder Burton is a new starter with only 4 career games of 10-plus attempts",
+"Model projects UAB by 8.2 points while market is at -10.5, suggesting the spread may be inflated"
+],
+"expected_game_script": "UAB should establish the run early, with their offensive line advantage over ULM's low-havoc defensive front creating consistent positive rushing EPA. The Blazers' 47.8% third-down conversion rate against ULM's 44.2% third-down defense allowed rate means UAB drives should be sustained, keeping ULM's offense off the field. ULM will struggle to move the ball consistently \u2014 their 35.4% offensive success rate and 28.9% third-down conversion rate point to frequent three-and-outs \u2014 but UAB's defense (ranked 135th in EPA per play allowed) is porous enough that the Warhawks can score when they do get into rhythm. Both defenses have shown significant vulnerability after Week 1, which supports the 56.7-point projected total. UAB's home environment and the rest advantage (8 days vs. ULM's 6) add marginal but real edges. The most likely outcome is a UAB win in the 8-12 point range, with ULM keeping it closer than the market's 10.5-point spread implies if their passing game (rank 91st in offensive passing EPA) can exploit UAB's 133rd-ranked pass defense."
+},
+"validation": {
+"numbers_checked": 98,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:48:39.940506+00:00",
+"tokens_in": 18713,
+"tokens_out": 1883,
+"stop_reason": "end_turn",
+"raw_text": null
+}

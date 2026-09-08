@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_WKU_UGA_fd41d793ab30fd0e",
+"game_id": "2026_CFB_W02_WKU_UGA",
+"inputs_hash": "fd41d793ab30fd0e",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Georgia to win 46.54 to 10.00, a home margin of 36.54 points. The projected total is 56.54, sitting 2.0 points above the current market number of 54.5. Georgia's win probability stands at 98.01%. The model's margin of 36.54 is about 4 points softer than the market spread of -40.5, meaning the model leans slightly toward Western Kentucky covering relative to the current line.",
+"offensive_matchup": "Georgia's offense (EPA per play of +0.35, ranked 9th opponent-adjusted) runs into a Western Kentucky defense that allows +0.25 EPA per play, ranked 119th \u2014 one of the worst defensive units in the country at limiting value on a per-play basis. The Bulldogs' rushing attack is particularly punishing, generating +0.32 rushing EPA per play (5th) against a Hilltopper run defense that surrenders +0.21 rushing EPA per play (125th), meaning Georgia's ground game should find consistent positive yardage. Western Kentucky's offense (EPA per play of +0.16, 87th) faces a Georgia defense allowing only +0.03 EPA per play (22nd), so the Hilltoppers will struggle to sustain drives. The Bulldogs' offensive success rate of 52% (4th) against WKU's defensive success rate of 41.5% (77th) reinforces that Georgia should move the chains efficiently on most possessions.",
+"quarterback_edge": "Georgia's Gunner Stockton is a returning starter with 412 career attempts, a 72.1% career completion rate, and 7.65 yards per attempt across 16 career games with 10-plus attempts. Western Kentucky's Rodney Tisdale Jr. is flagged as a new starter at this program, carrying 232 career attempts, a 66.4% completion rate, and 6.77 yards per attempt over just 6 such games. The experience and efficiency gap clearly favors Stockton, and the model assigns Georgia a quarterback edge worth roughly 0.43 points. Tisdale will face a Georgia defense that held opponents to 4.09 yards per play (5th) in its opener, compounding the challenge for a less-seasoned signal-caller.",
+"trenches": "Georgia's offensive line dominates this matchup: the Bulldogs rank 2nd in line yards (3.68, a Football Outsiders metric crediting yards generated at the point of attack) while WKU's defensive front ranks 126th in havoc rate (disruption plays per snap) at just 7.5%, generating essentially no pass rush pressure \u2014 a sack rate of 2.49% ranks 134th. On the other side, Georgia's defensive front faces a WKU offensive line that ranks 77th in line yards (2.92) and allowed a 4.2% sack rate in Week 1. Georgia's run defense allowed negative line yards (-0.59, ranked 3rd) in its opener, suggesting the Bulldogs' front seven can neutralize WKU's run game before it starts. The trench battle is decisively in Georgia's favor, contributing 1.54 model points toward the home team.",
+"explosive_play_edge": "Explosive plays \u2014 rushes of 10-plus yards or passes of 20-plus yards \u2014 heavily favor Georgia in both directions. The Bulldogs allowed zero explosive plays in their opener (ranked 1st, opponent-adjusted rate of 5.35%), while WKU's defense surrendered explosive plays on 14.5% of opponent snaps (121st). Georgia's own explosive play rate of 14.3% (30th) meets a WKU defense that has already shown it cannot contain chunk gains. This edge contributes 2.55 model points toward Georgia and is one of the larger individual drivers in the projection.",
+"third_down_red_zone": "Georgia converts third downs at a 50.1% clip (9th), while WKU's defense allows conversions on 39.1% of third downs \u2014 a meaningful gap that should keep Georgia drives alive. In the red zone, the Bulldogs score touchdowns on 84.75% of trips (3rd), compared to WKU's defensive red zone TD rate allowed of 48.2% (16th in allowing fewer, meaning they are actually decent here \u2014 note the red zone edge is flagged as low sample). WKU's offense scores touchdowns on only 62.5% of red zone trips (99th) against a Georgia defense that allowed zero red zone touchdowns in Week 1. The model's red zone edge actually slightly favors WKU's defense in isolation (-0.87 points), but Georgia's superior third-down efficiency means the Bulldogs will reach the red zone far more often.",
+"roster_talent": "The talent gap in this game is among the largest possible in college football. Georgia's roster sits at the 99th percentile in talent with a four-year blue-chip ratio of 79%, meaning nearly four of every five scholarship players were rated four or five stars. Western Kentucky's roster is at the 18th percentile with a blue-chip ratio of 0.0% \u2014 no blue-chip recruits in the four-year window. Georgia's returning production index is 0.80 (continuity across skill positions and the offensive line) versus WKU's 0.39, indicating the Bulldogs return far more experienced contributors. Talent alone contributes 12.31 model points toward Georgia, the single largest driver in the projection.",
+"recent_form": "Both teams have played exactly one game, so the recent form edge is neutral and contributes zero points to the model. Georgia scored 63 points and allowed 3 in its opener, while Western Kentucky scored 14 and allowed 49. The raw results align with the opponent-adjusted ratings, but with only one game of data the model appropriately does not over-weight short-term form shifts.",
+"market_movement": "The spread opened at Georgia -35.5 and has moved to -40.5 at DraftKings, a 5.0-point shift toward the home team. The total moved from 52.5 to 54.5, up 2.0 points. Books currently disagree by 1.0 point on the spread. The model's projected margin of 36.54 sits about 4 points below the current market number of -40.5, suggesting the model sees slightly more value on Western Kentucky relative to where the line has moved. Public betting percentages are unavailable, so the cause of the line movement cannot be attributed to any specific source.",
+"key_advantages": [
+"Georgia's dominant trench play \u2014 2nd in line yards, 1st in defensive line yards allowed \u2014 against WKU's weak defensive and offensive fronts",
+"Massive talent gap: Georgia at 99th percentile with 79% blue-chip ratio vs. WKU at 18th percentile with 0% blue-chip ratio",
+"Georgia's explosive play suppression (ranked 1st, 5.35% allowed) against a WKU offense that generates explosives on only 12.4% of plays",
+"Georgia's red zone touchdown rate of 84.75% (3rd) against a WKU defense that allows TDs on 48.2% of red zone trips"
+],
+"key_concerns": [
+"WKU's pace (ranked 13th in plays per game at 72.7, opponent-adjusted) could generate more possessions and keep the total elevated",
+"WKU's defensive pass EPA allowed (0.26, 77th) is middling, meaning Georgia's passing game may not be as dominant as its rushing attack",
+"Georgia's strength of schedule rank of 161st means its dominant Week 1 numbers carry significant opponent-quality uncertainty",
+"The model projects 4 points softer than the current market spread, so bettors laying -40.5 are paying above the model's implied number"
+],
+"expected_game_script": "Georgia should establish its run game early, with its top-5 rushing EPA and elite offensive line overwhelming a WKU defensive front that ranks 125th in rushing EPA allowed. Sustained Bulldog drives \u2014 aided by a 50% third-down conversion rate against a defense allowing 39% \u2014 will keep WKU's high-tempo offense off the field. Western Kentucky will try to push pace, running plays at roughly 25.5 seconds per snap (18th fastest, opponent-adjusted), but its offense generating only +0.16 EPA per play against Georgia's top-25 defense makes sustained scoring unlikely. The Hilltoppers' turnover margin of -0.77 per game adds further risk to their possessions, and Tisdale's limited experience against a disruptive Georgia defense could produce negative plays. Georgia's red zone efficiency (84.75% TD rate) means most Bulldog drives that reach scoring range will end in touchdowns rather than field goals, pushing the score well above WKU's capacity to respond. By the second half, Georgia is likely to play reserves, which could compress the final margin somewhat relative to the model's 36-point projection. The game script strongly favors a lopsided Georgia victory with the total driven almost entirely by the home team's output."
+},
+"validation": {
+"numbers_checked": 123,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:48:43.291478+00:00",
+"tokens_in": 18737,
+"tokens_out": 2138,
+"stop_reason": "end_turn",
+"raw_text": null
+}

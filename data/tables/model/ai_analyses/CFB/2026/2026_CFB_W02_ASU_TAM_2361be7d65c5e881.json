@@ -1,0 +1,47 @@
+{
+"analysis_id": "2026_CFB_W02_ASU_TAM_2361be7d65c5e881",
+"game_id": "2026_CFB_W02_ASU_TAM",
+"inputs_hash": "2361be7d65c5e881",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Texas A&M to win at home 34-20, covering the market spread of -14.5 by a razor-thin 0.06 points. The projected total of 54.53 sits 3.03 points above the market number of 51.5. Texas A&M's win probability is 82.4%, closely matching the market's implied no-vig probability of 82.7%.",
+"offensive_matchup": "Both offenses grade similarly on opponent-adjusted EPA per play (expected points added per play, a measure of how much each play moves the scoreline) \u2014 Arizona State at 0.285 (21st) and Texas A&M at 0.284 (22nd) \u2014 but the Aggies hold a meaningful edge in offensive success rate (49.2%, 15th vs. ASU's 46.0%, 33rd), meaning they more consistently move the chains on a per-play basis. Texas A&M's passing attack generates 0.447 EPA per pass play (17th) against an Arizona State pass defense allowing 0.120 EPA per pass play (23rd), giving the Aggies a clear advantage through the air. Arizona State's offense posted eye-catching raw numbers in Week 1 (70 points, 9.6 yards per play), but those came against a schedule-strength rank of 165, and the opponent-adjusted blend tempers that significantly. The Aggies' slower pace \u2014 averaging 29.9 seconds per play (105th) compared to ASU's 28.2 (71st) \u2014 suggests they will control tempo and limit Arizona State's possessions.",
+"quarterback_edge": "Marcel Reed enters with a career 8.35 yards per attempt over 569 career attempts and 21 games with 10-plus attempts, giving him a meaningful experience and efficiency edge over Cutter Boley, who carries a 7.57 career yards per attempt over 381 attempts across 14 such games. Reed is a returning starter while Boley is a transfer starter, and the model assigns Texas A&M a quarterback edge worth 0.30 points toward the home side. Boley's career interception-to-touchdown ratio (16 interceptions, 23 touchdowns) is less favorable than Reed's (14 interceptions, 40 touchdowns), a gap that matters against a Texas A&M defense that held opponents to a 20.1% third-down conversion rate (1st nationally, opponent-adjusted).",
+"trenches": "The offensive line edge favors Texas A&M, whose pass protection grades better against Arizona State's pass rush \u2014 the Aggies' opponent-adjusted sack rate allowed of 3.3% (22nd) compares favorably to ASU's 4.9% (64th). Texas A&M's defensive front also holds an edge, generating a 9.3% sack rate (10th) against an Arizona State offensive line that allowed a 4.9% sack rate. In the run game, Texas A&M's defensive line yards allowed of 2.49 (25th) is tighter than Arizona State's 2.80 (64th), suggesting the Aggie front can limit what ASU's ground game \u2014 which posted a 0.200 rushing EPA per play (30th, opponent-adjusted) \u2014 can generate. Combined, the trench edges contribute 0.82 points toward Texas A&M in the model.",
+"explosive_play_edge": "This is Arizona State's clearest structural advantage: the Sun Devils rank 6th in opponent-adjusted explosive play rate (16.3% of plays gain 10-plus rushing or 20-plus passing yards) while holding opponents to an explosive rate of just 8.8% (18th). Texas A&M's offense ranks 28th in explosive rate (14.3%) and their raw defense allowed zero explosive plays in Week 1, but the opponent-adjusted blend still shows them as only 48th in explosive plays allowed (10.6%). The explosive edge favors Arizona State by an edge score of -3 (the largest single-category swing in the model), contributing 1.02 points toward the Sun Devils. If ASU can generate chunk plays against the Aggie secondary, it is the most likely path to keeping this game competitive.",
+"third_down_red_zone": "Texas A&M's third-down defense is the most dominant single metric in this matchup: an opponent-adjusted conversion rate allowed of 20.1% ranks 1st nationally, compared to Arizona State's offense converting just 37.6% of third downs (98th). That gap \u2014 the largest edge score of any category at +3 for the Aggies \u2014 means ASU drives are likely to stall frequently, limiting scoring opportunities. In the red zone, Arizona State's defense actually holds a slight edge, allowing touchdowns on 69.0% of opponent red-zone trips (87th, lower is better) versus Texas A&M's 80.0% allowed (125th, flagged as low sample). Both red-zone offensive rates are flagged as low-sample data, so those figures should be treated cautiously, but ASU's 4.63 points per scoring opportunity (26th) edges the Aggies' 4.47 (36th).",
+"roster_talent": "Texas A&M holds a substantial roster talent advantage: their talent percentile is 0.91 with a four-year blue-chip ratio of 0.81, compared to Arizona State's 0.69 percentile and 0.11 blue-chip ratio. The returning production gap is equally significant \u2014 the Aggies return 68% of total production (including 95% of passing production and 74% roster continuity index) while Arizona State returns just 18% of total production with a continuity index of 0.36 and zero returning passing production. These two factors \u2014 talent and returning production \u2014 combine for 4.44 points toward Texas A&M in the model, making them the largest collective driver of the projected margin.",
+"recent_form": "Both teams played one game each entering Week 2, and the model's recent form edge is neutral with zero form-shift for either side. Arizona State's raw Week 1 output was explosive (70 points, 0.879 EPA per play, ranked 2nd), while Texas A&M posted a shutout (50-0, -0.292 defensive EPA per play, ranked 12th). Both results came against opponents ranked 165th and 167th in strength of schedule respectively, so the opponent-adjusted blended metrics temper both performances considerably. With only one game of data, the raw numbers carry inherent uncertainty and the model appropriately discounts them.",
+"market_movement": "The spread has held at Texas A&M -14.5 since the first recorded snapshot on DraftKings, with zero movement in either the spread or total. The total has similarly remained at 51.5 with no movement. The model and market are within 0.06 points of each other on the spread, indicating strong alignment. The model projects the total 3.03 points above the market number of 51.5. Public ticket and money percentages are unavailable, so no inference about ticket-driven or sharp-driven movement can be made.",
+"key_advantages": [
+"Texas A&M's third-down defense ranks 1st nationally (opponent-adjusted, 20.1% allowed) against an ASU offense converting just 37.6% (98th)",
+"Aggies hold a massive roster talent edge: 0.91 talent percentile and 0.81 blue-chip ratio vs. ASU's 0.69 and 0.11",
+"Texas A&M returns 68% of total production (95% passing) vs. Arizona State's 18% total and zero returning passing production",
+"Kyle Field home-field advantage contributes 6.09 points to the projected margin"
+],
+"key_concerns": [
+"Arizona State's explosive play rate (16.3%, 6th) against a Texas A&M defense that ranks only 48th in opponent-adjusted explosive plays allowed (10.6%) is the biggest threat to the spread",
+"Both teams carry negative turnover margins (ASU -0.71, TAM -0.78), creating volatility risk in either direction",
+"The model projects the total at 54.53, sitting 3.03 points above the market's 51.5, suggesting more scoring than the market anticipates",
+"Arizona State's red-zone defense (69.0% TD rate allowed, better than TAM's 80.0%) could limit Aggie scoring if ASU keeps drives alive"
+],
+"expected_game_script": "Texas A&M is expected to control the line of scrimmage early, leveraging their superior returning production and talent depth to establish a methodical offensive rhythm at their slower 29.9-second-per-play pace. Marcel Reed's experience advantage over transfer starter Cutter Boley should show up on critical downs, particularly given the Aggies' elite third-down defense that figures to force repeated three-and-outs on ASU possessions. Arizona State's most dangerous weapon is their explosive play capability \u2014 a 16.3% explosive rate against a Texas A&M defense that allows chunk plays at a 10.6% rate \u2014 meaning the Sun Devils' best hope is generating a few big plays to stay within striking distance rather than sustaining long drives. The Aggie offense, while not explosive by raw metrics (14.3% explosive rate, 28th), should find consistent success against an ASU defense that ranks 37th in opponent-adjusted defensive success rate (37.5% allowed), grinding out scoring drives even if they don't break many big plays. With both teams carrying negative turnover margins, a turnover or two could swing momentum, but the structural advantages in talent, continuity, home field, and third-down defense point toward Texas A&M building a lead by halftime and managing the game from there. The projected 34-20 final reflects a competitive but ultimately comfortable Aggie win, with Arizona State's explosive offense keeping the game from becoming a blowout."
+},
+"validation": {
+"numbers_checked": 141,
+"violations": [
+"4.44"
+],
+"confident_about_unavailable": [],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:46:50.861323+00:00",
+"tokens_in": 18554,
+"tokens_out": 2316,
+"stop_reason": "end_turn",
+"raw_text": null
+}

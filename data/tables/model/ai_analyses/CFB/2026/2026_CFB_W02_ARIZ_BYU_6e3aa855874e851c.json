@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_ARIZ_BYU_6e3aa855874e851c",
+"game_id": "2026_CFB_W02_ARIZ_BYU",
+"inputs_hash": "6e3aa855874e851c",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects BYU to win at home 29-21, covering the current market spread of -7.5 by a slim 0.76 points. The total comes in at 50.1, just under the market number of 50.5. BYU's win probability sits at 71%, driven primarily by home-field advantage worth roughly 6 points, a stronger overall defensive profile, and a talent edge over the visiting Wildcats.",
+"offensive_matchup": "BYU's offense enters as the clear aggressor, posting an opponent-adjusted EPA per play (a measure of how many expected points each play adds, adjusted for competition) of 0.30 versus Arizona's 0.16. The Cougars rank 16th in offensive success rate at 49%, meaning they consistently move the chains, and they face an Arizona defense that, while solid overall (ranked 20th in defensive EPA/play), has shown some vulnerability in pass defense at 32nd. Arizona's offense is more limited, ranking 85th in offensive EPA/play, and will need to lean on a run game that grades out respectably at 52nd in rushing EPA to keep pace. BYU's run-heavy identity \u2014 running on roughly 55% of neutral-script plays \u2014 sets up a physical, clock-controlling game that could limit Arizona's possessions.",
+"quarterback_edge": "Both quarterbacks are returning starters with similar career yards-per-attempt numbers \u2014 BYU's Bear Bachmeier at 7.88 and Arizona's Noah Fifita at 7.62 \u2014 but Bachmeier has far less experience, having attempted just 369 career passes across 14 games compared to Fifita's 1,159 attempts over 34 games. The model gives BYU a marginal quarterback edge based on a composite index (0.78 vs. 0.57) that weights career efficiency, though the gap is narrow enough that it contributes only about 0.06 points to BYU's projected margin. Fifita's greater volume of experience could matter in a road environment if Arizona falls behind and needs to throw, but his passing EPA ranks just 102nd after opponent adjustment, suggesting the Wildcats' passing attack has not been particularly efficient when accounting for opponent quality.",
+"trenches": "The offensive line matchup is essentially even by the model, but the underlying numbers favor BYU's run blocking against Arizona's run defense. BYU's line yards per rush (a Football Outsiders metric crediting yards to the offensive line rather than the ball carrier) grade out at 17th at 3.36, while Arizona's defensive line yards allowed rank 23rd at 2.44 \u2014 a competitive matchup that should produce a physical but not lopsided ground battle. On the other side, Arizona's offensive line is a concern: the Wildcats allow sacks on 6.1% of dropbacks (ranked 95th), and they face a BYU defensive front that generates havoc (tackles for loss, sacks, forced fumbles, turnovers) on 12.9% of plays, ranking 14th. That pressure differential could force Fifita into quicker decisions and limit Arizona's ability to sustain drives through the air.",
+"explosive_play_edge": "Arizona actually holds a slight edge in raw explosive play rate at 14.9% versus BYU's 13.6%, and the Wildcats' defense has been stingier against big plays, allowing explosives on just 7.8% of opponent plays (ranked 9th) compared to BYU's 8.7% (ranked 15th). However, BYU's defense has been more disruptive in terms of overall explosiveness quality allowed, and the model rates this category as essentially neutral with a marginal lean toward BYU. The practical implication is that neither team is likely to win through chunk plays alone \u2014 field position and sustained drives will matter more than home-run shots in this matchup.",
+"third_down_red_zone": "BYU holds a meaningful third-down edge, converting at a 50.7% clip (ranked 8th) against Arizona's defense that allows conversions on 33.4% of attempts (ranked 30th) \u2014 a favorable matchup for the Cougars to sustain drives. Arizona converts at 44.4% on third down, which is respectable but below BYU's level. In the red zone, both teams' small-sample data carries a low-sample flag after just one game, so those numbers should be treated cautiously; the opponent-adjusted model gives BYU a meaningful red zone edge (ranked 4th in touchdown rate allowed at 41%) against an Arizona offense that scores touchdowns on 72.6% of red zone trips. If BYU's defense can hold Arizona to field goals in scoring territory, the margin could grow beyond the projected 8 points.",
+"roster_talent": "BYU holds a modest talent advantage with a roster talent percentile of 67% versus Arizona's 59%, and a slightly higher four-year blue-chip ratio (16% vs. 15%). BYU also carries a higher continuity index (0.78 vs. 0.74), meaning more of their production returns from last season, which is particularly notable in passing (97% returning) and rushing (87% returning). Arizona returns 96% of both passing and rushing production but only 42% of receiving production, which could create some growing pains in the passing game. The talent gap is not dramatic, but combined with BYU's home environment, it contributes roughly 1.3 points to the Cougars' projected margin.",
+"recent_form": "Both teams have played exactly one game entering Week 2, so recent form data is limited to a single-game sample. Arizona scored 35 points and allowed just 7 in their opener, while BYU put up 63 points and also allowed 7. The model assigns no form-based edge to either team given the identical sample size and the lack of multi-game trend data. BYU's opener came against a weaker schedule (strength-of-schedule rank 157th vs. Arizona's 98th), which is why the opponent-adjusted metrics temper BYU's raw numbers considerably \u2014 their raw EPA/play of 0.60 blends down to 0.30 after adjustment.",
+"market_movement": "The spread moved one full point from BYU -6.5 to -7.5, crossing the key number of 7, which historically carries outsized significance in football scoring. The total has held steady at 50.5 across both snapshots. The model's projected spread of -8.3 sits within a point of the current market number, suggesting the model and market are broadly aligned. Public betting percentages are unavailable, so the direction of the move cannot be attributed to any specific bettor segment.",
+"key_advantages": [
+"BYU home-field advantage worth approximately 6 points in the model",
+"BYU's superior overall defensive EPA/play (ranked 9th vs. Arizona's 20th after adjustment)",
+"BYU's third-down conversion rate (51%, ranked 8th) against a solid but beatable Arizona third-down defense",
+"BYU's turnover margin edge (1.24 per game vs. Arizona's 0.35 after adjustment)"
+],
+"key_concerns": [
+"Arizona's strength of schedule (ranked 98th) is meaningfully tougher than BYU's (ranked 157th), making BYU's gaudy raw numbers harder to trust",
+"Arizona's defense ranks 9th in explosive plays allowed and 10th in defensive success rate, capable of keeping the Wildcats in the game",
+"BYU's pass rush ranks just 82nd in sack rate, limiting their ability to rattle the more experienced Fifita",
+"Red zone and scoring opportunity data carry low-sample flags for both teams after just one game"
+],
+"expected_game_script": "BYU should control the tempo early, leaning on a run-heavy identity (roughly 55% rush rate in neutral situations) to keep Arizona's offense off the field and grind down the Wildcats' front seven. Arizona's defense is legitimately good \u2014 ranked 20th in defensive EPA/play and 9th in explosive plays allowed \u2014 so BYU is unlikely to score at the 63-point clip they managed in Week 1, and the opponent-adjusted projection of 29 points reflects that reality. Arizona's offense will need Fifita to be efficient against a BYU defense that generates havoc on nearly 13% of plays, and the Wildcats' offensive line vulnerability (ranked 95th in sack rate allowed) could create negative plays that stall drives. If Arizona can win the turnover battle \u2014 they were a minus-2 in their opener \u2014 and convert third downs at a reasonable rate, they can keep this within a score. The most likely outcome is BYU building a two-score lead in the second half as their depth and home crowd wear on the visiting Wildcats, with Arizona making it interesting late but falling short of covering the 7.5-point spread."
+},
+"validation": {
+"numbers_checked": 97,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:50:39.400499+00:00",
+"tokens_in": 18718,
+"tokens_out": 2089,
+"stop_reason": "end_turn",
+"raw_text": null
+}

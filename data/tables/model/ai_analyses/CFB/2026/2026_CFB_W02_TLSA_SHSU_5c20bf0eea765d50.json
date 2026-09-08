@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_TLSA_SHSU_5c20bf0eea765d50",
+"game_id": "2026_CFB_W02_TLSA_SHSU",
+"inputs_hash": "5c20bf0eea765d50",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Tulsa to win 29-21 at Sam Houston, a margin of 8.2 points in the Golden Hurricane's favor. The market has Tulsa as a 13.5-point favorite, meaning the model sees this game as roughly 5 points closer than the line suggests. The projected total is 50.5, just under the market total of 51.5. Tulsa's win probability sits at 70.3% per the model.",
+"offensive_matchup": "Both offenses rank in the bottom third of FBS on opponent-adjusted EPA per play (expected points added, a measure of how much each play moves the scoreboard), with Tulsa at rank 121 and Sam Houston at rank 115. The key contrast is stylistic: Sam Houston passes on 60% of its plays overall and 62% in neutral game situations, ranking 6th nationally in neutral-script pass rate, while Tulsa runs a more balanced attack at 50% neutral-script pass rate. Sam Houston's pass-heavy identity runs directly into a Tulsa pass defense that ranks 72nd in defensive passing EPA allowed \u2014 middling, but meaningfully better than Sam Houston's own pass defense, which ranks 110th. Tulsa's offense, meanwhile, generates only 5.0 yards per play (rank 116) and a 38.4% offensive success rate (rank 112), so it will need its pace advantage \u2014 72 plays per game at rank 18 \u2014 to manufacture enough possessions to stay ahead.",
+"quarterback_edge": "Tulsa's Baylor Hayes holds a meaningful edge over Sam Houston's Landyn Locke. Hayes has 340 career attempts and a 7.02 yards-per-attempt average across 11 games with 10-plus attempts, while Locke has 187 career attempts at 5.88 yards per attempt across just 6 such games and is flagged as a new starter for Sam Houston this season. The model's quarterback index rates Hayes at -0.13 and Locke at -1.28, both below average but Locke considerably more so. That gap translates to roughly a half-point edge for Tulsa in the model's final margin.",
+"trenches": "The offensive line matchup strongly favors Tulsa on both sides of the ball. Sam Houston's offensive line is the bigger concern: the Bearkats allowed havoc (tackles for loss, sacks, forced fumbles, or turnovers) on 13.3% of their plays (rank 134, worst in the data) and surrendered sacks on 7.8% of dropbacks (rank 122), while Tulsa's defensive front generates sacks at a 5.0% rate (rank 104) \u2014 not elite, but enough to exploit a porous Sam Houston line. On the other side, Tulsa's line allowed sacks on just 3.9% of dropbacks (rank 38) and held havoc allowed to 10.4% (rank 103), facing a Sam Houston defensive front whose sack rate in raw data was 14.8% (rank 12) but whose opponent-adjusted sack rate is 7.8% \u2014 a significant threat. The run-blocking picture also favors Tulsa: Sam Houston's line yards (a Football Outsiders metric crediting yards to the offensive line) rank 125th at 2.44, while Tulsa's rank 94th at 2.80.",
+"explosive_play_edge": "This is the sharpest edge in the matchup and it clearly favors Tulsa. Sam Houston allowed explosive plays (10-plus rushing yards or 20-plus passing yards) on 17.0% of opponent plays in opponent-adjusted metrics, ranking 134th \u2014 near the bottom of FBS. Tulsa generates explosive plays on 12.2% of its plays (rank 76), and its defense limits opponents to 10.6% (rank 51). Sam Houston's own explosive play rate is just 9.5% (rank 123), meaning the Bearkats are unlikely to flip the field with big plays while Tulsa has a real opportunity to do so. The explosive edge is worth nearly 1.7 points toward Tulsa in the model.",
+"third_down_red_zone": "Both teams struggled on third down in their openers, but Tulsa holds the edge: the Golden Hurricane converted 30.5% of third downs (rank 121) versus Sam Houston's 27.4% (rank 132), and Tulsa's defense held opponents to a 40.3% conversion rate (rank 94) while Sam Houston's defense allowed 43.3% (rank 112). In the red zone, both teams' data carry a low-sample flag after one game, so treat these numbers cautiously. Tulsa's opponent-adjusted red zone touchdown rate allowed (58.1%, rank 50) is better than Sam Houston's (65.1%, rank 71), suggesting Tulsa is more likely to hold the Bearkats to field goals when they do reach scoring territory. Sam Houston's points-per-scoring-opportunity of 2.82 (rank 129) indicates they have left points on the field even when they get into position to score.",
+"roster_talent": "Tulsa holds a clear talent advantage. The Golden Hurricane's roster talent percentile is 36th, compared to Sam Houston's 14th, and neither program has blue-chip recruits in their four-year window. Tulsa's roster continuity index is 0.64 versus Sam Houston's 0.41, meaning Tulsa returns significantly more of its production \u2014 48% overall versus 37% for Sam Houston. Sam Houston does return 68% of its receiving production and 54% of its rushing production, but only 37% of passing production, which aligns with Locke being a new starter. The talent and continuity gap is the single largest model driver, worth nearly 3.9 points toward Tulsa.",
+"recent_form": "Both teams have played exactly one game, so recent form data is identical to season data and the form-shift edge is neutral. In that one game, Tulsa scored 24 points and allowed 10, while Sam Houston scored 21 and allowed 24. The opponent-adjusted metrics paint a different picture \u2014 Tulsa's strength of schedule ranks 48th versus Sam Houston's 168th, meaning Tulsa's opener came against meaningfully tougher competition. That context is already baked into the opponent-adjusted metrics used throughout this analysis.",
+"market_movement": "The spread moved 3.0 points toward Tulsa, opening at Tulsa -10.5 and settling at Tulsa -13.5 on DraftKings. The total moved in the opposite direction, dropping 2.0 points from 53.5 to 51.5. The model's projected margin of 8.2 points in Tulsa's favor is 5.3 points closer than the current market spread of 13.5, representing the largest single discrepancy in this matchup. Public betting percentages are unavailable, so the cause of the spread movement cannot be attributed to any specific source.",
+"key_advantages": [
+"Tulsa's explosive play defense (rank 51) vs. Sam Houston's explosive play allowed rate (rank 134, near worst in FBS)",
+"Baylor Hayes' career yards-per-attempt (7.02) and experience advantage over new starter Landyn Locke (5.88 YPA, 6 career games)",
+"Tulsa's roster talent percentile (36th) and continuity index (0.64) both significantly exceed Sam Houston's (14th, 0.41)",
+"Tulsa's offensive line sack rate allowed (rank 38) vs. Sam Houston's pass protection (rank 122 sack rate allowed)"
+],
+"key_concerns": [
+"Tulsa's offensive EPA per play ranks 121st opponent-adjusted, limiting confidence in their ability to pull away",
+"Sam Houston's defensive front generated sacks on 14.8% of dropbacks in raw data (rank 12), a genuine threat to Hayes",
+"Tulsa's third-down conversion rate of 30.5% (rank 121) could stall drives and negate their pace advantage",
+"Model projects Tulsa to win by 8 points, roughly 5.3 points fewer than the market spread of 13.5"
+],
+"expected_game_script": "Tulsa figures to control the tempo early, using their pace advantage (72 plays per game, rank 18) to keep Sam Houston's offense off the field. Sam Houston will lean heavily on the pass \u2014 their neutral-script pass rate of 62% ranks 6th nationally \u2014 but their offensive line's vulnerability to havoc and their new starting quarterback's limited experience create real risk of negative plays derailing drives. Tulsa's defense, while not elite, is better equipped to limit explosive plays than Sam Houston's, which allowed big plays on 17% of opponent snaps. The Golden Hurricane's offense is unlikely to be efficient on a per-play basis given their rank-121 EPA per play, but their volume of plays and Hayes' edge in yards per attempt should produce enough scoring. Sam Houston's best path is generating turnovers \u2014 they had a -1.0 turnover margin in week one \u2014 and converting their pass-heavy attack into chunk gains before Tulsa's defense adjusts. The most likely outcome is a Tulsa lead that builds gradually through the second half as Sam Houston's offensive line struggles to protect Locke against sustained pressure, with the final margin landing closer to the model's 8-point projection than the market's 13.5."
+},
+"validation": {
+"numbers_checked": 126,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:54:12.826682+00:00",
+"tokens_in": 18713,
+"tokens_out": 2223,
+"stop_reason": "end_turn",
+"raw_text": null
+}

@@ -1,0 +1,47 @@
+{
+"analysis_id": "2026_CFB_W02_WSU_KSU_3e04d7259c59e64e",
+"game_id": "2026_CFB_W02_WSU_KSU",
+"inputs_hash": "3e04d7259c59e64e",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Kansas State to win 32.25 to 17.21, a home margin of 15.04 points, with a projected total of 49.45. Kansas State's win probability sits at 83.3%. The market line is Kansas State -18.5 with a total of 49.5, meaning the model is about 3.5 points softer on the Wildcats than the current spread.",
+"offensive_matchup": "Kansas State's offense ranks 9th in opponent-adjusted points per game (39.5) and 35th in EPA per play (a measure of how many expected points each play generates, at 0.2476), while Washington State's defense ranks 43rd in defensive EPA per play (0.0837). The Wildcats convert third downs at a 48.1% clip (17th nationally) against a Cougar defense that has allowed a 35.0% third-down rate (43rd). Kansas State also generates scoring opportunities efficiently, averaging 5.0 points per scoring opportunity (14th), which should compound against a Washington State defense that has struggled to get off the field on passing downs, allowing a 40.0% pass-down success rate.",
+"quarterback_edge": "Kansas State's Avery Johnson is a returning starter with 26 career games of 10-plus attempts, 739 career attempts, a 60.1% completion rate, and 7.3 yards per attempt with a 46-to-15 touchdown-to-interception ratio. Washington State's Caden Pinnick carries a ROOKIE_OR_NO_PRIOR_DATA flag, with only 2 career games of 10-plus attempts, 41 career attempts, a 58.5% completion rate, and 4.68 yards per attempt with 1 touchdown and 3 interceptions. The experience and efficiency gap is substantial, and the model assigns Kansas State a quarterback edge worth 0.44 points toward the home team.",
+"trenches": "Kansas State's offensive line ranks 12th in sack rate allowed (2.6% of dropbacks) against a Washington State defensive front that ranks 71st in sack rate (6.2%), creating a clear pass-protection advantage for the Wildcats. On the ground, Kansas State's line yards per rush (3.10, 47th) face a Washington State run defense that ranks 63rd in defensive rushing EPA per play (0.06), while Washington State's offensive line ranks 111th in line yards (2.65) against a Kansas State defensive front that ranks 31st in line yards allowed (2.57). The defensive front edge favors Kansas State by 0.96 model points and the offensive line edge by 0.51, reflecting a trench battle that tilts heavily toward the home team.",
+"explosive_play_edge": "Kansas State generates explosive plays (10-plus rushing or 20-plus passing yards) at a 15.3% rate, ranking 14th nationally, while Washington State's offense produces them at only a 9.7% rate (121st). Washington State's defense allows explosive plays at a 12.6% rate (90th), which is a softer target than Kansas State's defense at 11.8% allowed (73rd). This combination gives Kansas State an explosive-play edge worth 1.46 model points, the third-largest single contributor to the projected margin.",
+"third_down_red_zone": "Kansas State converts third downs at 48.1% (17th) while Washington State converts at only 27.9% (130th), a gap that will directly affect possession length and scoring opportunities. In the red zone, Kansas State scores touchdowns on 78.1% of trips (22nd) versus Washington State's 60.9% (104th), though both figures carry a low-sample flag after one game. Washington State's defense does hold opponents to a 50.8% red-zone touchdown rate (21st), which is a genuine bright spot, but Kansas State's offense at 5.0 points per scoring opportunity (14th) is well-equipped to capitalize even when drives stall short of the end zone.",
+"roster_talent": "Kansas State holds a talent percentile of 70 with a four-year blue-chip ratio of 8%, compared to Washington State's talent percentile of 47 and a blue-chip ratio of 0.0%. The Wildcats also carry a returning production continuity index of 0.50 versus Washington State's 0.07, meaning Kansas State returns far more of its production from prior seasons. Both programs changed head coaches, neutralizing any coaching edge, but the talent and continuity gap contributes a combined 4.56 model points toward Kansas State.",
+"recent_form": "Both teams have played exactly one game, so recent form carries no trend signal and the model assigns a neutral 0.0 form-shift for each side. Washington State scored 10 points and allowed 24 in its opener (raw), while Kansas State scored 71 and allowed 3. With only one game of data, these raw results are reflected in the opponent-adjusted blended metrics rather than treated as a reliable form trend.",
+"market_movement": "The spread opened at Kansas State -16.5 and moved to -18.5, a 2.0-point shift toward the home team that crosses the key number 17. The total moved from 51.5 down to 49.5, a 2.0-point drop. The model's projected margin of 15.04 sits 3.5 points below the current market spread of 18.5, meaning the model leans slightly toward Washington State relative to the line. Public betting percentages are unavailable, so the cause of the line movement cannot be attributed to any specific source.",
+"key_advantages": [
+"Kansas State holds a large experience and efficiency edge at quarterback: Avery Johnson's 7.3 career yards per attempt and 26 career starts dwarf Caden Pinnick's 4.68 yards per attempt across 2 career starts",
+"Kansas State's explosive play rate of 15.3% (14th) is nearly double Washington State's 9.7% (121st), and the Wildcats' offense ranks 9th in opponent-adjusted scoring",
+"Kansas State's offensive line allows sacks on only 2.6% of dropbacks (12th) against a Washington State pass rush that ranks 71st in sack rate",
+"Kansas State's returning production continuity index of 0.50 vastly exceeds Washington State's 0.07, giving the Wildcats a significant familiarity and cohesion advantage"
+],
+"key_concerns": [
+"Washington State's defense ranks 21st in red-zone touchdown rate allowed (50.8%), a genuine strength that could limit Kansas State's scoring efficiency inside the 20",
+"Kansas State's defensive red-zone touchdown rate allowed is 76.2% (119th), a notable vulnerability if Washington State can move the ball into scoring position",
+"Washington State's schedule strength ranks 137th versus Kansas State's 173rd, so the Cougars have faced marginally tougher competition, which the model credits with a small 0.44-point edge to the away team",
+"Both teams changed head coaches, introducing uncertainty on both sidelines that the model treats as neutral"
+],
+"expected_game_script": "Kansas State should control the line of scrimmage on both sides early, using its superior offensive line (2.6% sack rate allowed, 12th) and run-blocking (3.10 line yards, 47th) to establish a balanced attack against a Washington State defense that ranks 99th in defensive success rate (42.8% of plays allowed are successful). Avery Johnson's experience and 7.3 career yards per attempt should allow the Wildcats to attack Washington State's pass defense, which ranks 37th in defensive passing EPA per play but has allowed a 40.0% pass-down success rate. Washington State's offense, converting third downs at only 27.9% (130th) and generating EPA per play of 0.1746 (70th), will likely face three-and-outs against a Kansas State defense that ranks 22nd in defensive success rate (35.4%) and 14th in overall defensive EPA per play (0.0127). If Washington State's turnover margin, which sits at -1.30 per game (129th on an opponent-adjusted basis), continues to trend negative, Kansas State's offense will have short fields to work with and can leverage its 78.1% red-zone touchdown rate. The most likely outcome is a Kansas State lead that grows through the second and third quarters as Washington State's offense struggles to sustain drives, with the Cougars' explosive play rate of 15.3% providing the big plays needed to push the margin toward the model's projected 15-point home win."
+},
+"validation": {
+"numbers_checked": 139,
+"violations": [
+"4.56"
+],
+"confident_about_unavailable": [],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:48:41.904865+00:00",
+"tokens_in": 18815,
+"tokens_out": 2036,
+"stop_reason": "end_turn",
+"raw_text": null
+}

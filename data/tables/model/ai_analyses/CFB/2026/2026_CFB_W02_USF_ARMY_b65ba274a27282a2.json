@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_USF_ARMY_b65ba274a27282a2",
+"game_id": "2026_CFB_W02_USF_ARMY",
+"inputs_hash": "b65ba274a27282a2",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects South Florida winning 31.85 to 22.81, a margin of 9 points in favor of the Bulls. Army is installed as a 3.5-point home favorite by the market, creating a 12.5-point gap between the model and the line. The projected total of 54.65 sits 6.1 points above the market number of 48.5. Army's win probability is 27.9%, giving South Florida a 72.1% chance to win outright despite being road underdogs.",
+"offensive_matchup": "South Florida holds a clear passing edge: their opponent-adjusted passing EPA per play (expected points added, a measure of how much value each play generates) ranks 20th at 0.406, while Army's pass defense ranks 74th at 0.2517 EPA allowed per pass. That mismatch is the single largest on-field driver favoring the Bulls. Army's offense flips the script on the ground, posting a rushing EPA of 0.2985 per play (8th nationally) against a USF rush defense that sits at -0.0497 EPA allowed per rush (16th), meaning the Black Knights' run game meets one of the better run-stopping units in the country. The style-fit edge leans slightly toward USF because Army's extreme run-lean offense \u2014 a neutral-script pass rate of just 17.7% \u2014 runs directly into a USF front that has been above average against the run.",
+"quarterback_edge": "Michael Van Buren Jr. carries the edge for South Florida based on experience: 15 career games with 10-plus attempts, 399 career attempts, and a 57.4% completion rate at 6.84 yards per attempt. Army's Cale Hellums is a returning starter but has only 78 career attempts across 4 qualifying games and just 9 attempts this season, giving the model very limited evidence to evaluate him. Neither quarterback has a career EPA-per-dropback figure available, so the edge is derived from career volume and box-score production, where Van Buren's larger sample tilts the advantage to USF.",
+"trenches": "Army's offensive line is the strongest unit on either side of the ball in this matchup, ranking 1st in havoc allowed (disruption plays conceded per snap) and 10th in line yards (rushing yards credited to the line per carry) on an opponent-adjusted basis. That dominant front meets a USF defensive front that ranks 108th in sack rate and generates havoc at only a 50th-percentile clip, giving Army a clear path to sustain its ground attack. In the other direction, USF's offensive line is middling \u2014 53rd in sack rate allowed \u2014 but faces an Army pass rush that ranks 115th in sack rate, so the Bulls' protection should be adequate. The overall offensive line edge scores +3 for Army, the largest single trench advantage in the game.",
+"explosive_play_edge": "Army holds a modest explosive-play edge, ranking 31st in explosive play rate (14.2%) and 29th in explosive plays allowed (9.6%), while USF generates explosives at a 13.2% rate and allows them at an 11.2% clip. The edge score of +2 for Army reflects their superior ability to limit opponent chunk plays more than their own big-play creation. USF's pass-game efficiency could generate some explosives through the air, but Army's defense has been better at preventing the kind of sustained big-play output that would swing this category.",
+"third_down_red_zone": "Third-down conversion rates are close: Army converts at 46.8% (21st) and USF at 45.7% (26th) on offense, while USF's defense allows conversions at a 37.0% rate (64th) versus Army's 39.7% (87th). The slight edge goes to USF in this category. Red zone is where Army separates \u2014 their touchdown rate per red-zone trip is 80.2% (17th) against a USF defense that allows touchdowns on 67.4% of opponent red-zone trips (77th). USF's own red-zone offense (72.7% TD rate, 56th) meets an Army defense that has allowed touchdowns on only 55.2% of trips (37th), giving Army the better of both red-zone interactions. Both red-zone metrics carry a low-sample flag after just one game, so treat them as directional rather than definitive.",
+"roster_talent": "South Florida holds a substantial talent advantage by recruiting metrics: their talent percentile sits at 52nd versus Army's 5th, and USF's four-year blue-chip ratio of 1% still exceeds Army's 0%. That gap translates to a -7.14-point swing toward USF in the model, the single largest factor in the projection. Army partially offsets this with a continuity index of 0.76 \u2014 meaning 76% of their production returns \u2014 compared to USF's 0.18, reflecting a near-complete roster overhaul that includes a new head coach and only 11% returning production overall. Army's returning production edge scores +2 and contributes 1.56 points toward the home team, but it does not come close to closing the talent gap.",
+"recent_form": "Both teams have played exactly one game, so the recent form edge is neutral with no measurable shift in either direction. Army's raw results from Week 1 were eye-catching \u2014 59 points scored, 3 allowed, a rushing EPA of 1.08 per play (2nd nationally) \u2014 but those figures came against a schedule-of-strength ranked 156th, the weakest opponent context in the dataset. USF's Week 1 raw numbers were more modest (19 points, 9 allowed) against a 35th-ranked schedule. The opponent-adjusted blended metrics, which account for competition quality, compress both teams' performances significantly and are the primary inputs to the model.",
+"market_movement": "The spread opened at Army -1.5 and has moved to Army -3.5, a 2-point shift toward the home team that crosses the key number of 3. The total moved in the opposite direction, dropping from 52.5 to 48.5, a 4-point decline. The model sits 12.5 points away from the current market spread on the side (favoring USF) and 6.1 points over the market total. Public ticket and money percentages are unavailable, so the cause of the line movement cannot be attributed to any specific betting group.",
+"key_advantages": [
+"USF passing offense (rank 20 EPA/play) vs. Army pass defense (rank 74) is the largest on-field edge in the game",
+"USF talent percentile (52nd) dwarfs Army's (5th), driving the biggest single model factor",
+"USF turnover margin ranks 3rd nationally (1.27 per game) vs. Army's 30th (0.32)",
+"Army offensive line ranks 1st in havoc allowed and 10th in line yards, enabling their ground-heavy scheme"
+],
+"key_concerns": [
+"USF's roster continuity is just 18% with a new head coach, creating significant execution uncertainty",
+"Army's red-zone TD rate (80.2%, rank 17) exploits a USF red-zone defense allowing TDs on 67.4% of trips",
+"Army's Week 1 dominance came against a schedule ranked 156th, inflating raw numbers",
+"The market has moved 2 points toward Army, crossing the key number 3, diverging from the model's USF lean"
+],
+"expected_game_script": "Army will attempt to control the game through their elite offensive line and run-heavy attack, keeping the ball on the ground to limit USF's possessions and exploit a USF defensive front that generates sacks at only a 20th-percentile rate. USF's run defense has been above average, however, so Army's ground game will face more resistance than it did in Week 1, and the Black Knights' limited passing game \u2014 a neutral-script pass rate of just 17.7% \u2014 gives them few answers if the run stalls. On the other side, USF's passing offense should find openings against an Army pass defense ranked 74th in EPA allowed per pass, with Van Buren's experience advantage over Hellums becoming more meaningful as the game progresses. USF's extreme pace advantage \u2014 they snap the ball in 22.3 seconds per play on an adjusted basis (3rd fastest nationally) \u2014 could create a tempo mismatch that limits Army's ability to substitute and recover. Turnovers are a meaningful wildcard: USF's turnover margin ranks 3rd nationally while Army's ranks 30th, and a multi-turnover game could accelerate the score in USF's favor. The model sees a double-digit USF win, but Army's home-field advantage, superior continuity, and dominant offensive line keep them competitive if they can sustain the run and limit explosive plays through the air."
+},
+"validation": {
+"numbers_checked": 113,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:46:49.489317+00:00",
+"tokens_in": 18682,
+"tokens_out": 2098,
+"stop_reason": "end_turn",
+"raw_text": null
+}

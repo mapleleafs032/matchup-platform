@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_ALA_UK_f4cc65fa946fda69",
+"game_id": "2026_CFB_W02_ALA_UK",
+"inputs_hash": "f4cc65fa946fda69",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Alabama to win 31-19 at Kroger Field, covering the market spread of Kentucky +10.5 by roughly 1.4 points. The projected total of 50.64 sits about 1.1 points above the market total of 49.5. Alabama's win probability is 78%, with Kentucky's implied no-vig win probability at about 23%. The spread has held steady at Kentucky +10.5 since the first market snapshot with no movement recorded across two books.",
+"offensive_matchup": "Alabama's offense (ranked 24th in opponent-adjusted EPA per play at 0.272) runs into a Kentucky defense that grades out 88th in the same metric, allowing 0.182 EPA per play \u2014 meaning the Wildcats have been consistently yielding positive expected value on a high share of opponent snaps. Alabama's offensive success rate of 47% (25th) faces a Kentucky defense allowing opponents to succeed on 44% of plays (114th), suggesting Alabama should move the chains at a steady clip. Kentucky's offense (66th in EPA per play at 0.185) in turn meets an Alabama defense ranked 15th at just 0.015 EPA allowed per play, one of the stingier units in the country. The Wildcats' 46% offensive success rate (27th) will be tested against a Crimson Tide defense holding opponents to a 34% success rate (15th), a gap that points to frequent three-and-outs for Kentucky.",
+"quarterback_edge": "Both starters carry very limited career evidence \u2014 Keelon Russell has logged 45 career attempts for Alabama (64.4% completion, 8.87 yards per attempt, 2 TD, 0 INT) while Kentucky's Kenny Minchey, a transfer starter, has 56 career attempts (73.2% completion, 9.16 yards per attempt, 4 TD, 0 INT). Because neither has a career EPA per dropback on record, the model falls back to team passing EPA, where Alabama's passing unit (0.380 EPA per pass play, 30th) holds a modest edge over Kentucky's passing defense (0.318 EPA per pass play allowed, 96th). The edge is narrow and the model scores it only slightly in Alabama's favor; both quarterbacks are essentially unproven commodities at this level.",
+"trenches": "The offensive line matchup is the clearest structural edge in this game. Alabama's defensive front ranks 2nd in line yards allowed (1.74 per rush, opponent-adjusted) and 4th in overall havoc rate (15.4%), meaning it disrupts plays at the point of attack at an elite level. Kentucky's offensive line, while solid in raw line yards (4.50, 9th in raw data), faces a pass-rush unit that generates sacks on 8.5% of dropbacks (18th) against a Kentucky protection that has allowed sacks on 4.7% of dropbacks (61st). Conversely, Alabama's offensive line grades 83rd in line yards (2.87) and 56th in sack rate allowed (4.5%), facing a Kentucky front that ranks only 68th in sack rate (6.2%) \u2014 so Alabama's run blocking is the weaker side of its own trench battle, but the Tide's defensive front dominates this matchup overall.",
+"explosive_play_edge": "This is one of the few categories where Kentucky holds an edge. The Wildcats' defense has allowed explosive plays (10+ rushing or 20+ passing yards) on only 10.4% of opponent plays (45th), while Alabama's defense has allowed them on 12.1% (79th). Alabama's offense generates explosives on just 10.8% of plays (103rd), while Kentucky's offense produces them on 11.9% (79th). The net result is a slight home advantage in this category, though neither team is elite at creating big plays on offense.",
+"third_down_red_zone": "Alabama's third-down defense is exceptional, holding opponents to a 26.8% conversion rate (4th in the country, opponent-adjusted), while Kentucky converts only 39.6% of its own third downs (84th). That gap \u2014 Alabama's defense forcing stops versus Kentucky's offense struggling to extend drives \u2014 is one of the most decisive matchup edges in the game. In the red zone, Alabama converts touchdowns on 84.4% of trips (5th) and scores 5.03 points per scoring opportunity (13th), while Kentucky's defense allows touchdowns on 67.1% of red-zone visits (76th). Both red-zone figures carry a low-sample flag after one game, but the directional advantage clearly favors Alabama finishing drives.",
+"roster_talent": "Alabama holds a commanding talent advantage. The Crimson Tide's roster talent sits at the 100th percentile with a four-year blue-chip ratio of 0.78, meaning nearly four in five scholarship players were four- or five-star recruits. Kentucky's talent percentile is 80th with a blue-chip ratio of 0.29, a significant gap that the model weights as worth nearly 3 points toward Alabama. Alabama's roster continuity index (0.38) also exceeds Kentucky's (0.20), and Kentucky enters with a new head coach and only 16% returning production overall (2% returning passing production), making scheme installation and cohesion a real concern for the Wildcats.",
+"recent_form": "Both teams are 1-0 entering Week 2 with identical form-shift scores of 0.0, so the model treats recent form as neutral. Alabama scored 48 points and allowed 10 in its opener, while Kentucky scored 45 and allowed 13. Because each team has played only one game, these raw numbers carry limited predictive weight and the opponent-adjusted metrics are the more reliable signal.",
+"market_movement": "The spread has held at Kentucky +10.5 from open to current across two book snapshots, with zero movement recorded. The total has similarly held at 49.5 with no movement. The model's projected margin of -11.93 (Alabama by 11.93) differs from the market spread by 1.4 points in Alabama's favor, and the projected total of 50.64 sits 1.14 points above the market number. Public betting percentages are unavailable.",
+"key_advantages": [
+"Alabama's defensive front ranks 2nd in line yards allowed and 4th in havoc rate, creating a dominant trench edge against Kentucky's run game",
+"Alabama holds opponents to a 26.8% third-down conversion rate (4th), while Kentucky converts only 39.6% of its own third downs (84th)",
+"Alabama's red-zone offense converts touchdowns on 84.4% of trips (5th) against a Kentucky defense allowing TDs on 67.1% of red-zone visits (76th)",
+"Alabama's talent percentile (100th, blue-chip ratio 0.78) dwarfs Kentucky's (80th, blue-chip ratio 0.29), a gap worth nearly 3 model points"
+],
+"key_concerns": [
+"Alabama's explosive play rate of 10.8% ranks 103rd, limiting its ability to generate chunk plays against any defense",
+"Alabama's offensive line grades 83rd in line yards and 56th in sack rate allowed, a below-average unit facing a Week 2 road environment",
+"Keelon Russell carries a NEW_STARTER_SAME_TEAM flag with only 45 career attempts, leaving significant uncertainty about his performance under pressure",
+"Kentucky's home-field advantage adds roughly 6 points to the model and the Wildcats' raw offensive EPA per play (0.597, 15th) was strong in Week 1"
+],
+"expected_game_script": "Alabama is expected to control the line of scrimmage defensively from the opening series, forcing Kentucky into manageable third-and-long situations where the Tide's elite third-down defense (allowing only 26.8% conversions) should produce repeated stops. Kentucky's offense, which ran only 59 plays in Week 1 at a slow 32.1 seconds per play, is likely to face a short-field battle if Alabama's havoc-generating defense (4th in havoc rate) creates early turnovers or negative plays. On the other side, Alabama's offense should find consistent success \u2014 its 47% success rate against a Kentucky defense allowing 44% \u2014 but may need to grind drives rather than hit big plays given its 103rd-ranked explosive rate. The Crimson Tide's red-zone efficiency (84.4% TD rate) should convert those sustained drives into touchdowns, gradually building a lead. Kentucky's best path to keeping it close is leveraging home-field advantage (worth ~6 model points), its raw passing efficiency from Week 1 (0.828 EPA per pass play), and the slight explosive-play edge its defense holds. If Alabama's new starting quarterback Russell struggles early in a road SEC environment, Kentucky could stay within striking distance into the second half, but the talent and defensive structure gaps make a sustained Wildcat comeback unlikely."
+},
+"validation": {
+"numbers_checked": 137,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:51:28.489876+00:00",
+"tokens_in": 18688,
+"tokens_out": 2106,
+"stop_reason": "end_turn",
+"raw_text": null
+}

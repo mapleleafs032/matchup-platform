@@ -1,0 +1,47 @@
+{
+"analysis_id": "2026_CFB_W02_MD_CONN_ece760c5acdb444c",
+"game_id": "2026_CFB_W02_MD_CONN",
+"inputs_hash": "ece760c5acdb444c",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Maryland to win 31.07 to 24.44, a margin of 6.64 points in favor of the Terrapins despite playing on the road. The projected total of 55.51 sits 3.0 points above the market number of 52.5. Maryland's win probability is 33.26% per the model, compared to an implied no-vig probability of 20.86% from the current market line, meaning the model sees the Terrapins as meaningfully more competitive than the market does.",
+"offensive_matchup": "Maryland's offense ranks 92nd in opponent-adjusted EPA per play (a measure of how many expected points each play generates above average) at 0.149, while UConn's defense allows 0.080 EPA per play, ranking 40th \u2014 a matchup that slightly favors the Huskies' defense. However, Maryland's defensive EPA allowed per play is just 0.018, ranking 16th, which will stress a UConn offense that generates 0.260 EPA per play (31st). UConn's passing attack is the sharper weapon, ranking 28th in passing EPA per play at 0.381, but it runs into a Maryland pass defense that ranks 33rd at 0.144 EPA per pass allowed. The run game sets up as Maryland's clearest defensive advantage: the Terrapins allow just -0.068 rushing EPA per play (12th), while UConn's rushing offense generates only 0.139 EPA per rush (56th).",
+"quarterback_edge": "UConn's Kalieb Osborne is a transfer starter with just 50 career attempts and 1 career game with 10-plus attempts, giving the model insufficient career evidence to build a traditional quarterback index for him; the edge falls back to team passing EPA. Maryland's Malik Washington has 504 career attempts across 13 games, a career completion rate of 57.9%, and 6.25 yards per attempt, producing a quarterback index of -0.63 \u2014 below average by career box-score standards. The model awards UConn a quarterback edge of 3 (on a scale where larger numbers mean a bigger advantage) worth 0.66 points toward the home team, driven primarily by UConn's superior team passing EPA in the blended metrics rather than Osborne's limited individual track record.",
+"trenches": "Maryland's offensive line ranks 1st in sack rate allowed (0.013 sacks per dropback) and 3rd in havoc allowed (5.3% of plays disrupted by a negative event), meaning the Terrapins protect the quarterback exceptionally well. That protection faces a UConn pass rush that ranks only 38th in sack rate (7.5%), so Maryland's line should hold up. Flipping the matchup, Maryland's defensive front ranks 6th in sack rate (10.1%) and 3rd in havoc rate (15.6%), and it faces a UConn offensive line that allowed havoc on 7.2% of plays (28th-best). The offensive line edge favors Maryland by an edge score of -1 (favoring away), and the defensive front edge also favors Maryland by -1, combining for roughly 0.85 points toward the Terrapins in the model.",
+"explosive_play_edge": "UConn holds a slight explosive-play edge in the blended metrics, ranking 63rd in explosive play rate (12.8%) but with a stronger defensive profile, allowing explosives on only 10.6% of opponent plays (50th). Maryland's explosive play rate is 10.0% (117th), and its defense allows explosives on 10.9% of plays (55th). The model scores this edge at 2 in UConn's favor, worth 0.60 points toward the home team, suggesting UConn is better positioned to generate chunk plays while limiting Maryland's ability to do the same.",
+"third_down_red_zone": "On third down, UConn converts at 42.9% (47th) against a Maryland defense that allows conversions at 39.3% (85th) \u2014 a slight edge for UConn's offense to sustain drives. Maryland converts at 41.8% (65th) against UConn's 34.8% allowed rate (39th), a modest advantage for the Huskies' defense. The red zone gap is more pronounced: UConn scores touchdowns on 79.7% of red-zone trips (20th) and averages 5.08 points per scoring opportunity (12th), while Maryland scores touchdowns on only 56.4% of red-zone trips (118th) and averages 3.52 points per scoring opportunity (105th). Both red-zone sample sizes are flagged as low, so these figures should be treated with caution, but the model still awards UConn a red-zone edge score of 3, the largest single-category edge in the game.",
+"roster_talent": "Maryland holds a commanding roster talent advantage. The Terrapins' talent percentile is 78th with a four-year blue-chip ratio of 17%, while UConn sits at the 14th percentile with a blue-chip ratio of 0.0%. Maryland also has a continuity index of 0.76 (returning 65% of production overall, including 96% of passing production), compared to UConn's continuity index of 0.13 with just 2% of total production returning and a head coach change. These two factors \u2014 talent and returning production \u2014 combine for roughly 11.4 points toward Maryland in the model, making them the single largest driver of the projected outcome.",
+"recent_form": "Both teams have played exactly one game entering Week 2, so season-long trend data is unavailable. Maryland's raw results from that game show 62 points scored and 0 allowed, while UConn scored 56 and allowed 7. The model's recent form edge is scored at 0 (neutral) for both teams, reflecting no meaningful form shift detectable from a single-game sample. All raw metrics carry a one-game caveat and should be interpreted accordingly.",
+"market_movement": "The spread has held at UConn +12.5 (Maryland -12.5) since the first market snapshot on DraftKings, with no movement. The total moved from 53.5 to 52.5, a drop of 1.0 point, crossing no key numbers. The moneyline sits at Maryland -470 / UConn +360. There is a 0.5-point book disagreement on the spread across the two books sampled. Public ticket and money percentages are unavailable, so the direction of the total move cannot be attributed to any specific source.",
+"key_advantages": [
+"Maryland: Dominant roster talent edge (78th vs. 14th percentile) and 76% continuity vs. UConn's near-complete roster turnover",
+"Maryland: Elite defensive front \u2014 6th in sack rate (10.1%), 3rd in havoc rate (15.6%), 12th in rushing EPA allowed (-0.068)",
+"Maryland: Best-in-class pass protection (1st in sack rate allowed at 1.3%) facing a UConn pass rush ranked 38th",
+"UConn: Home field advantage (6.09 model points), superior red-zone efficiency (79.7% TD rate, 5.08 pts/scoring opportunity), and a passing offense ranked 28th in EPA per play"
+],
+"key_concerns": [
+"Maryland: Offense ranks 92nd in EPA per play and 118th in red-zone TD rate (56.4%), limiting scoring efficiency despite talent advantages",
+"Maryland: Quarterback Malik Washington's career index of -0.63 is below average, and the passing offense ranks 112th in passing EPA per play",
+"UConn: Near-zero roster continuity (13% continuity index, 0% blue-chip ratio, head coach change) creates significant execution uncertainty",
+"UConn: Turnover margin of -2.0 in Week 1 (109th) against a Maryland defense that generated a +3.0 margin (3rd)"
+],
+"expected_game_script": "Maryland's talent and defensive havoc should set the tone early, with the Terrapins' pass rush (10.1% sack rate, 15.6% havoc rate) creating problems for a UConn offense quarterbacked by a transfer with just 50 career attempts. Maryland's offensive line, the best in the country at protecting the quarterback, should give Washington time to operate, though his below-average career metrics and the team's 118th-ranked red-zone TD rate suggest the Terrapins may leave points on the field. UConn's passing attack (28th in EPA per play at 0.381) is the Huskies' best path to staying competitive, and their red-zone efficiency (79.7% TD rate) means any trip inside the 20 is dangerous. The home field advantage (6.09 model points) and UConn's ability to convert scoring opportunities at 5.08 points per trip could keep the game closer than the talent gap implies. Maryland's turnover margin advantage (+3.0 in Week 1 vs. UConn's -2.0) is a potential game-changer if it holds, as takeaways could offset UConn's red-zone efficiency. The model projects a Maryland win by 6.64 points, a significantly tighter margin than the market's 12.5-point spread, with the total projected at 55.51 against a market number of 52.5."
+},
+"validation": {
+"numbers_checked": 145,
+"violations": [
+"11.4"
+],
+"confident_about_unavailable": [],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:50:34.926139+00:00",
+"tokens_in": 18819,
+"tokens_out": 2242,
+"stop_reason": "end_turn",
+"raw_text": null
+}

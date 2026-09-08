@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_CFB_W02_OU_MICH_770729e5a5ba50ad",
+"game_id": "2026_CFB_W02_OU_MICH",
+"inputs_hash": "770729e5a5ba50ad",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Oklahoma 22.4, Michigan 21.8, a near-pick-em with a projected total of 44.2. Oklahoma's win probability sits at 48.6%, essentially a coin flip despite the Sooners being road favorites in the model. The market currently has Michigan as a 5.5-point home favorite, a 4.9-point gap from the model's margin that represents one of the larger divergences in this package.",
+"offensive_matchup": "Oklahoma's defense is the sharper unit in this matchup: its opponent-adjusted defensive EPA per play (a measure of expected points added or subtracted per snap) ranks 4th nationally at -0.077, meaning it actively suppresses scoring, while Michigan's offense ranks 55th at +0.208. Michigan's ground game is its offensive strength, ranking 29th in rushing EPA per play at +0.201, but it runs into an Oklahoma defensive front that ranks 14th in rushing EPA allowed at -0.056 and 4th in line yards allowed \u2014 the yards credited to the offensive line per carry. Oklahoma's own offense is more modest, ranking 64th in offensive EPA per play at +0.191, and faces a Michigan defense that, while not elite, held its Week 1 opponent to 3.0 yards per play on the ground.",
+"quarterback_edge": "John Mateer carries a meaningful career edge over Bryce Underwood: 739 career attempts versus 315, a yards-per-attempt of 8.39 versus 7.62, and a career completion rate of 63.7% versus 60.6%. The model translates this into a slight edge for Oklahoma worth roughly 0.24 points. Underwood is a true sophomore still building his resume, and the experience gap is real heading into a high-profile home game. Neither quarterback has a career EPA per dropback on file, so the edge is based on career box-score production.",
+"trenches": "The offensive line edge strongly favors Oklahoma, grading as a -3 edge against Michigan (the largest single structural edge in the matchup). Oklahoma's defensive front ranks 1st nationally in sack rate at 12.1% and 8th in havoc rate \u2014 the share of plays producing a tackle for loss, sack, forced fumble, or turnover \u2014 at 14.0%, while Michigan's offensive line allows havoc on 6.6% of plays (16th-best). Michigan's run-blocking grades better in raw line yards (3.28 vs. Oklahoma's 2.72), but Oklahoma's run defense (4th in line yards allowed at 1.98) neutralizes that advantage. Michigan's defensive front is solid but not dominant, ranking 45th in sack rate at 7.2%, facing an Oklahoma offensive line that allowed sacks on 5.9% of dropbacks.",
+"explosive_play_edge": "This category is essentially a wash, with the model scoring it 0 and projecting a negligible -0.02 points toward Michigan. Oklahoma's offense generates explosive plays (10+ yard rushes or 20+ yard passes) on 13.3% of snaps, nearly identical to Michigan's 13.2%. The more interesting contrast is on defense: Michigan's opponent-adjusted explosive plays allowed rate ranks 8th at 7.5%, suggesting it does a good job limiting chunk plays, while Oklahoma allows explosives on 9.0% of opponent plays (21st). If Oklahoma can generate big plays through the air \u2014 where it ranks 27th in passing EPA per play at +0.384 \u2014 it could stress Michigan's secondary.",
+"third_down_red_zone": "Oklahoma owns a decisive edge on third down: its opponent-adjusted third-down conversion rate allowed ranks 3rd nationally at 25.9%, while Michigan's defense allowed opponents to convert at a 39.7% clip (88th). Oklahoma's own third-down offense ranks 56th at 42.5%, so the Sooners are more likely to benefit from stopping Michigan on third down than from converting it themselves. In the red zone, Oklahoma's offense scores touchdowns on 81.3% of trips (14th) and earns 4.54 points per scoring opportunity (31st), while Michigan's offense converts just 65.9% of red-zone trips into touchdowns (86th) and averages only 3.47 points per scoring opportunity (108th). These red-zone and third-down gaps are among the clearest structural advantages in the game.",
+"roster_talent": "Talent is close but slightly favors Michigan at the 93rd percentile versus Oklahoma's 90th. Michigan's blue-chip ratio (four-year share of four- and five-star recruits) is 57.1% versus Oklahoma's 58.9%, making that essentially even. The more meaningful roster difference is continuity: Oklahoma returns 77.5% of its production index (a composite of returning starters and their prior contributions) versus Michigan's 58.8%, and Michigan enters with a new head coach, which the model treats as a structural disadvantage. Oklahoma's returning production is particularly strong on offense \u2014 93% of passing production and 85% of rushing production return \u2014 while Michigan returns only 33% of its defensive production, a notable concern.",
+"recent_form": "Both teams have played exactly one game, so the recent form edge is scored neutral with zero shift for either side. Oklahoma's raw Week 1 numbers were impressive \u2014 51 points scored, zero allowed, and a passing EPA per play of +1.05 (6th nationally in raw terms) \u2014 but those figures come against a schedule-strength rank of 169th, the softest context in this matchup. Michigan scored 13 points and allowed 12 in Week 1 against a strength-of-schedule rank of 11th, meaning its numbers are more credibly earned. The model applies opponent adjustment to blend metrics, which is why Oklahoma's adjusted figures are more modest than its raw output.",
+"market_movement": "The line opened Michigan -1.5 and has moved to Michigan +5.5, a 7.0-point swing toward Oklahoma \u2014 crossing the key number of 3 along the way, which amplifies the significance of the move. The total moved in the opposite direction, dropping from 46.5 to 43.5, a 3.0-point decline suggesting the market expects a lower-scoring game than initially priced. The model's projected margin of Oklahoma by 0.6 points sits 4.9 points away from the current market spread of Michigan -5.5, one of the larger model-vs-market gaps in this package. Public betting percentages are unavailable, so the cause of the line movement cannot be attributed to any specific betting group.",
+"key_advantages": [
+"Oklahoma defensive efficiency: ranks 4th in defensive EPA per play and 3rd in third-down conversion rate allowed",
+"Oklahoma pass offense vs. Michigan pass defense: Mateer's 8.39 career yards per attempt against a Michigan secondary that allowed a 12.7% defensive passing EPA per play (27th in adjusted terms)",
+"Oklahoma roster continuity: 77.5% returning production index vs. Michigan's 58.8%, with Michigan also navigating a new head coach",
+"Oklahoma red zone offense: 81.3% touchdown rate on red-zone trips vs. Michigan's 65.9%"
+],
+"key_concerns": [
+"Michigan home-field advantage worth 6.1 model points and a crowd ranked among the largest in college football",
+"Oklahoma's rushing offense ranks 106th in EPA per carry at +0.035, a liability against Michigan's run defense",
+"Michigan's strength of schedule (rank 11) vs. Oklahoma's (rank 169) means Oklahoma's gaudy raw numbers are heavily discounted",
+"Oklahoma's offensive line allows havoc on 9.8% of plays (98th), facing an Oklahoma defensive front that ranks 1st in sack rate"
+],
+"expected_game_script": "Oklahoma's defense figures to set the tone early, limiting Michigan's ability to sustain drives \u2014 the Wolverines converted just 30% of third downs in Week 1 and face a Sooner defense that held opponents to a 25.9% third-down rate on an adjusted basis. Michigan's best path to moving the ball is through its ground game, which ranks 29th in rushing EPA per play, but Oklahoma's defensive front (4th in line yards allowed, 14th in rushing EPA allowed) is built to take that away. If Oklahoma can force Michigan into passing situations, the Sooners' pass rush \u2014 ranked 1st in sack rate at 12.1% \u2014 becomes a major factor against a Michigan offensive line that allows havoc on 6.6% of plays. On the other side, Oklahoma's offense will likely lean on the passing game given its weak rushing EPA (106th), and Mateer's experience advantage over Underwood could matter in critical moments. The red-zone and third-down edges both favor Oklahoma, suggesting that when either team reaches scoring position, the Sooners are more likely to convert. Michigan's home crowd and the schedule-strength discount on Oklahoma's Week 1 performance are the primary reasons the market has Michigan as a significant favorite despite the model seeing a near-toss-up. Expect a low-scoring, defense-influenced game in the 21-22 point range for each team, with field position and turnover margin likely deciding the outcome."
+},
+"validation": {
+"numbers_checked": 124,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:46:50.614214+00:00",
+"tokens_in": 18743,
+"tokens_out": 2146,
+"stop_reason": "end_turn",
+"raw_text": null
+}

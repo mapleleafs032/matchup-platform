@@ -1,0 +1,47 @@
+{
+"analysis_id": "2026_CFB_W02_WAKE_PUR_6a93811482191b8d",
+"game_id": "2026_CFB_W02_WAKE_PUR",
+"inputs_hash": "6a93811482191b8d",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Wake Forest 29.42, Purdue 21.75, a margin of 7.67 points in favor of the Demon Deacons. The projected total is 51.18, sitting 1.68 points above the market total of 49.5. Wake Forest's win probability is 69.13% per the model, compared to the market's implied 62.25% for the Demon Deacons. The model leans 3.67 points further toward Wake Forest than the current market spread of Purdue +4.",
+"offensive_matchup": "Wake Forest's defense grades as a clear advantage against Purdue's offense. The Demon Deacons rank 13th in opponent EPA per play (expected points added, a measure of how much value each play generates) at 0.0117, while Purdue's offense sits 72nd at 0.1733 EPA per play \u2014 meaning Wake Forest's defense has been suppressing value well above what Purdue has been generating. Purdue's passing offense (0.2794 EPA per pass) runs into a Wake Forest pass defense ranked 22nd (0.1111 EPA per pass allowed), a meaningful mismatch. On the other side, Wake Forest's offense (ranked 79th in EPA per play at 0.1672) faces a Purdue defense that allowed 0.1858 EPA per play (95th), so the Demon Deacons should find room to move the ball even if they are not an elite offensive unit.",
+"quarterback_edge": "Wake Forest's Gio Lopez, a transfer starter, holds a clear career edge over Purdue's Ryan Browne. Lopez has completed 65.5% of his passes on 646 career attempts at 7.64 yards per attempt with a 32-to-12 touchdown-to-interception ratio across 25 games with 10-plus attempts. Browne, a returning starter, has completed 60.3% of his passes on 459 career attempts at 6.77 yards per attempt with a 16-to-14 touchdown-to-interception ratio across 16 such games. The model assigns Lopez a QB index of 0.62 versus Browne's -0.48, a gap that contributes 0.45 points toward Wake Forest in the projection.",
+"trenches": "The offensive line edge favors Wake Forest. The Demon Deacons' offensive line allowed a sack rate of just 2.64% (13th) and a havoc rate against of 6.5% (14th), while Purdue's defensive front generated an 8.51% sack rate (17th) \u2014 creating a pass-protection-versus-pass-rush matchup that slightly favors Wake Forest's line. In the run game, Wake Forest's defensive front allowed only 2.44 line yards per rush (21st), compared to Purdue's offensive line generating 3.08 line yards per rush (52nd), giving the Demon Deacons' run defense a meaningful edge. The defensive front edge scores as neutral (0) in the model, with Wake Forest's protection advantage largely offsetting Purdue's pass-rush capability.",
+"explosive_play_edge": "This is the largest single matchup edge in the game, favoring Wake Forest by a score of -3 (the biggest gap in the package). Wake Forest's defense allowed explosive plays (10-plus rushing or 20-plus passing yards) on just 7.92% of opponent plays (10th nationally), while Purdue's offense generated explosives on 12.23% of plays (74th) \u2014 a stark mismatch. Conversely, Wake Forest's offense generated explosives on 13.07% of plays against a Purdue defense that allowed them on 15.75% of plays (132nd, near the bottom of the country). This two-sided advantage \u2014 Wake Forest limiting Purdue's big plays while having a porous Purdue defense to attack \u2014 contributes 2.53 points toward the Demon Deacons in the model.",
+"third_down_red_zone": "Both third-down edges grade as neutral (0) in the model, with Wake Forest converting at 40.34% (79th) against a Purdue defense allowing 40.86% (99th), and Purdue converting at 41.51% (69th) against a Wake Forest defense allowing 39.48% (86th) \u2014 a near wash. The red zone edge also grades neutral (0), though the underlying numbers show Wake Forest's defense allowing touchdowns on only 34.37% of red-zone trips (3rd nationally), which is a significant strength. Purdue's red-zone offense converts touchdowns on 66.32% of trips (85th), so Wake Forest's red-zone defense should limit Purdue to field goals when the Boilermakers do reach scoring position. Note that red-zone sample sizes are flagged as low after one game, so these figures carry added uncertainty.",
+"roster_talent": "Wake Forest holds a talent edge by percentile \u2014 64th percentile versus Purdue's 51st \u2014 contributing 1.98 points toward the Demon Deacons in the model. However, Purdue holds a meaningful returning production advantage: a continuity index of 0.58 versus Wake Forest's 0.37, with Purdue returning 84% of passing production and 41% of total production compared to Wake Forest's 0% returning passing production and 20% total. Wake Forest is a transfer-heavy roster (quarterback flagged as a transfer starter, zero returning offensive line starts), which introduces more uncertainty around cohesion despite the talent edge.",
+"recent_form": "Both teams have played exactly one game, so recent form grades as neutral (0) with no form shift recorded for either side. Wake Forest scored 38 points and allowed 16 in their opener (raw), while Purdue scored 44 and allowed 19. With only one game of data, all metrics carry inherent small-sample uncertainty, and the opponent-adjusted figures diverge notably from the raw numbers \u2014 Wake Forest's adjusted EPA per play drops from 0.5466 raw to 0.1672 adjusted, and Purdue's drops from 0.4383 to 0.1733, reflecting the strength-of-schedule adjustments applied to Week 1 opponents.",
+"market_movement": "The spread opened at Purdue +3.5 and moved to Purdue +4.0, a half-point shift toward Wake Forest. The total has not moved, remaining at 49.5 across both snapshots. The book disagreement on the spread is 0.5 points. Public ticket and money percentages are unavailable, so the cause of the half-point spread movement cannot be attributed to any specific betting group.",
+"key_advantages": [
+"Wake Forest explosive play defense (10th nationally, 7.92% allowed) vs. Purdue's below-average explosive offense (74th, 12.23% rate)",
+"Gio Lopez career efficiency edge (65.5% completion, 7.64 YPA, 32 TDs) over Ryan Browne (60.3%, 6.77 YPA, 16 TDs)",
+"Wake Forest red-zone defense allowing touchdowns on only 34.37% of trips (3rd nationally)",
+"Wake Forest overall defensive EPA per play (13th, 0.0117) suppressing a Purdue offense ranked 72nd (0.1733)"
+],
+"key_concerns": [
+"Wake Forest's offensive success rate ranks 121st (37.57%), raising questions about sustaining drives against any competent defense",
+"Zero returning passing production and a transfer quarterback create cohesion uncertainty for Wake Forest's offense",
+"Purdue's home-field advantage adds 6.09 points to the model, the single largest factor favoring the Boilermakers",
+"Purdue's defensive havoc rate of 20% (13th) could disrupt a Wake Forest offense that has struggled with consistency"
+],
+"expected_game_script": "Wake Forest figures to control field position early by limiting Purdue's explosive plays, forcing the Boilermakers into methodical drives that stall against a Demon Deacon defense ranked 20th in yards allowed per play (4.59). Purdue's offense, which has been porous against big plays defensively (132nd in explosive plays allowed), should give Wake Forest opportunities for chunk gains through the air \u2014 Lopez's 7.64 career yards per attempt against a Purdue pass defense that allowed 0.3149 EPA per pass play (95th) is the clearest offensive path for the visitors. The Boilermakers' best counter is their own pass-rush (8.51% sack rate, 17th) targeting a Wake Forest offense that has struggled to sustain drives at a 37.57% success rate (121st), potentially creating short fields. Purdue's red-zone defense (allowing TDs on 47.13% of trips, 12th) is a concern, but Wake Forest's defense (34.37% TD rate allowed, 3rd) should keep Purdue to field goals when they do reach scoring position. The turnover margin is a slight edge for Wake Forest (-0.37 per game adjusted vs. Purdue's -0.57), and if Lopez avoids mistakes, the Demon Deacons should be able to build and protect a lead in the second half. The game script leans toward a moderate-scoring affair where Wake Forest's defensive discipline and quarterback edge outweigh Purdue's home advantage, consistent with the model's 29-22 projection."
+},
+"validation": {
+"numbers_checked": 135,
+"violations": [
+"69.13%"
+],
+"confident_about_unavailable": [],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:46:49.239586+00:00",
+"tokens_in": 18700,
+"tokens_out": 2227,
+"stop_reason": "end_turn",
+"raw_text": null
+}

@@ -1,0 +1,44 @@
+{
+"analysis_id": "2026_CFB_W02_USU_WASH_463add4c17deaa37",
+"game_id": "2026_CFB_W02_USU_WASH",
+"inputs_hash": "463add4c17deaa37",
+"model_version": "CFB_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Washington to win at home 37-15, covering a 22-point margin. The market spread sits at Washington -26.5, meaning the model lands 4.5 points softer than the market line. The projected total of 52.1 sits 3.4 points under the market number of 55.5. Washington's win probability is 91.3% according to the model.",
+"offensive_matchup": "Washington's offense holds a clear edge in efficiency, posting an opponent-adjusted EPA per play (expected points added, a measure of how much each play improves scoring odds) of 0.21 versus Utah State's 0.14. The Huskies also succeed on 47% of their plays compared to the Aggies' 40%, meaning Washington consistently moves the chains while Utah State's offense struggles to stay on schedule. Utah State's defense ranks 111th in defensive rushing EPA allowed, making Washington's ground attack \u2014 which generates a positive rushing EPA of 0.15 \u2014 a natural point of attack. Utah State's offense does operate at an extremely fast pace, ranking 10th in seconds per play (lower is better), running 73 plays per game on an opponent-adjusted basis, which could keep the scoreboard moving even against a stout Washington defense.",
+"quarterback_edge": "Washington's Demond Williams Jr. holds a significant edge over Utah State's McCae Hillstead. Williams is a returning starter with 438 career attempts, a 71% completion rate, and 8.42 yards per attempt across 16 career games with 10-plus attempts, compared to Hillstead's 182 career attempts, 58.2% completion rate, and 6.68 yards per attempt over just 7 such games. Hillstead enters as a transfer starter with limited experience, and his career interception-to-touchdown ratio of 11 interceptions to 12 touchdowns raises ball-security concerns, especially against a Washington defense that posted a turnover margin of +3.0 in Week 1. The model assigns this edge a score of 3 out of 3 in Washington's favor, contributing 1.1 points to the projected margin.",
+"trenches": "Washington's defensive front holds a clear edge over Utah State's offensive line. Utah State's sack rate allowed ranks 128th in opponent-adjusted metrics \u2014 meaning their pass protection is among the worst in the country \u2014 while Washington's defensive havoc rate (the share of plays producing a tackle for loss, sack, forced fumble, or turnover) sits at 17.5% in raw data, ranking 21st nationally. Utah State's offensive havoc allowed rate of 11.5% (rank 120th opponent-adjusted) compounds the problem, suggesting the Aggies' line is frequently disrupted. Washington's offensive line holds a modest edge over Utah State's defensive front, with the Huskies' pass protection performing better than USU's pass rush in head-to-head matchup inputs, contributing 0.46 points toward Washington's margin.",
+"explosive_play_edge": "This is the one area where Utah State holds a slight edge. The Aggies' offensive explosive play rate (plays gaining 10-plus rushing or 20-plus passing yards) ranks 39th opponent-adjusted at 13.7%, and their explosiveness rating of 1.31 exceeds Washington's offensive explosiveness of 1.18. Utah State's defense also ranks 32nd in explosive plays allowed at 9.8%, suggesting they can limit big plays even if they struggle in other areas. Washington counters with a strong defensive explosive play rate allowed of 9.2% (rank 22nd opponent-adjusted), so both defenses are capable of limiting chunk plays, but Utah State's offense has shown more big-play upside, giving the Aggies a slight edge score of -1 in this category.",
+"third_down_red_zone": "Washington dominates both third-down and red-zone categories. The Huskies convert 45% of third downs offensively (rank 29th opponent-adjusted) while holding opponents to just 29% conversions (rank 11th), a massive gap against Utah State's 41% offensive conversion rate. In the red zone, Washington allows touchdowns on only 48% of opponent trips (rank 15th opponent-adjusted), while Utah State's defense surrenders touchdowns on 69% of red-zone visits (rank 84th). Both red-zone figures carry a low-sample flag after one game, but the directional gap is significant. Washington's red-zone defense should limit Utah State to field goals on the rare occasions the Aggies reach scoring position.",
+"roster_talent": "Washington holds a commanding talent advantage. The Huskies' roster talent sits at the 84th percentile with a four-year blue-chip ratio (share of players rated four or five stars) of 31%, while Utah State checks in at just the 25th percentile with a 0% blue-chip ratio. This talent gap is the single largest driver in the model, contributing 8.18 points to Washington's projected margin. Washington also carries a higher roster continuity index (0.75 vs. 0.63), meaning more of their production is returning from last season, giving them a structural edge in cohesion as well.",
+"recent_form": "Both teams have played exactly one game, so recent form data is limited to a single-game sample and the model assigns a neutral edge here. Utah State scored 17 points and allowed 29 in Week 1, while Washington scored 24 and allowed 10. The raw turnover margin tells a stark story: Utah State was -4 in Week 1 while Washington was +3, though both figures will regress toward zero as the season progresses. With only one game of data, these results should be interpreted cautiously.",
+"market_movement": "The spread has moved 2.0 points toward Washington, opening at -24.5 and settling at -26.5 on DraftKings. The total has moved 1.0 point downward, from 56.5 to 55.5. The model's projected margin of 22 points sits 4.5 points below the current market spread of -26.5, representing the largest divergence in this matchup. Public ticket and money percentages are unavailable, so the cause of the line movement cannot be attributed to any specific betting group.",
+"key_advantages": [
+"Washington quarterback Demond Williams Jr. holds a significant experience and efficiency edge over transfer starter McCae Hillstead",
+"Washington's defensive front generates high havoc rates while Utah State's offensive line ranks 128th in sack rate allowed",
+"Washington's red-zone defense allows touchdowns on only 48% of opponent trips versus Utah State's 69% allowed rate",
+"Washington's roster talent sits at the 84th percentile with a 31% blue-chip ratio against Utah State's 0%"
+],
+"key_concerns": [
+"Utah State's fast pace (rank 10th in seconds per play) could generate extra possessions and keep the game from becoming a blowout early",
+"Utah State holds a slight explosive play edge with an explosiveness rating of 1.31 versus Washington's 1.18, creating big-play risk",
+"The model projects Washington to cover 22 points but the market sits at -26.5, a 4.5-point gap suggesting the model is more conservative than the market"
+],
+"expected_game_script": "Washington should establish early control through a combination of quarterback efficiency and defensive disruption. Williams and the Husky offense, converting at a 47% success rate, will likely move the chains consistently against a Utah State defense that ranks 79th in opponent-adjusted defensive EPA per play. Washington's defensive front, generating havoc on 17.5% of plays, will pressure Hillstead early and often given Utah State's 128th-ranked pass protection, likely forcing turnovers \u2014 Utah State was -4 in turnover margin in Week 1. Utah State's fast-paced offense will generate volume, running close to 73 plays per game, but their inability to convert scoring opportunities (2.13 points per scoring opportunity, rank 99th in raw data) means drives are likely to stall or result in field goals rather than touchdowns. Washington's red-zone defense, allowing touchdowns on fewer than half of opponent trips, will be the key containment mechanism if Utah State does reach scoring position. The game script points toward a Washington lead that builds through the second quarter and becomes comfortable by halftime, with Utah State's pace keeping the total from collapsing entirely. The final score is projected at 37-15 in Washington's favor, consistent with a game where the Huskies control possession quality while Utah State generates volume without efficiency."
+},
+"validation": {
+"numbers_checked": 106,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:50:32.537482+00:00",
+"tokens_in": 18740,
+"tokens_out": 2002,
+"stop_reason": "end_turn",
+"raw_text": null
+}
