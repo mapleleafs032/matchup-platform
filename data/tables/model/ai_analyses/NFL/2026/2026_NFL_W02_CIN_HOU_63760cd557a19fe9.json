@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W02_CIN_HOU_63760cd557a19fe9",
+"game_id": "2026_NFL_W02_CIN_HOU",
+"inputs_hash": "63760cd557a19fe9",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Houston to win 26.59 to 18.63, a home margin of roughly 8 points. The projected total is 45.22, sitting about 1.3 points below the market total of 46.5. Houston's win probability is 74.1%, a significant gap from the market's implied 55.1% no-vig probability. The model's spread of roughly 8 points home favors Houston by about 5.5 points more than the market's Houston -2.5.",
+"offensive_matchup": "Cincinnati's offense ranks 21st in EPA per play (expected points added, a measure of how much each play improves scoring odds) at -0.008, while Houston's defense leads the league at -0.162 EPA per play allowed, meaning Houston's defense actively suppresses opponent scoring at an elite level. Cincinnati converts 46.1% of plays successfully (EPA > 0), but Houston holds opponents to a league-best 36.7% success rate, the sharpest gap in the matchup. Houston's offense ranks 25th in EPA per play at -0.048, facing a Cincinnati defense ranked 30th at +0.133 EPA per play allowed, so neither offense is strong but Cincinnati's defense offers far less resistance. The Bengals do rank 5th in third-down conversion rate at 44.0%, but Houston limits opponents to just 34.5% on third down, the third-best mark in the league.",
+"quarterback_edge": "Insufficient reliable data on current season statistics for either quarterback. The package identifies Joe Burrow for Cincinnati and C.J. Stroud for Houston based on depth chart with 0.8 confidence each. Burrow carries a career EPA per dropback of 0.109 across 2,659 career attempts and 74 games, while Stroud sits at 0.035 career EPA per dropback across 1,644 attempts and 51 games. On that career efficiency basis the model gives Cincinnati a slight quarterback edge worth roughly 0.4 points toward the Bengals.",
+"trenches": "The offensive line edge strongly favors Houston, contributing 0.8 model points toward the home team. Houston's defensive line yards allowed rank 2nd at 2.56 per rush, while Cincinnati's offensive line yards rank 3rd at 3.20, creating a near-even run-blocking battle that the model scores as essentially neutral. On pass protection, Cincinnati's sack rate allowed is 5.2% (10th) versus Houston's sack rate of 8.1% (5th), meaning Houston's pass rush has a meaningful advantage in disrupting Burrow. Houston also generates pressure without blitzing at a 16.3% rate (3rd), compared to Cincinnati generating pressure without blitzing at just 11.2% (24th), underscoring Houston's front's ability to win clean.",
+"explosive_play_edge": "Houston holds a modest edge in the explosive play category, worth 0.13 model points. Cincinnati's offense generates explosive plays (10+ rushing or 20+ passing yards) on 7.4% of plays (24th), while Houston allows them on just 6.9% of plays (3rd), limiting Cincinnati's big-play ceiling. Houston's offense produces explosives on 7.2% of plays (29th), and Cincinnati allows them on 9.8% of plays (24th), so the Texans' offense is not a big-play threat but Cincinnati's defense does give up chunk plays at a higher rate. The net effect is a slight Houston advantage in controlling the explosive-play exchange.",
+"third_down_red_zone": "Houston's defense is dominant on third down, holding opponents to a 34.5% conversion rate (3rd in the league), while Cincinnati's defense allows opponents to convert 44.1% of third downs (27th). Cincinnati's offense converts 44.0% of third downs (5th), setting up a direct clash where Houston's defense has a strong structural advantage. In the red zone, Cincinnati flips the script: the Bengals score touchdowns on 64.8% of red-zone trips (9th) and earn 3.41 points per scoring opportunity (3rd), while Houston converts just 46.8% of red-zone trips into touchdowns (31st) and averages only 2.78 points per scoring opportunity (23rd). This means Cincinnati is more dangerous once it gets inside the 20, but Houston's defense may prevent the Bengals from reaching the red zone consistently.",
+"roster_talent": "Insufficient reliable data on roster talent ratings for either team. Cincinnati carries a roster continuity index of 0.93 with 86% total returning production, including 98% returning rushing production and 80% returning passing production. Houston has a continuity index of 0.91 with 82% total returning production, highlighted by 100% returning passing production but only 70% returning rushing production and 55 offensive line starts returning compared to Cincinnati's 85. The returning production edge is negligible and scores as a near-wash, with a slight 0.03-point model lean toward Cincinnati.",
+"recent_form": "Both teams enter Week 2 with zero games played in the current season, so no in-season form data is available. The model scores recent form as neutral with zero shift for either team. All metrics carry a low-sample flag and are blended from prior-season opponent-adjusted data. No trend or momentum signal can be established from the package.",
+"market_movement": "The spread has held at Houston -2.5 since the first recorded snapshot on DraftKings, with zero points of movement. The total has also remained flat at 46.5 with no movement. The moneyline sits at Houston -135 and Cincinnati +114, unchanged across 51 snapshots on five books. No steam or book disagreement is present, and public ticket and money percentages are unavailable.",
+"key_advantages": [
+"Houston defense: league-best EPA per play allowed (-0.162) and success rate allowed (36.7%)",
+"Houston third-down defense holds opponents to 34.5% conversion rate (3rd in NFL)",
+"Houston generates pressure without blitzing at 16.3% rate (3rd), threatening Burrow on clean looks",
+"Cincinnati red zone: 64.8% TD rate (9th) and 3.41 points per scoring opportunity (3rd) if they get there"
+],
+"key_concerns": [
+"Cincinnati defense ranks 30th in EPA per play allowed (+0.133) and 30th in success rate allowed (48.4%)",
+"Cincinnati allows 6.28 yards per play on defense, the worst mark in the league (32nd)",
+"Houston red zone offense converts only 46.8% of trips to TDs (31st), limiting scoring even when drives succeed",
+"Model projects Cincinnati at only 18.63 points, suggesting Houston's defense may keep the Bengals well below their 24.4 points-per-game average"
+],
+"expected_game_script": "Houston's elite defense is likely to set the tone early, forcing Cincinnati into long third downs where the Texans hold a structural advantage, converting only 34.5% of third downs allowed versus Cincinnati's 44.0% offensive conversion rate. Cincinnati's best path to staying in the game runs through its rushing attack, which ranks 1st in offensive rushing EPA per play at 0.086, but Houston's run defense ranks 2nd in rushing EPA allowed at -0.185 and 2nd in defensive line yards allowed at 2.56, making that avenue difficult. If Cincinnati falls behind, its pass-heavy tendencies (65.5% pass rate, 3rd) will run directly into Houston's top-ranked pass defense, which allows just -0.147 EPA per pass play. Houston's offense is not explosive, ranking 29th in explosive play rate at 7.2% and 30th in rushing EPA per play at -0.145, so scoring may come methodically rather than in bursts. The Bengals' red-zone efficiency (64.8% TD rate) could keep them competitive if they manufacture drives, but Houston's defense may limit those opportunities. A likely script is a controlled, lower-scoring game where Houston leads throughout, Cincinnati struggles to sustain drives against the league's best defense, and the final margin reflects Houston's defensive dominance more than any offensive fireworks. The model's 45.2 projected total sitting below the market's 46.5 aligns with this defensive-game expectation."
+},
+"validation": {
+"numbers_checked": 126,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 2,
+"generated_at": "2026-09-08T17:40:26.636364+00:00",
+"tokens_in": 11223,
+"tokens_out": 1963,
+"stop_reason": "end_turn",
+"raw_text": null
+}

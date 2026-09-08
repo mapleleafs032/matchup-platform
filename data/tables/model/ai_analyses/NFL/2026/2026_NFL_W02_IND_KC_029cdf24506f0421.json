@@ -1,0 +1,49 @@
+{
+"analysis_id": "2026_NFL_W02_IND_KC_029cdf24506f0421",
+"game_id": "2026_NFL_W02_IND_KC",
+"inputs_hash": "029cdf24506f0421",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Kansas City 24.2, Indianapolis 21.6, for a Chiefs margin of 2.65 points and a combined total of 45.75. Kansas City's win probability sits at 56.6%. The market opened and has held at Chiefs -6.5 with a total of 47.5, meaning the model lands roughly 3.9 points softer on the spread than the market and 1.75 points under the total. All metrics carry a low-sample flag, so these projections should be treated with appropriate caution.",
+"offensive_matchup": "Indianapolis holds a clear offensive edge in EPA per play (a measure of how many expected points each play adds), ranking 6th at 0.096 versus Kansas City's 15th-ranked 0.030. The Colts also convert at a 46.7% offensive success rate (rank 7) compared to the Chiefs' 44.9% (rank 16), meaning Indianapolis more consistently moves the chains. However, Kansas City's defense limits rushing EPA to -0.101 per carry (rank 6), which directly challenges Indianapolis's top-3 rushing attack (0.058 EPA per rush). The Chiefs' defense also suppresses explosive plays at a 7.9% rate (rank 11), which is relevant given that Indianapolis generates explosives at only a 7.8% clip (rank 23).",
+"quarterback_edge": "The package identifies Patrick Mahomes for Kansas City and Daniel Jones for Indianapolis, both listed as returning starters. Mahomes carries a career EPA per dropback of +0.154 across 3,447 career attempts and a QB index of +1.54. Jones shows a career EPA per dropback of -0.029 across 1,783 attempts and a QB index of -0.29. This gap is the single largest point contributor in the model, adding 0.95 points toward Kansas City, and it represents a meaningful structural advantage for the Chiefs at the game's most important position.",
+"trenches": "The offensive line edge favors Kansas City, contributing 0.29 model points toward the Chiefs. Kansas City's line generates 3.01 line yards per rush (rank 8) against Indianapolis's run defense that allows 2.79 line yards (rank 13), a slight edge for the Chiefs on the ground. On pass protection, Indianapolis allows pressure on only 19.2% of dropbacks (rank 9) while Kansas City's front generates pressure on 23.2% of dropbacks (rank 14), so the Colts' protection holds a modest advantage. The defensive front edge is essentially neutral (0 edge score), with Kansas City blitzing at a 41.1% rate (rank 2) but generating pressure without the blitz at only a 16.0% rate (rank 4), creating a schematic tension for Indianapolis's offense.",
+"explosive_play_edge": "This category is essentially a wash, with the model awarding a 0 edge score and just 0.02 points toward Kansas City. Indianapolis generates explosive plays (10-plus rushing or 20-plus passing yards) at a 7.8% rate but allows them at a 9.1% rate (rank 19), while Kansas City produces explosives at only a 7.3% rate (rank 26, the lowest in the league) but limits them at a 7.9% rate (rank 11). The Chiefs' defense is the stronger side of this matchup, but Kansas City's own offense is unlikely to generate many chunk plays, keeping the big-play dimension relatively quiet for both teams.",
+"third_down_red_zone": "Third down and red zone both favor Indianapolis, each carrying a -2 edge score against Kansas City. The Colts convert 43.5% of third downs (rank 7) while holding opponents to a 43.1% conversion rate (rank 25 allowed), whereas Kansas City converts only 38.4% (rank 21) and allows opponents to convert 44.1% (rank 28, worst in the league). In the red zone, Indianapolis scores touchdowns on 64.5% of trips (rank 10) and limits opponents to a 52.5% touchdown rate (rank 6), while Kansas City scores touchdowns on only 55.9% of red-zone trips (rank 22) and allows 57.4% (rank 12). These two categories represent the clearest structural advantages for the Colts and together subtract 0.19 model points from Kansas City's margin.",
+"roster_talent": "Insufficient reliable data. Both teams show a roster continuity index of 0.86, and neither head coach has changed. Indianapolis returns 72% of total production with strong rushing continuity (94%) and 83% passing continuity, while Kansas City returns 71% overall with very high passing continuity (95%) but only 30% rushing continuity, reflecting significant turnover in the backfield. Offensive line starts logged stand at 71 for Indianapolis and 65 for Kansas City. Talent ratings are listed as unavailable in the package.",
+"recent_form": "Insufficient reliable data. Both teams have played zero games in the current season, and the package records a form shift of 0.0 for each team, resulting in a neutral recent-form edge. All metrics are blended projections flagged as low-sample, meaning they draw heavily on prior-season data rather than 2026 in-season performance.",
+"market_movement": "The spread has held at Chiefs -6.5 across all 50 snapshots tracked on DraftKings and three other books, with zero movement since the opening line. The total has similarly remained at 47.5 with no movement. There is no book disagreement on the spread (0.0 points). The market's implied no-vig home win probability is 73.4%, compared to the model's 56.6%, a gap of roughly 16.8 percentage points. Public ticket and money percentages are unavailable, so no claim about the source of that line stability can be made.",
+"key_advantages": [
+"Kansas City: Patrick Mahomes career EPA per dropback (+0.154) versus Daniel Jones (-0.029) is the model's largest single contributor",
+"Kansas City: Home field at Arrowhead adds 1.5 model points and a 56.6% win probability",
+"Indianapolis: Third-down conversion edge \u2014 43.5% offense (rank 7) vs. Kansas City's 44.1% allowed rate (rank 28)",
+"Indianapolis: Red-zone touchdown rate of 64.5% (rank 10) against a Chiefs defense allowing 57.4% (rank 12)"
+],
+"key_concerns": [
+"Indianapolis: Daniel Jones's career EPA per dropback of -0.029 is a structural liability against a Chiefs defense that blitzes at a 41.1% rate (rank 2)",
+"Kansas City: Offensive explosiveness ranks last in the league at 7.3%, limiting ceiling against any defense",
+"Kansas City: Third-down conversion rate of 38.4% (rank 21) and a 44.1% allowed rate (rank 28) create a two-sided third-down problem",
+"Indianapolis: Defensive success rate of 46.7% allowed ranks 25th, leaving the Chiefs' methodical passing attack room to operate"
+],
+"expected_game_script": "Kansas City's pace \u2014 averaging 29.7 seconds per play (rank 3, fastest end of the league) and a neutral-script pass rate of 65.6% (rank 2) \u2014 should push the tempo and keep Indianapolis's defense on the field frequently. The Colts will likely lean on their top-3 rushing attack (0.058 EPA per rush) to control possession and offset the quarterback disadvantage, but Kansas City's run defense (-0.101 EPA per rush allowed, rank 6) is well-equipped to make that difficult. If Indianapolis can reach the red zone, their 64.5% touchdown rate gives them a genuine scoring edge over Kansas City's 55.9%, which could keep the game close despite the Mahomes advantage. Kansas City's blitz-heavy scheme (41.1%, rank 2) will test Daniel Jones early, and if the Colts fall behind, their slower pace (31.8 seconds per play, rank 26) and lower explosive-play rate make a quick comeback difficult. The model sees a relatively low-scoring, grind-it-out game at 45.75 total points, with Kansas City winning by a field goal rather than the 6.5-point margin the market implies. The most likely path to an Indianapolis cover is sustained ball control, red-zone efficiency, and limiting Kansas City's third-down opportunities given the Chiefs' own struggles converting at 38.4%."
+},
+"validation": {
+"numbers_checked": 132,
+"violations": [
+"16.8"
+],
+"confident_about_unavailable": [
+"quarterback_edge"
+],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:43:52.738926+00:00",
+"tokens_in": 11269,
+"tokens_out": 2015,
+"stop_reason": "end_turn",
+"raw_text": null
+}

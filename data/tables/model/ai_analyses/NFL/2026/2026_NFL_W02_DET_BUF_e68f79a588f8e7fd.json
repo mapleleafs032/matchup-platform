@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W02_DET_BUF_e68f79a588f8e7fd",
+"game_id": "2026_NFL_W02_DET_BUF",
+"inputs_hash": "e68f79a588f8e7fd",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Buffalo to win 25.96-21.8, a home margin of 4.16 points. The win probability sits at 61.97% for the Bills. The projected total of 47.76 sits 4.74 points under the market number of 52.5, suggesting the model sees a tighter, lower-scoring game than the market implies. The market spread has held steady at Bills -3.0 across 79 snapshots on five books with zero movement since open.",
+"offensive_matchup": "Buffalo's offense grades out as the stronger unit overall, ranking 4th in EPA per play (a measure of how many expected points each play adds) at 0.1301 versus Detroit's 0.0801 (8th). The Bills also lead in offensive success rate \u2014 the share of plays that generate positive EPA \u2014 at 49.01% (3rd) compared to Detroit's 46.02% (12th), meaning Buffalo sustains drives more consistently. Detroit counters with a slight passing edge, ranking 4th in passing EPA per play at 0.1998 versus Buffalo's 0.152 (8th), so the Lions can threaten through the air even if their overall offensive profile trails. Both offenses are legitimate top-ten units, making this a matchup where execution and situational efficiency will separate them.",
+"quarterback_edge": "Insufficient reliable data on current-season quarterback statistics; the package flags both quarterback profiles as unavailable for this season. Career metrics are available: Josh Allen carries a career EPA per dropback of 0.154 over 93 games and 3,116 attempts, while Jared Goff sits at 0.135 over 86 games and 2,948 attempts. The model assigns a slight edge to Allen based on those career figures, contributing 0.08 points toward Buffalo. Both are listed as returning starters with 0.8 confidence.",
+"trenches": "The offensive line edge is the single largest structural advantage in this game, favoring Buffalo with an edge score of 3. The Bills rank 2nd in line yards (rushing yards credited to the offensive line) at 3.26 per carry and allow pressure on only 16.81% of dropbacks (3rd-best), while Detroit's offensive line allows pressure at a 24.04% rate (24th) and generates just 2.73 line yards per carry (23rd). Against Detroit's run defense \u2014 which ranks 27th in rushing EPA allowed at 0.0116 per play \u2014 Buffalo's ground attack finds a vulnerable front. Detroit's defensive front generates a sack rate of 7.66% (8th) but struggles to create pressure without the blitz, ranking 21st in pressure without blitzing at 11.67%, limiting its ability to consistently disrupt Allen.",
+"explosive_play_edge": "Both teams generate big plays at a high rate, but both also surrender them at an alarming clip. Detroit's explosive play rate (plays gaining 10-plus rushing or 20-plus passing yards) is 10.4% (4th), while Buffalo's is 11.28% (2nd). The concerning flip side: Detroit allows explosive plays on 10.21% of opponent plays (27th) and Buffalo allows them on 10.65% (30th), meaning both defenses are genuinely vulnerable to chunk gains. The model gives Buffalo a narrow edge here (score of 1) because its offensive explosiveness rate is slightly higher, but this matchup projects as one where both offenses can find big plays against porous secondaries.",
+"third_down_red_zone": "Buffalo holds a commanding third-down conversion advantage, converting 48.29% of third downs (2nd) against Detroit's 38.97% (19th), a gap that translates directly into sustained drives and more scoring opportunities. Detroit's third-down defense is solid at 37.26% allowed (9th), but it faces a Bills offense that is among the league's best at extending drives. In the red zone, Buffalo is the top-ranked team in touchdown rate at 72.97% per trip, while Detroit's red-zone defense ranks dead last (32nd) at 69.06% touchdowns allowed \u2014 a collision that strongly favors Buffalo turning trips into touchdowns. Detroit's own red-zone offense is strong at 68.25% (5th), but it runs into a Bills defense that, while not elite at 61.48% allowed (21st), is meaningfully better than what Detroit's defense offers.",
+"roster_talent": "Insufficient reliable data on roster talent ratings; the package flags NFL talent as not modeled. Both teams show high roster continuity: Buffalo's continuity index is 0.89 and Detroit's is 0.88, indicating both rosters are largely intact from prior seasons. Buffalo returns 79% of total production overall, with particularly strong returning production in rushing (97%) and receiving (88%), while Detroit returns 75% overall with near-complete passing continuity (99%) but lower defensive returning production (63%). The returning production edge is marginal and contributes only 0.04 points toward Buffalo in the model.",
+"recent_form": "Insufficient reliable data on recent form trends; both teams have zero games played in the current season and the model records zero form shift for each side. All metrics in this package are blended opponent-adjusted figures carried from prior-season data, flagged as low-sample. No current-season game results are available to assess momentum or trajectory for either team.",
+"market_movement": "The spread opened at Bills -3.0 and has not moved, holding at -3.0 across 79 snapshots on five books as of the most recent retrieval. The total similarly opened and remains at 52.5 with zero movement. The moneyline has shifted slightly \u2014 Buffalo moved from -162 to -155 and Detroit from +136 to +130 \u2014 a modest 7-cent shift on the home side suggesting marginal movement toward the Lions without a clear directional signal. Public ticket and money percentages are unavailable, so no inference about public or sharp positioning can be made.",
+"key_advantages": [
+"Buffalo's offensive line (2nd in line yards, 3rd in pass protection) against Detroit's vulnerable run defense (27th in rushing EPA allowed)",
+"Bills' red-zone efficiency (1st at 72.97% TD rate) exploiting Detroit's last-ranked red-zone defense (32nd at 69.06% allowed)",
+"Buffalo's third-down conversion rate (2nd at 48.29%) versus Detroit's 19th-ranked offense on third down (38.97%)",
+"Home-field advantage at Highmark Stadium worth 1.5 points in the model"
+],
+"key_concerns": [
+"Detroit's passing attack ranks 4th in passing EPA per play (0.1998) and faces a Bills pass defense that, while 6th in passing EPA allowed, is 30th in explosive plays surrendered",
+"Detroit's defensive line yards allowed rank 29th, making Buffalo's already-elite run game even more dangerous than usual",
+"Both defenses rank in the bottom five in explosive plays allowed, creating volatility that could push the actual score well above the model's 47.76 projection",
+"Detroit's turnover margin of +0.235 per game (9th) gives the Lions a meaningful edge in a category where Buffalo sits at 0.0 (14th)"
+],
+"expected_game_script": "Buffalo should establish the run early, with its 2nd-ranked rushing EPA offense attacking a Detroit front that ranks 27th in rushing EPA allowed and 29th in line yards surrendered \u2014 expect the Bills to control possession and field position through the ground game. Detroit will likely need to lean on its passing attack, where Jared Goff's offense ranks 4th in passing EPA per play, to keep pace; the Lions' 18th-ranked neutral-script pass rate (58.64%) may climb as the game script forces them into more dropbacks. Both defenses are susceptible to explosive plays \u2014 Detroit allows them on 10.21% of plays and Buffalo on 10.65% \u2014 so chunk gains in both directions should keep the game from becoming a grind-it-out affair despite the model's lower total projection. The red zone is where the game could be decided: Buffalo's league-best 72.97% touchdown rate meeting Detroit's league-worst 69.06% allowed rate means the Bills are likely to cash in on most trips inside the 20. Detroit's turnover margin advantage (+0.235 per game) is the most credible path to an upset, as a takeaway or two could neutralize Buffalo's structural edges. The model sees a 4-point Bills win, consistent with the market's -3.0 line, in a game that stays in the mid-to-high 40s in total scoring rather than the 52.5 the market implies. Expect a competitive game through three quarters before Buffalo's efficiency advantages in sustained drives and red-zone finishing create separation late."
+},
+"validation": {
+"numbers_checked": 124,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:38:38.667402+00:00",
+"tokens_in": 11202,
+"tokens_out": 2058,
+"stop_reason": "end_turn",
+"raw_text": null
+}

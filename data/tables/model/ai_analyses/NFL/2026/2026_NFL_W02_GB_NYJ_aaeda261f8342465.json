@@ -1,0 +1,49 @@
+{
+"analysis_id": "2026_NFL_W02_GB_NYJ_aaeda261f8342465",
+"game_id": "2026_NFL_W02_GB_NYJ",
+"inputs_hash": "aaeda261f8342465",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Green Bay to win 25.11 to 18.23, a margin of 6.89 points in favor of the Packers. The projected total is 43.34 points. Green Bay's win probability sits at 75.85% per the model. The market opened and remains at Jets +5.5, meaning the model leans 1.4 points further toward Green Bay than the current line.",
+"offensive_matchup": "Green Bay's offense ranks 2nd in EPA per play (a measure of how many expected points each play adds), posting a value of +0.164, while New York's defense ranks 29th allowing +0.1284 EPA per play against them. The Packers convert 48.9% of plays successfully compared to the Jets' offensive success rate of just 39.1%, and Green Bay's offense also outperforms on standard downs (50.3% success) and passing downs (46.0% success) versus New York's defensive marks of 47.5% and 39.3% respectively. New York's offense ranks 31st in yards per play at 4.36 and 30th in EPA per play at -0.1954, meaning nearly every phase of the Jets' attack is operating near the bottom of the league. The Packers' defense, while not elite at 21st in defensive EPA per play (+0.0476), is still a significant upgrade over what the Jets' offense has faced.",
+"quarterback_edge": "Jordan Love enters as a returning starter with a career EPA per dropback of +0.159 across 1,665 career attempts, reflecting a positive impact on expected scoring. Geno Smith is listed as the Jets' starter, flagged as a new-team starter, and carries a career EPA per dropback of -0.014 across 2,227 attempts, indicating a roughly neutral-to-negative historical impact. Love's career yards per attempt of 7.54 also edges Smith's 7.28. This quarterback edge is one of the largest single contributors to the model's margin, adding nearly a full point toward Green Bay.",
+"trenches": "Green Bay's offensive line ranks 8th in sack rate allowed (4.98% of dropbacks) and 1st in havoc allowed (11.64% of plays disrupted), meaning the Packers' line does an exceptional job limiting negative plays. The Jets' pass protection ranks 30th in sack rate allowed at 9.79% and 31st in havoc allowed at 19.78%, making their line one of the most vulnerable in the league. On the defensive side, Green Bay generates pressure without blitzing at a 14.4% rate (8th), while New York's pass rush generates pressure without blitzing at only 8.5% (31st), giving Love a clean pocket even against base looks. The Jets do blitz at a 29.2% rate, but Green Bay's protection metrics suggest they can handle it.",
+"explosive_play_edge": "Green Bay generates explosive plays (10-plus rushing yards or 20-plus passing yards) on 11.1% of plays, ranking 3rd in the league, while the Jets produce explosives on just 6.85% of plays, ranking 30th. New York allows explosive plays on 9.35% of opponent plays (21st), while Green Bay limits them to 7.86% (10th), creating a clear two-sided advantage for the Packers. The Packers' explosiveness rating of 1.1254 versus the Jets' allowed explosiveness of 1.1801 further confirms Green Bay's big-play offense should find opportunities. This edge contributes 0.63 points toward Green Bay in the model.",
+"third_down_red_zone": "Green Bay converts third downs at a 47.96% rate (3rd in the league) against a Jets defense that allows conversions at a 38.46% clip (11th), meaning the Packers' offense should sustain drives even when facing obvious passing situations. New York's offense converts only 34.93% of third downs (26th), and while Green Bay's defense allows 41.53% (20th), the Jets' inability to move the chains consistently limits their possession time. In the red zone, Green Bay scores touchdowns on 69.23% of trips (4th) while New York allows touchdowns on 67.98% of red-zone visits (31st), a damaging combination. The Jets score touchdowns on only 47.06% of their own red-zone trips (30th), and Green Bay's defense holds opponents to touchdowns on 58.56% of trips (14th), compounding New York's scoring difficulty.",
+"roster_talent": "Green Bay carries a continuity index of 0.87, meaning a high share of their roster is returning from prior seasons, with 90% of passing production and 69% of rushing production returning. The Jets show a continuity index of only 0.60, with just 1% of passing production returning, indicating a near-complete turnover at the quarterback and passing game positions. Green Bay's offensive line logs 57 returning starts while New York's line logs 68, giving the Jets a slight edge in experienced blockers. Roster talent ratings are unavailable for both teams per the data package.",
+"recent_form": "Insufficient reliable data. Both teams have zero games played in the current season, and no recent-form shift is recorded for either side in the model inputs.",
+"market_movement": "The spread has held at Jets +5.5 from open to current across 40 snapshots on five books, with zero movement in either direction. The total has similarly remained at 42.5 with no movement. The moneyline shifted slightly from Jets +205 to +200 and Packers -250 to -245, a negligible two-cent move. Public ticket and money percentages are unavailable, so no inference about betting-side composition can be made.",
+"key_advantages": [
+"Green Bay passing offense ranks 1st in EPA per pass play (+0.3404) against a Jets pass defense ranked 30th (+0.2113 allowed)",
+"Jordan Love's career EPA per dropback (+0.159) is sharply higher than Geno Smith's (-0.014)",
+"Packers convert 69.2% of red-zone trips into touchdowns; Jets allow touchdowns on 68.0% of opponent red-zone visits",
+"Green Bay's continuity index of 0.87 versus New York's 0.60 reflects a far more stable roster entering the season"
+],
+"key_concerns": [
+"Green Bay's rushing offense ranks 25th in EPA per rush (-0.1234), limiting their ability to control the clock on the ground",
+"The Packers' defensive havoc rate ranks 30th (11.89%), meaning they rarely create chaos plays on defense",
+"New York's third-down defense ranks 11th (38.46% allowed), which could slow Green Bay's drives if they fall behind schedule",
+"All metrics carry a low-sample flag with zero 2026 games played, so these figures reflect prior-season blended data"
+],
+"expected_game_script": "Green Bay is likely to establish an early passing advantage, with Jordan Love operating behind a line that ranks 8th in sack rate allowed against a Jets defensive front that generates pressure without blitzing at only the 31st-best rate. The Packers' 48.9% offensive success rate should allow them to stay on schedule and avoid third-and-long situations, where their 47.96% conversion rate would still give them an edge over New York's defense. New York's offense, ranking 31st in yards per play and 30th in EPA per play, will struggle to sustain drives against even a middling Green Bay defense, and their 34.93% third-down conversion rate suggests frequent three-and-outs. If the Jets fall behind, their neutral-script pass rate of 45.56% (32nd) and a new starting quarterback with a negative career EPA per dropback make a comeback difficult to manufacture. Green Bay's red-zone efficiency (69.2% touchdown rate) against New York's porous red-zone defense (68.0% allowed) points toward the Packers converting scoring opportunities at a high clip. The Jets' turnover margin of -1.06 per game (32nd) versus Green Bay's +0.11 (12th) adds another layer of risk for New York, as giveaways in a game where they are already outmatched offensively could accelerate the deficit. The most likely outcome is a Packers-controlled game where Green Bay builds a lead through the passing game and New York's offense fails to generate enough consistent production to keep pace."
+},
+"validation": {
+"numbers_checked": 117,
+"violations": [
+"75.85%"
+],
+"confident_about_unavailable": [
+"quarterback_edge"
+],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:40:31.826850+00:00",
+"tokens_in": 11263,
+"tokens_out": 2008,
+"stop_reason": "end_turn",
+"raw_text": null
+}

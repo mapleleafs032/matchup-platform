@@ -1,0 +1,47 @@
+{
+"analysis_id": "2026_NFL_W02_PIT_NE_8e9eb7adfe2ff5f4",
+"game_id": "2026_NFL_W02_PIT_NE",
+"inputs_hash": "8e9eb7adfe2ff5f4",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects New England to win 25.68 to 20.56, a home margin of 5.12 points, with a projected total of 46.24. The Patriots carry a 65.2% win probability. The market opened and has held at New England -4.5 with a total of 43.5, meaning the model sits within a point of the spread but projects the total roughly 2.7 points above the market number.",
+"offensive_matchup": "New England's offense grades out significantly better in the passing game, ranking 5th in offensive passing EPA per play (a measure of value added on each dropback) at 0.192, while Pittsburgh's pass defense allows a positive 0.044 EPA per pass play, ranking only 16th. The Patriots also convert at a 46.5% offensive success rate (rank 9th) against a Steelers defense that holds opponents to a 43.3% success rate (rank 11th), a modest but real advantage for New England. Pittsburgh's best offensive weapon is the ground game, ranking 4th in rushing EPA per play at 0.047, but New England's run defense allows a negative -0.091 rushing EPA per play (rank 7th), which is one of the better run-stopping profiles in the league and directly challenges Pittsburgh's strength. The net picture is a Patriots offense that can move the ball through the air against a Pittsburgh secondary that has struggled, while New England's front is well-positioned to limit Pittsburgh's most reliable offensive avenue.",
+"quarterback_edge": "The package identifies Drake Maye for New England and Aaron Rodgers for Pittsburgh, both listed with a confidence of 0.8 based on depth-chart information. Maye carries a career EPA per dropback of 0.084 and a QB index of 0.84, while Rodgers registers a career EPA per dropback of 0.038 and a QB index of 0.38 on the same scale. That gap drives a modest edge toward New England at the quarterback position, worth roughly 0.25 points in the model. Note that both players have zero season attempts logged in this dataset, so these figures reflect career baselines rather than current-season performance.",
+"trenches": "Pittsburgh's offensive line grades favorably in pass protection, ranking 2nd in pressure rate allowed at 16.5%, meaning opposing defenses generate pressure on fewer than 1-in-6 Steelers dropbacks. However, New England's defensive front generates havoc (plays producing a tackle for loss, sack, forced fumble, or turnover) on 15.8% of snaps (rank 9th), and the Steelers' own defensive front ranks 9th in sack rate at 7.1%, creating a credible pass-rush threat against a Patriots offensive line that allows sacks on 9.0% of dropbacks (rank 28th) and pressure on 21.7% of snaps. The run-blocking matchup slightly favors Pittsburgh as well, with the Steelers ranking 11th in offensive line yards (2.94 per rush) against a Patriots front that allows 2.74 line yards per rush (rank 9th). Overall the model gives Pittsburgh a slight edge in the trenches, but New England's pass-rush threat against a leaky Patriots offensive line is the more consequential interaction.",
+"explosive_play_edge": "New England holds a strong edge in the explosive play dimension, ranking 7th in explosive play rate (plays gaining 20-plus passing or 10-plus rushing yards) at 9.97%, while Pittsburgh's defense allows explosives on 8.79% of opponent plays (rank 18th). Conversely, Pittsburgh's offense generates explosives on only 8.23% of plays (rank 19th) against a Patriots defense that limits them to 7.45% (rank 8th). The model scores this as a 3-point edge favoring New England, contributing 0.52 points to the projected margin, making it one of the largest single drivers in the model. New England's ability to create chunk plays against a Pittsburgh secondary that has not suppressed them, combined with the Patriots' defense limiting Pittsburgh's already-below-average explosive rate, is a meaningful structural advantage.",
+"third_down_red_zone": "New England converts third downs at a 41.4% rate (rank 11th) while holding opponents to 36.3% (rank 7th); Pittsburgh converts at only 38.7% (rank 20th) and allows opponents to convert at 43.2% (rank 26th), one of the worst marks in the league. That gap is the largest single third-down differential in this matchup and the model scores it as a 3-point edge for New England. In the red zone, the Patriots score touchdowns on 64.0% of trips (rank 11th) and hold opponents to a 54.0% touchdown rate (rank 7th), while Pittsburgh scores on 61.3% of red-zone trips and allows touchdowns on 55.8% of opponent trips. Both red-zone profiles are respectable, but New England's defense has a meaningful edge in limiting Pittsburgh from finishing drives.",
+"roster_talent": "Insufficient reliable data on individual talent ratings for either roster. New England carries a continuity index of 0.90 with no head-coach change, returning 98% of passing production, 86% of rushing production, and 64 offensive line starts. Pittsburgh has a continuity index of 0.69 with a head-coach change, returning 100% of passing production but only 59% of rushing production and 52% of receiving production, with 59 offensive line starts. The model credits New England with a returning-production edge worth 0.39 points, reflecting the Patriots' greater organizational stability heading into the season.",
+"recent_form": "Both teams have zero games played in the current season, so no in-season form data is available. The model records a form-shift of 0.0 for both sides and scores this category as neutral. All metrics in this package carry a low-sample flag and are blended from prior-season data adjusted for opponent strength.",
+"market_movement": "The spread has held at New England -4.5 since the first recorded snapshot on DraftKings, with zero points of movement across 51 snapshots on five books. The total has similarly held at 43.5 with no movement. There is no book disagreement on the spread. Public ticket and money percentages are unavailable, so no conclusions about public or sharp positioning can be drawn from the line stability.",
+"key_advantages": [
+"New England passing offense (rank 5th, 0.192 EPA/pass) vs. Pittsburgh pass defense (rank 16th, 0.044 EPA/pass allowed)",
+"Patriots third-down defense holds opponents to 36.3% conversion (rank 7th) vs. Steelers 43.2% allowed (rank 26th)",
+"New England explosive play rate (9.97%, rank 7th) against a Pittsburgh defense allowing explosives at 8.79% (rank 18th)",
+"Patriots roster continuity (0.90 index, no coaching change) vs. Steelers rebuilding continuity (0.69 index, new head coach)"
+],
+"key_concerns": [
+"Pittsburgh rushing offense ranks 4th in EPA per rush (0.047) against a Patriots run defense that, while solid (rank 7th), is the Steelers' clearest path to offensive efficiency",
+"New England's offensive line allows sacks on 9.0% of dropbacks (rank 28th), a vulnerability against Pittsburgh's 7.1% sack rate (rank 9th)",
+"Pittsburgh's turnover margin of +0.67 per game (rank 4th) is a significant outlier that could swing field position, partially offsetting New England's structural edges",
+"Model total (46.24) sits 2.7 points above the market number of 43.5, suggesting the model sees more scoring than the market, which introduces uncertainty on the over/under"
+],
+"expected_game_script": "New England's superior passing efficiency and third-down defense should allow the Patriots to control possession and scoring rhythm at Gillette Stadium. Early in the game, Pittsburgh will likely lean on its ground game, where it ranks 4th in rushing EPA per play, to establish tempo and keep New England's passing offense off the field. However, New England's run defense (rank 7th in rushing EPA allowed) is built to limit exactly that approach, which could force Pittsburgh into passing situations where its offense has been less efficient (rank 21st in passing EPA per play). As the game progresses, Drake Maye's ability to generate explosive plays against a Pittsburgh secondary that ranks 18th in explosives allowed should allow New England to extend drives and build a lead. Pittsburgh's best counter is its blitz-heavy defense (rank 3rd in blitz rate at 38.4%) and strong turnover margin, which could create short fields and keep the Steelers in the game even if they are outgained. The model projects a final margin of roughly five points, consistent with a competitive game where New England leads for most of the second half but Pittsburgh's turnover and rushing advantages prevent a blowout. Expect a game in the mid-40s in total scoring, though the model sees more points than the market currently prices."
+},
+"validation": {
+"numbers_checked": 115,
+"violations": [],
+"confident_about_unavailable": [
+"quarterback_edge"
+],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:40:28.495603+00:00",
+"tokens_in": 11337,
+"tokens_out": 2143,
+"stop_reason": "end_turn",
+"raw_text": null
+}

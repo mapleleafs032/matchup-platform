@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W01_CHI_CAR_ceb5775919599cf1",
+"game_id": "2026_NFL_W01_CHI_CAR",
+"inputs_hash": "ceb5775919599cf1",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Chicago Bears 23.26, Carolina Panthers 21.93, for a Bears margin of 1.33 points. The projected total is 45.18. Chicago's win probability is 57.0% (Carolina's is 42.0%). The market has Carolina favored by 3.0 points with a total of 47.5, meaning the model is 1.7 points more favorable to Chicago than the market and 2.3 points under the market total.",
+"offensive_matchup": "Chicago's offense ranks 7th in EPA per play (a measure of how many expected points each play adds, at +0.085) while Carolina's defense ranks 23rd at +0.064 EPA allowed per play, meaning the Panthers struggle to limit the value of opposing possessions. Carolina's offense ranks 26th in EPA per play at -0.084, and while Chicago's defense is not elite at 18th (+0.030 EPA allowed), it still represents a significant step up from what Carolina has faced. The Bears convert 46.3% of plays successfully versus the Panthers' 41.5% offensive success rate, a gap that compounds over a full game's worth of possessions.",
+"quarterback_edge": "Caleb Williams carries a career EPA per dropback of 0.00 across 36 games and 1,229 attempts, while Bryce Young sits at -0.145 per dropback over 45 games and 1,431 attempts \u2014 a meaningful gap that is the second-largest single contributor to Chicago's projected margin at -0.77 points toward Carolina. Williams also averages 6.6 yards per attempt versus Young's 5.98. Both are listed as returning starters with 0.8 confidence, so the edge is real but carries the caveat that neither has played a 2026 regular-season snap yet.",
+"trenches": "The offensive line edge favors Carolina at home (+0.64 points toward Carolina), as the Panthers rank 6th in line yards per rush (3.04) and their protection holds up reasonably well against Chicago's pass rush, which ranks only 21st in sack rate (5.8%). However, the defensive front edge strongly favors Chicago (-0.81 points toward Carolina), as the Bears' run defense ranks 24th in rushing EPA allowed but their overall front generates enough disruption that Carolina's offensive line \u2014 which has allowed a 24.3% pressure rate (25th) \u2014 will be tested. Chicago's offensive line is the best in the league at limiting sacks (rank 1, 3.4% sack rate allowed) and ranks 3rd in havoc allowed (11.9%), giving Williams a clean pocket to operate from.",
+"explosive_play_edge": "Chicago generates explosive plays (10-plus rushing or 20-plus passing yards) on 9.8% of plays, ranking 9th, while Carolina allows them on 7.8% of plays, ranking 9th defensively \u2014 so the Panthers are actually one of the better teams at suppressing big plays. Carolina's offense produces explosives on only 7.9% of plays (22nd), and Chicago allows them on 10.5% of plays (28th), which is the one area where the Panthers could find chunk gains. The net edge is modest and favors Chicago (-0.10 points toward Carolina).",
+"third_down_red_zone": "Third down is a decisive edge for Chicago: the Bears convert at 43.6% (6th) while Carolina allows conversions at 46.2% (30th), and Chicago's defense holds opponents to 40.5% (16th) while Carolina converts only 36.7% (25th). In the red zone, Chicago scores touchdowns on 63.4% of trips (13th) against a Panthers defense that allows TDs on 54.3% of red-zone visits (8th, one of the better marks in the league), so Carolina's red-zone defense provides a partial check. Carolina's offense scores TDs on only 54.2% of red-zone trips (23rd) against a Bears defense that surrenders them on 67.3% of visits (29th), which is the one area where the Panthers can capitalize if they get inside the 20.",
+"roster_talent": "Insufficient reliable data \u2014 talent ratings are not modeled for NFL teams in this package. Both teams share identical continuity indexes of 0.88, and Chicago returns 76% of total production while Carolina returns 77%, so roster familiarity is essentially a wash. Chicago returns 100% of passing production and 96% of rushing production; Carolina returns 93% of passing production but only 48% of rushing production, suggesting more uncertainty in the Panthers' ground game.",
+"recent_form": "Insufficient reliable data \u2014 this is Week 1 of the 2026 season and neither team has played a regular-season game. Both teams show a form shift of 0.0 in the model inputs, and the recent-form edge is scored as neutral with no points contribution in either direction.",
+"market_movement": "The spread moved half a point from Carolina -2.5 to Carolina -3.0 at DraftKings, crossing the key number of 3, which historically carries outsized significance in NFL outcomes. The total has not moved, holding at 47.5 across the tracking window. Book disagreement on the spread is 0.5 points. The model's implied margin of Bears by 1.33 sits 4.33 points away from the current market spread of Panthers -3.0, and the model's total of 45.18 is 2.32 points under the market number of 47.5. Public ticket and money percentages are unavailable.",
+"key_advantages": [
+"Chicago's defensive front edge is the largest single factor in the model (-0.81 points toward Carolina), driven by the Bears' superior run defense and pass-rush disruption against a Panthers offensive line that allows pressure on 24.3% of dropbacks",
+"Caleb Williams holds a meaningful career EPA-per-dropback edge (+0.00 vs. -0.145) over Bryce Young, the second-largest model contributor at -0.77 points toward Carolina",
+"Chicago's third-down conversion rate (43.6%, 6th) exploits Carolina's third-down defense (46.2% allowed, 30th), a matchup that could extend drives and limit Panthers possessions",
+"Chicago's turnover margin of +0.89 per game (1st) versus Carolina's -0.17 (20th) is a significant structural edge worth -0.59 points toward Carolina in the model"
+],
+"key_concerns": [
+"Carolina's red-zone defense allows touchdowns on only 54.3% of opponent trips (8th), which could cap Chicago scoring even when the Bears move the ball",
+"Chicago's defense allows explosive plays on 10.5% of plays (28th), leaving the door open for Carolina to generate chunk gains even with a limited offense",
+"Carolina holds home-field advantage worth 1.5 points in the model, and the market has them as 3-point favorites despite the Bears' structural edges",
+"All metrics carry a low-sample flag as this is Week 1, meaning the blended ratings lean on prior-season data and carry elevated uncertainty"
+],
+"expected_game_script": "Chicago figures to control pace \u2014 the Bears run the most plays per game in the league (66.1, 1st) at the fastest tempo (29.8 seconds per play, 4th) and lean heavily on play-action (32.1% rate, 2nd), which should stress Carolina's defense early and keep the Panthers' offense off the field. Caleb Williams, operating behind the league's best pass-protection unit (1st in sack rate allowed), should have time to work through progressions against a Panthers defense that generates pressure on only 17.7% of dropbacks without the blitz (30th in pressure without blitz). Carolina's offense will need Bryce Young to outperform his career EPA baseline against a Bears defense that, while ranked only 18th overall, is significantly better than what Young's numbers suggest he can exploit. The Panthers' best path is through their run game \u2014 Carolina's offensive line ranks 6th in line yards \u2014 against a Chicago rush defense ranked 24th in rushing EPA allowed, which could keep drives alive and set up play-action of their own. Carolina's red-zone defense (8th in TD rate allowed) may prevent the Bears from fully converting their expected field-position advantages into touchdowns, keeping the game closer than the structural edges suggest. The model expects a relatively low-scoring game at 45.2 total points, 2.3 points under the market number, consistent with two defenses that, despite their flaws, should limit the opponent's efficiency on standard downs. A Bears lead in the second half is the most likely scenario, but Carolina's home environment and red-zone defense give the Panthers a realistic path to covering or winning outright."
+},
+"validation": {
+"numbers_checked": 129,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 2,
+"generated_at": "2026-09-08T17:35:58.732630+00:00",
+"tokens_in": 11545,
+"tokens_out": 2062,
+"stop_reason": "end_turn",
+"raw_text": null
+}

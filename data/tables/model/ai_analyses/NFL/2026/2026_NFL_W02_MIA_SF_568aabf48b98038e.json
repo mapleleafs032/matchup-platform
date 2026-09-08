@@ -1,0 +1,48 @@
+{
+"analysis_id": "2026_NFL_W02_MIA_SF_568aabf48b98038e",
+"game_id": "2026_NFL_W02_MIA_SF",
+"inputs_hash": "568aabf48b98038e",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects San Francisco to win 26.49 to 19.0, a home margin of 7.49 points, with a projected total of 45.5. The 49ers' win probability sits at 72.7%. The market opened and has held at San Francisco -10.5 with a total of 46.5, meaning the model's margin is about 3.0 points softer than the market line, leaning toward Miami on the spread.",
+"offensive_matchup": "San Francisco's offense is a clear structural advantage here. The 49ers rank 3rd in offensive EPA per play (a measure of value added above expectation on each snap) at +0.137, while Miami's defense ranks 26th allowing +0.072 EPA per play against them. San Francisco also converts 51.1% of third downs, the best rate in the league, running into a Miami defense that allows opponents to convert 40.6% of third downs, ranking 18th. The 49ers' 50.3% offensive success rate (2nd in the league) against Miami's 48.9% defensive success rate allowed (31st) creates a persistent down-to-down edge that should keep San Francisco's drives alive.",
+"quarterback_edge": "Insufficient reliable data on current season statistics for either quarterback, but the model's quarterback edge strongly favors San Francisco. Brock Purdy carries a career EPA per dropback of +0.204 across 53 games and 1,578 attempts, producing a quarterback index of 2.04. Malik Willis, listed as a new-team starter for Miami, has a career EPA per dropback of +0.025 across just 8 games and 156 attempts, for a quarterback index of 0.25. That gap of roughly 1.79 index points is the single largest contributor to San Francisco's projected margin after the base rating differential.",
+"trenches": "The offensive line edge is essentially neutral, with San Francisco's protection (sack rate allowed of 4.3%, 4th in the league) holding up well against Miami's pass rush, which generates sacks on just 6.6% of dropbacks (13th). However, the defensive front edge favors Miami slightly. San Francisco's pass rush generates pressure on only 16.4% of dropbacks without a blitz (32nd in the league) and produces sacks on just 3.3% of dropbacks (32nd), meaning Willis will have time to operate even against a light rush. Miami blitzes on 36.4% of dropbacks (6th), so their path to pressure runs through volume rather than base-package efficiency.",
+"explosive_play_edge": "This category is essentially a wash, with the edge score at zero and only a marginal -0.02 points toward San Francisco. Miami's offense generates explosive plays (10-plus rushing or 20-plus passing yards) on 10.3% of snaps, ranking 5th, and San Francisco allows them on 7.4% of snaps, ranking 4th in suppression. Conversely, San Francisco's explosive rate of 8.5% (17th) runs into a Miami defense that allows them on 9.4% of snaps (22nd). Miami's big-play threat is real, but San Francisco's ability to limit explosives is one of the few defensive strengths in this package.",
+"third_down_red_zone": "San Francisco dominates both finishing categories. Their 51.1% third-down conversion rate (1st) against Miami's 40.6% allowed rate gives the 49ers a clear chain-moving edge, while Miami converts just 34.9% of their own third downs (27th) against a San Francisco defense allowing 40.0% (14th). In the red zone, San Francisco scores touchdowns on 65.6% of trips (8th) and earns 3.45 points per scoring opportunity (2nd), while Miami's defense allows touchdowns on 59.1% of red-zone visits. Miami's offense scores on 60.9% of red-zone trips (18th) against a San Francisco defense that allows 56.7% (11th), so the 49ers hold a meaningful edge in converting field position to points at both ends.",
+"roster_talent": "Insufficient reliable data on talent ratings for either team. However, the returning production and continuity metrics tell a significant story. San Francisco returns 81% of total production from the prior season with a continuity index of 0.68, including 100% of passing production and 80% of rushing production, along with 72 returning offensive line starts. Miami returns just 39% of total production with a continuity index of 0.34, zero returning passing production reflecting a full quarterback change, and 57 returning offensive line starts. The coaching edge compounds this: San Francisco's head coach is unchanged while Miami has a new head coach, contributing 0.57 points toward the 49ers in the model.",
+"recent_form": "Insufficient reliable data on recent form trends for either team, as both clubs have zero games played in the current season and the recent-form shift registers at 0.0 for both sides. All metrics carry a low-sample flag and are blended from prior-season data adjusted for opponent strength.",
+"market_movement": "The spread has held at San Francisco -10.5 since the first recorded snapshot on DraftKings, with zero movement across 51 snapshots on five books. The total has similarly held at 46.5 with no movement. Book disagreement on the spread is 0.0. The model projects a 7.49-point home margin versus the market's 10.5, a difference of 3.0 points in Miami's favor on the spread. No public ticket or money percentages are available, so no inference about ticket-versus-line direction can be made.",
+"key_advantages": [
+"San Francisco's passing offense (3rd in EPA per pass play at +0.225) exploits Miami's pass defense ranked 27th, allowing +0.176 EPA per pass play",
+"Brock Purdy's career EPA per dropback of +0.204 dwarfs Malik Willis's +0.025, the largest single edge in the model",
+"San Francisco's 51.1% third-down conversion rate (1st) runs into Miami's 40.6% allowed rate, sustaining drives and controlling possession",
+"San Francisco's roster continuity index of 0.68 and 81% returning production versus Miami's 0.34 and 39% creates a structural familiarity edge"
+],
+"key_concerns": [
+"San Francisco's defensive success rate allowed of 48.1% ranks 28th, meaning Miami can find consistent gains even with a limited offense",
+"Miami's play-action rate of 33.1% (1st in the league) targets San Francisco's pressure-without-blitz rate of 6.4% (32nd), a genuine schematic fit advantage for the Dolphins",
+"San Francisco's turnover margin of -0.684 per game (30th) is worse than Miami's -0.294 (24th), and turnovers subtract 0.22 points from the 49ers' projected margin",
+"Miami's explosive play rate of 10.3% (5th) can generate sudden scoring even in a game where they trail on efficiency"
+],
+"expected_game_script": "San Francisco should control the line of scrimmage on early downs, with their 50.3% offensive success rate (2nd) grinding against a Miami defense that allows opponents to succeed on 48.9% of plays (31st). The 49ers' third-down efficiency should translate to longer drives and sustained possession, keeping Miami's offense on the sideline and limiting their opportunities to exploit San Francisco's porous pass defense. Miami's best path to staying competitive is through play-action shots \u2014 their league-leading 33.1% play-action rate is well-suited to attack San Francisco's 32nd-ranked pressure-without-blitz rate of 6.4%, and Willis could generate chunk plays if the 49ers play soft coverage. However, Miami's 34.9% third-down conversion rate (27th) means those drives are likely to stall before reaching the end zone, and their 60.9% red-zone touchdown rate against San Francisco's 56.7% allowed rate limits their scoring ceiling. The turnover margin is the main variable that could compress the margin \u2014 San Francisco's -0.684 per game is a genuine liability, and any giveaways in Miami territory could keep the Dolphins within striking distance. The model projects a final score of 26.49 to 19.0, consistent with a game where San Francisco leads throughout but Miami's explosive play threat prevents a blowout."
+},
+"validation": {
+"numbers_checked": 131,
+"violations": [
+"1.79",
+"3.45"
+],
+"confident_about_unavailable": [],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:43:09.304481+00:00",
+"tokens_in": 11330,
+"tokens_out": 2015,
+"stop_reason": "end_turn",
+"raw_text": null
+}

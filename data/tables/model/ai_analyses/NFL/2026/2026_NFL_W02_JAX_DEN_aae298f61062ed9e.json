@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W02_JAX_DEN_aae298f61062ed9e",
+"game_id": "2026_NFL_W02_JAX_DEN",
+"inputs_hash": "aae298f61062ed9e",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Denver to win 24.26 to 20.93, a home margin of 3.33 points with a projected total of 45.19. Denver's win probability sits at 59.0%. The market opened and has held at Denver -3.0 with a total of 43.5, meaning the model is within a third of a point on the spread and projects about 1.7 points more scoring than the market implies.",
+"offensive_matchup": "Jacksonville's offense grades out better overall, ranking 6th in points per game (27.7) and posting a higher EPA per play (a measure of how many expected points each play adds) at 0.074 versus Denver's 0.032. The Jaguars also convert 47.3% of plays successfully compared to Denver's 43.5%, giving them a genuine edge in moving the chains consistently. However, that advantage runs directly into Denver's defense, which ranks 7th in defensive EPA per play (-0.062) and 2nd in defensive success rate allowed (37.8%), meaning the Broncos are elite at limiting the exact type of consistent, efficient offense Jacksonville wants to run. Denver's defense is likely to compress Jacksonville's scoring opportunities even if the Jaguars move the ball in stretches.",
+"quarterback_edge": "Insufficient reliable data on current-season quarterback statistics is available, but the model uses career EPA per dropback as a proxy. Bo Nix carries a career EPA per dropback of 0.055 across 36 games and 1,251 attempts, while Trevor Lawrence sits at 0.004 over 80 games and 2,720 attempts, giving Nix a meaningful edge on this metric that contributes 0.27 points toward Denver in the model. Lawrence has the larger sample and higher career yards per attempt (6.82 vs. 6.50), but Nix's efficiency edge is what the model weights. This edge is flagged as moderate confidence given both quarterbacks are returning starters with no current-season attempts logged.",
+"trenches": "The trenches are the most decisive factor in this game, combining for nearly a full point of model value toward Denver. Denver's defensive front ranks 1st in sack rate (9.87% of dropbacks) and 1st in pressure rate without blitzing (20.9%), meaning they generate disruption with a base four-man rush \u2014 a significant problem for Jacksonville's offensive line, which ranks 16th in sack rate allowed (6.19%) and 24th in havoc allowed (15.9% of plays disrupted). On the flip side, Denver's offensive line ranks 2nd in sack rate allowed (3.41%), and Jacksonville's pass rush ranks 30th in sack rate (4.43%), so the Broncos' protection should hold up well. The run game is more balanced \u2014 Jacksonville's rushing EPA per play (0.031) beats Denver's (-0.042), but Denver's defensive line yards allowed (2.66 per rush) is among the best in the league, limiting Jacksonville's ability to establish the ground game.",
+"explosive_play_edge": "This category is essentially a wash, with the model assigning a near-zero edge. Denver's defense is the league's best at limiting explosive plays (defined as 10+ yard rushes or 20+ yard passes), allowing them on just 6.34% of opponent plays \u2014 ranking 1st \u2014 while Jacksonville's defense allows them on 7.43% of plays (5th). Jacksonville's offense generates explosives on 8.58% of plays (13th) and Denver's on 8.11% (20th), so neither offense is particularly explosive. The net effect is that Denver's defense caps Jacksonville's big-play ceiling, while Jacksonville's defense is also solid in this area, pointing toward a game where scoring comes through sustained drives rather than chunk plays.",
+"third_down_red_zone": "Denver holds a clear edge on both third downs and in the red zone. The Broncos convert 42.0% of their own third downs (8th) while holding opponents to just 35.7% (5th), compared to Jacksonville converting 40.9% (14th) and allowing 42.0% (23rd) \u2014 a gap that compounds over a full game's worth of possessions. In the red zone, Denver allows touchdowns on only 49.4% of opponent trips (4th), while Jacksonville's defense surrenders touchdowns on 63.0% of trips (23rd), meaning when the Jaguars do reach scoring range, Denver is well-positioned to hold them to field goals. Jacksonville's own red-zone offense is strong at 70.5% (3rd), but it runs into one of the better red-zone defenses in the league.",
+"roster_talent": "Insufficient reliable data on roster talent ratings is available for either team. What the package does show is a significant continuity advantage for Denver: the Broncos carry a returning production index of 0.97 (97% of production returning) versus Jacksonville's 0.82, with Denver returning 98% of receiving production, 92% of rushing production, and 92% of defensive production. Both teams have 85 offensive line starts returning. Denver's higher continuity contributes 0.13 points of model value and suggests a more cohesive unit heading into Week 2.",
+"recent_form": "Insufficient reliable data on recent form trends is available, as both teams have zero games played in the current season and the form shift inputs show 0.0 for each side. The model treats this as a neutral factor. All metrics in this package are blended opponent-adjusted figures carried over from prior sample data, and all are flagged as low-sample, so recent trajectory cannot be assessed.",
+"market_movement": "The spread has held at Denver -3.0 since the first market snapshot with no movement across 51 snapshots on five books, and the total has similarly held at 43.5 with zero movement. The moneyline sits at Denver -155 / Jacksonville +130, implying a no-vig home win probability of 58.3%, nearly identical to the model's 59.0%. There is no steam or book disagreement noted. Public ticket and money percentages are unavailable, so no conclusions about public or sharp positioning can be drawn.",
+"key_advantages": [
+"Denver defensive front: ranks 1st in sack rate and 1st in pressure without blitzing, directly attacking Jacksonville's below-average pass protection",
+"Denver red-zone defense: allows touchdowns on only 49.4% of opponent trips (4th) versus Jacksonville's 63.0% allowed rate (23rd)",
+"Denver defensive success rate: holds opponents to a successful play on just 37.8% of snaps, 2nd in the league, limiting Jacksonville's efficient offense",
+"Denver rest and continuity: Broncos have a 7-day rest week versus Jacksonville's short week, and return 97% of production versus Jacksonville's 82%"
+],
+"key_concerns": [
+"Jacksonville's overall offense outgrades Denver's, ranking 6th in scoring and posting a higher EPA per play, meaning the Jaguars have the tools to move the ball",
+"Jacksonville's turnover margin (+0.5 per game, 6th) versus Denver's neutral margin (0.0) is a meaningful edge that contributes -0.28 points against Denver in the model",
+"Denver's rushing offense is negative in EPA per play (-0.042, 13th), limiting their ability to control the clock and complement the passing game",
+"Jacksonville's red-zone offense converts touchdowns on 70.5% of trips (3rd), the highest-quality threat Denver's red-zone defense will face"
+],
+"expected_game_script": "Denver's elite defensive front sets the tone early, generating consistent pressure on Trevor Lawrence without needing to blitz \u2014 a dynamic that forces Jacksonville into longer developing plays and puts their below-average offensive line under stress. Jacksonville's offense is capable enough to sustain some drives, particularly through the passing game where Lawrence averages 6.82 yards per attempt, but Denver's 2nd-ranked defensive success rate should keep the Jaguars from stringing together the efficient, sustained possessions they prefer. On the other side, Bo Nix and the Denver offense operate behind one of the better-protected quarterbacks in the league (2nd in sack rate allowed), giving the Broncos time to work through their pass-heavy neutral-script approach (63.0% pass rate, 3rd). Denver's offense is not explosive \u2014 ranking 20th in explosive play rate \u2014 so scoring likely comes through methodical drives, and their 42.0% third-down conversion rate (8th) should keep enough chains moving. The red zone becomes the critical battleground: Jacksonville's 70.5% red-zone touchdown rate is elite, but Denver's defense has held opponents to 49.4%, suggesting the Jaguars may settle for field goals on at least one or two trips inside the 20. The final score projects close \u2014 Denver 24, Jacksonville 21 \u2014 with the Broncos' defensive infrastructure and home field providing just enough margin in a game that stays within a score throughout the fourth quarter."
+},
+"validation": {
+"numbers_checked": 116,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:41:25.306863+00:00",
+"tokens_in": 11208,
+"tokens_out": 2100,
+"stop_reason": "end_turn",
+"raw_text": null
+}

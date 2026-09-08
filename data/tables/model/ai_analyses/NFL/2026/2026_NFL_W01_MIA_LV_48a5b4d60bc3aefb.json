@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W01_MIA_LV_48a5b4d60bc3aefb",
+"game_id": "2026_NFL_W01_MIA_LV",
+"inputs_hash": "48a5b4d60bc3aefb",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Miami winning 21.95 to 20.97, a margin of roughly one point in favor of the Dolphins despite playing on the road. The projected total is 42.92, about 1.4 points above the current market total of 41.5. Miami's win probability sits at 43.2% per the model, meaning Las Vegas is still the slight favorite when home-field advantage is factored in. The model's implied margin differs from the market spread by 4.5 points in Miami's favor, a notable divergence worth tracking.",
+"offensive_matchup": "Miami's offense grades out meaningfully better than Las Vegas's in nearly every efficiency category. The Dolphins post an EPA per play (a measure of how many expected points each play adds or subtracts) of -0.025, ranking 24th, while the Raiders sit dead last at -0.228. Las Vegas's offensive success rate \u2014 the share of plays that generate positive expected points \u2014 is just 37.4%, ranking 31st, and they convert red-zone trips into touchdowns only 48.6% of the time, ranking 28th. Miami's defense is far from elite, ranking 26th in EPA allowed per play, but it still represents a favorable matchup against one of the league's least productive offenses.",
+"quarterback_edge": "Both quarterbacks are flagged as new starters at their respective teams, which introduces meaningful uncertainty. Kirk Cousins brings a much larger sample \u2014 65 career games with 10-plus attempts, 2,269 career attempts, and a career EPA per dropback of 0.052 \u2014 giving him a clear experience edge over Malik Willis, who has just 8 such games and a career EPA per dropback of 0.025. Willis does show a higher career yards-per-attempt (8.47 vs. 7.32), suggesting big-play capability when he does throw. The model gives Las Vegas a slight edge here worth about 0.14 points, reflecting Cousins's deeper track record despite both men being new to their systems.",
+"trenches": "The offensive line matchup is one of the sharpest edges in this game, favoring Miami by three points on the edge scale. Las Vegas's offensive line is ranked last (32nd) in both line yards per rush and havoc allowed \u2014 the rate at which the offense suffers tackles for loss, sacks, or turnovers \u2014 while Miami's defensive front ranks 12th in havoc rate and 5th in line yards allowed. On the flip side, Miami's offensive line ranks 21st in sack rate allowed against a Raiders pass rush that ranks 13th in sack rate, so the Dolphins' protection is not without vulnerability. The run-blocking disparity is the most decisive factor: Las Vegas's line generates just 2.30 line yards per rush (last in the league) against a Miami run defense that ranks 12th in rushing EPA allowed.",
+"explosive_play_edge": "Miami holds a clear advantage in the big-play dimension. The Dolphins generate explosive plays \u2014 defined as rushes of 10-plus yards or passes of 20-plus yards \u2014 on 10.3% of their plays, ranking 5th in the league, while Las Vegas produces them on just 7.4% of plays, ranking 25th. Las Vegas's defense allows explosive plays at a 7.98% rate (13th), which is actually better than Miami's defense at 9.37% (22nd), meaning the Raiders' defense is better equipped to limit chunk plays than Miami's. The net result is a two-point edge favoring Miami in this category, worth roughly 0.23 points toward the Dolphins.",
+"third_down_red_zone": "Third down is a significant weakness for both teams, but Las Vegas is in worse shape on both sides of the ball. The Raiders convert just 33.8% of their own third downs (28th) and allow opponents to convert 46.7% (31st), creating a scenario where Miami's offense \u2014 despite its own modest 34.9% conversion rate (27th) \u2014 could sustain drives more easily than usual. In the red zone, Miami scores touchdowns on 60.9% of trips (18th) against a Raiders defense that allows touchdowns on 54.8% of red-zone visits (9th, meaning they are actually decent here). Las Vegas's own red-zone offense is a liability at 48.6% (28th), and their 2.20 points per scoring opportunity ranks last in the league.",
+"roster_talent": "Insufficient reliable data \u2014 talent ratings are not modeled for NFL teams in this package. What is available is returning production data: Las Vegas returns 46% of total production from prior seasons versus Miami's 39%, with the Raiders showing stronger continuity on the offensive skill side (79% receiving production returning) and defense (64%). Miami's rushing production continuity is high at 92%, suggesting their backfield is a stable carry-over. Both teams changed head coaches, which adds uncertainty to how returning talent translates into on-field production in 2026.",
+"recent_form": "This is Week 1 of the 2026 season, so neither team has played a game yet. No recent form data exists for either the Dolphins or the Raiders. The model's recent form input registers zero shift for both teams, contributing nothing to the projected margin. All efficiency metrics carry a low-sample flag, meaning they are drawn from prior-season data blended with opponent adjustments rather than 2026 game results.",
+"market_movement": "The spread has held steady at Las Vegas -3.5 since the first recorded snapshot on DraftKings, showing no movement across 162 snapshots on nine books. The total, however, has moved from 40.5 to 41.5, a one-point increase that crossed the key number of 41. The market's no-vig implied win probability for Las Vegas is 62.3%, compared to the model's 43.2% for Las Vegas \u2014 a gap of roughly 19 percentage points. Public ticket and money percentages are unavailable, so the cause of the total movement cannot be attributed to any specific betting group.",
+"key_advantages": [
+"Miami's offensive line and run game face a Raiders defensive front that is far superior, but Miami's own line outperforms Las Vegas's last-ranked unit in pass protection and run blocking",
+"Miami's explosive play rate (10.3%, 5th) gives Willis big-play upside against a Raiders defense that allows chunk plays at a middling rate",
+"Las Vegas's third-down defense (46.7% allowed, 31st) gives Miami's offense extended possession opportunities",
+"Miami's red-zone touchdown rate (60.9%) is meaningfully higher than Las Vegas's (48.6%), favoring the Dolphins when drives reach scoring range"
+],
+"key_concerns": [
+"Malik Willis has just 8 career games with meaningful attempts and is flagged as a new-team starter, creating significant uncertainty at the most important position",
+"Miami's defensive success rate allowed (48.9%, 31st) and EPA per play allowed (0.072, 26th) suggest the Dolphins defense can be exploited even by a below-average offense",
+"Las Vegas's defensive front ranks 5th in line yards allowed and 12th in havoc rate, which could neutralize Miami's run game despite the Dolphins' 92% rushing production continuity",
+"Both teams carry low-sample data flags with zero 2026 games played, reducing confidence in all efficiency-based projections"
+],
+"expected_game_script": "With both offenses ranking in the bottom third of the league in EPA per play, this game is likely to be a low-efficiency, grind-it-out affair rather than a shootout, even with a projected total near 43. Miami figures to lean heavily on play-action \u2014 they ranked 1st in play-action rate in prior data \u2014 to create downfield opportunities for Willis, whose 8.47 career yards per attempt suggests he can threaten vertically when given clean looks. Las Vegas, operating with the league's worst offensive line by line yards and havoc allowed, will struggle to establish any run game against a Miami front that ranks 12th in rushing EPA allowed, likely forcing Cousins into a pass-heavy script that his 61% neutral-script pass rate already anticipates. The Raiders' third-down defense (allowing 46.7% conversions, 31st) could allow Miami to sustain drives, but the Dolphins' own third-down offense (34.9%, 27th) limits how often those opportunities are cashed in. Las Vegas's best path to winning is Cousins leveraging his experience advantage to manage the game efficiently and the Raiders' defensive front \u2014 which ranks 12th in havoc rate \u2014 creating enough disruption to keep Miami's offense off-rhythm. The model sees this as essentially a pick'em on a neutral field, with home-field advantage at Allegiant Stadium providing the margin that keeps Las Vegas as the market favorite despite the Dolphins holding edges in most efficiency categories."
+},
+"validation": {
+"numbers_checked": 97,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:36:53.957103+00:00",
+"tokens_in": 11378,
+"tokens_out": 2065,
+"stop_reason": "end_turn",
+"raw_text": null
+}

@@ -1,0 +1,47 @@
+{
+"analysis_id": "2026_NFL_W02_CAR_ATL_9dbb9794da666894",
+"game_id": "2026_NFL_W02_CAR_ATL",
+"inputs_hash": "9dbb9794da666894",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Atlanta to win 25.05 to 18.77, a home margin of 6.28 points, with a projected total of 43.82. Atlanta's win probability sits at 69.03%. The market currently has Atlanta as a 1.5-point home favorite with a total of 44.5, meaning the model sees the Falcons as roughly 4.8 points more valuable than the market implies.",
+"offensive_matchup": "Atlanta's offense holds a meaningful edge in EPA per play (expected points added, measuring value generated on each snap) at +0.0044 versus Carolina's -0.0842, ranking 17th versus 26th. The Falcons also convert at a 44.43% success rate (share of plays generating positive EPA) compared to Carolina's 41.45%, and their explosive play rate of 9.96% (plays gaining 10+ rushing or 20+ passing yards) ranks 8th versus the Panthers' 7.92% at 22nd. Carolina's pass defense allows a passing EPA of +0.1137 per play, ranking 20th, which sets up Atlanta's passing attack well. The Panthers' defense also surrenders third-down conversions at a 46.15% rate, the worst mark in the league at rank 30, compounding the offensive advantage for Atlanta.",
+"quarterback_edge": "Atlanta is projected to start Tua Tagovailoa (flagged as a new-team starter), who carries a career EPA per dropback of +0.13 across 68 career games and 2,173 attempts, with a career yards-per-attempt of 7.62. Carolina is projected to start Bryce Young (returning starter), who holds a career EPA per dropback of -0.145 across 45 career games and 1,431 attempts, with a career yards-per-attempt of 5.98. This quarterback edge is the single largest driver in the model, contributing 1.45 points toward Atlanta. Both projections carry a confidence of 0.80, and neither quarterback has recorded attempts this season, so all figures are career-based.",
+"trenches": "Atlanta's offensive line is a significant advantage, ranking 5th in sack rate allowed (4.44% of dropbacks) against a Carolina pass rush that ranks 27th in sack rate generated (5.12%). Atlanta also allows pressure on just 19.45% of dropbacks (rank 11) while Carolina's defensive front generates pressure on only 17.66% of dropbacks without the blitz (rank 30), meaning Atlanta's line should keep Tagovailoa clean. In the run game, both teams post similar offensive line yards (Atlanta 3.03, Carolina 3.04), but Carolina's run defense allows 3.06 line yards per rush (rank 26), giving Atlanta a modest ground-game edge as well. The offensive line edge contributes 0.81 points toward Atlanta in the model.",
+"explosive_play_edge": "Atlanta generates explosive plays on 9.96% of snaps (rank 8) while Carolina's defense allows them on 7.84% of opponent plays (rank 9), a rate that is actually one of the better marks in the league. Carolina's offense produces explosives on just 7.92% of plays (rank 22), and Atlanta's defense allows them on 8.19% (rank 14). The net result slightly favors Atlanta, contributing 0.15 points in the model, but Carolina's ability to limit big plays defensively is one of the few areas where the Panthers show above-average performance.",
+"third_down_red_zone": "Carolina's third-down defense is the weakest in the model at rank 30, allowing opponents to convert 46.15% of third downs, while Atlanta's own third-down offense converts at just 33.66% (rank 29), creating a matchup where both units struggle but Carolina's defense is the more exploitable side. In the red zone, Atlanta scores touchdowns on 61.82% of trips (rank 16) versus Carolina's defense, which holds opponents to touchdowns on 54.25% of red-zone visits (rank 8, one of the better marks). Atlanta's defense allows red-zone touchdowns on 62.04% of trips (rank 22), while Carolina's offense converts at only 54.17% (rank 23) and generates just 2.39 points per scoring opportunity (rank 28). The red-zone edge leans Atlanta but is modest at 0.06 model points.",
+"roster_talent": "Talent ratings are unavailable for both teams. Carolina shows strong roster continuity at 88% with high returning production overall (77% total, 93% passing, 84% receiving), suggesting the Panthers return most of their key contributors. Atlanta's continuity index is lower at 67% with 64% total returning production and notably only 51% returning passing production, reflecting significant turnover in the passing game. The returning production edge favors Carolina and contributes -0.40 points against Atlanta in the model.",
+"recent_form": "Both teams have played zero games in the 2026 season, so no in-season form data is available. The model's recent form component shows no shift for either team, contributing zero points in either direction. All metrics carry a low-sample flag and are derived from prior-season blended data.",
+"market_movement": "The spread has held at Atlanta -1.5 since the first market snapshot on DraftKings, with zero movement in either the spread or total across 51 snapshots covering five books. The total has also remained static at 44.5. There is no book disagreement on the spread. Public ticket and money percentages are unavailable, so no conclusions about public or sharp positioning can be drawn.",
+"key_advantages": [
+"Atlanta quarterback Tua Tagovailoa holds a career EPA per dropback of +0.13 versus Bryce Young's -0.145, the largest single edge in the model",
+"Atlanta's offensive line allows sacks on just 4.44% of dropbacks (rank 5) against a Carolina pass rush ranked 27th in sack rate",
+"Carolina's third-down defense converts at a 46.15% rate allowed, the worst mark in the league (rank 30), giving Atlanta sustained drive opportunities",
+"Atlanta's defensive havoc rate of 18.62% ranks 1st in the league, creating disruption potential against Carolina's offense"
+],
+"key_concerns": [
+"Atlanta's passing returning production is only 51%, the lowest of any tracked unit, introducing uncertainty around the new-team quarterback situation",
+"Atlanta's red-zone defense allows touchdowns on 62.04% of opponent trips (rank 22), leaving points on the field if Carolina reaches scoring position",
+"Carolina's defense limits explosive plays on just 7.84% of opponent snaps (rank 9), potentially capping Atlanta's big-play upside",
+"All metrics carry a low-sample flag with zero games played, reducing confidence in the blended projections"
+],
+"expected_game_script": "Atlanta should control the line of scrimmage early, with a protected quarterback and a defense generating havoc on nearly 19% of plays, pressuring Bryce Young into negative-EPA situations. Carolina's offense, ranked 26th in EPA per play at -0.0842, is likely to struggle sustaining drives against a Falcons defense that holds opponents to a 43.83% success rate. If Atlanta builds a lead, Carolina's pass-down success rate of 31.68% (versus Atlanta's 41.32% allowed) suggests the Panthers will have difficulty mounting efficient comeback drives. Atlanta's explosive play rate of 9.96% gives them the ability to break open drives even when the run game stalls, while Carolina's defense has shown it can limit big plays, keeping the game from becoming a blowout. The Panthers' best path involves their run defense holding Atlanta's ground game in check (Carolina's rushing EPA allowed of -0.0056 is near neutral) and forcing Tagovailoa into a new-team environment with limited returning passing production. Turnovers could be a factor, as Atlanta carries a +0.29 turnover margin per game (rank 8) versus Carolina's -0.17 (rank 20). The most likely outcome is a moderate Atlanta win in the 6-point range, with the game remaining competitive into the second half before the Falcons' quarterback and pass-defense advantages pull away."
+},
+"validation": {
+"numbers_checked": 110,
+"violations": [],
+"confident_about_unavailable": [
+"quarterback_edge"
+],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:39:27.561405+00:00",
+"tokens_in": 11261,
+"tokens_out": 1945,
+"stop_reason": "end_turn",
+"raw_text": null
+}

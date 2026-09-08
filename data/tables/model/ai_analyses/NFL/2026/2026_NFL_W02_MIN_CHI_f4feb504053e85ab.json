@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W02_MIN_CHI_f4feb504053e85ab",
+"game_id": "2026_NFL_W02_MIN_CHI",
+"inputs_hash": "f4feb504053e85ab",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Chicago to win at home 23.9-20.4, a margin of 3.5 points in favor of the Bears. The projected total of 44.3 sits about 1.2 points below the market total of 45.5. Chicago's win probability is 59.5%, reflecting a modest but real home-field advantage. The market spread of Bears -3.5 aligns almost exactly with the model's projection, with less than a tenth of a point of difference.",
+"offensive_matchup": "Chicago's offense holds a significant edge over Minnesota's defense in the passing game, but the Vikings flip that dynamic on defense. The Bears rank 7th in offensive EPA per play (a measure of how many expected points each play adds, positive is better) at +0.085, while Minnesota's offense ranks 27th at -0.110. However, Minnesota's defense ranks 4th in defensive EPA per play at -0.078, meaning they actively suppress opposing offenses, while Chicago's defense ranks only 18th at +0.030, meaning opponents have been gaining value against them. The Bears' rushing attack (8th in rushing EPA at -0.002, nearly neutral) will test a Vikings run defense that ranks 13th. Minnesota's offense converting just 42.4% of plays successfully (22nd) against a Bears defense allowing a 46.2% opponent success rate (23rd) suggests the Vikings will struggle to sustain drives.",
+"quarterback_edge": "Insufficient reliable data on current-season quarterback performance is available, as both teams have played zero games in 2026. The package identifies Kyler Murray as Minnesota's starter with a career EPA per dropback of +0.027 and a career yards-per-attempt of 6.86 across 55 games, while Caleb Williams is Chicago's starter with a career EPA per dropback of essentially 0.00 and 6.6 yards per attempt across 36 games. Murray's career efficiency gives him a slight edge in the quarterback index, and the model credits Minnesota a small advantage here worth about 0.15 points toward the Vikings. Both quarterbacks are flagged as low-sample for 2026, so this edge is modest.",
+"trenches": "The offensive line matchup is a critical story: Minnesota's pass rush is elite (2nd in pressure rate at 29.3%, 1st in blitz rate at 51.7%), while Chicago's pass protection is the best in the league (1st in sack rate allowed at 3.4%). The Bears' offensive line has allowed havoc on only 11.9% of plays (3rd-best), compared to Minnesota's offensive line allowing havoc on 17.9% of plays (30th). That means Chicago's blockers should largely neutralize Minnesota's pass rush, keeping their quarterback clean. On the other side, Chicago's run-blocking grades out 4th in line yards (3.19 per rush), but their run defense allows 3.25 line yards per rush (31st), so Minnesota's ground game could find some room if they can get it going. The defensive front edge favors Minnesota overall, but Chicago's superior pass protection limits how much that matters.",
+"explosive_play_edge": "This matchup is roughly neutral in the explosive play dimension, with the model assigning zero net points to either side. Chicago generates explosive plays (10+ yard rushes or 20+ yard passes) on 9.8% of plays (9th), but their defense allows them at a 10.5% rate (28th), making them both a threat and a vulnerability. Minnesota limits explosive plays allowed at a 7.5% rate (6th), which should cap Chicago's big-play ceiling, but the Vikings' own offense generates explosives on only 8.1% of plays (21st). The net effect is a wash, though Minnesota's defensive discipline in limiting chunk plays is a genuine asset.",
+"third_down_red_zone": "Third down is a major Chicago advantage: the Bears convert at a 43.6% rate (6th) while Minnesota's offense converts at just 32.3% (dead last, 32nd). Minnesota's defense is elite at holding opponents to a 34.5% conversion rate (2nd), but Chicago's offense converting at 43.6% against that stingy defense will be a key battle. In the red zone, the edge flips to Minnesota's defense: the Vikings allow touchdowns on only 51.0% of opponent red-zone trips (5th), while Chicago's defense surrenders touchdowns on 67.3% of red-zone trips (29th). Minnesota's own red-zone offense converts at just 54.0% (24th), so both teams face real limitations scoring touchdowns once they get inside the 20.",
+"roster_talent": "Insufficient reliable data on roster talent ratings is available for either team. On returning production, Chicago holds a meaningful continuity edge: the Bears return 76% of total production with 100% of passing production and 96% of rushing production back, while their offensive line logged 68 returning starts. Minnesota returns 86% of total production with 100% of passing production, but their defensive returning production is lower at 74%, and their offensive line has 69 returning starts. Chicago's higher roster continuity index (0.88 vs. Minnesota's 0.78) gives the Bears a familiarity advantage worth about 0.19 points in the model.",
+"recent_form": "Insufficient reliable data on recent form trends is available, as both teams have played zero games in the 2026 season. The model assigns no form-shift adjustment to either side, reflecting a clean slate entering Week 2. All metrics in this package are blended opponent-adjusted figures carried over from prior history, and all are flagged as low-sample for the current season.",
+"market_movement": "The spread has held at Chicago -3.5 since the first market snapshot, with zero movement across 40 snapshots on five books. The total has similarly held at 45.5 with no movement. The moneyline sits at Bears -192 / Vikings +160, implying a no-vig home win probability of 63.1%. No steam or book disagreement has been detected. Public ticket and money percentages are unavailable, so no conclusions about betting-side composition can be drawn.",
+"key_advantages": [
+"Minnesota's defense is elite at limiting passing EPA (3rd, -0.111 per play) and third-down conversions (2nd, 34.5% allowed), giving them a real chance to stifle Chicago's passing game",
+"Chicago's offensive line is the best in the league at pass protection (1st in sack rate allowed, 3rd in havoc allowed), neutralizing Minnesota's top-ranked pass rush",
+"Chicago holds a large turnover margin edge (+0.89 per game, 1st) versus Minnesota's negative margin (-0.41, 27th), the single biggest point contributor in the model",
+"Chicago's rushing attack (8th in rushing EPA) targets a Minnesota run defense that is only 13th, giving the Bears a viable ground game to complement play-action"
+],
+"key_concerns": [
+"Minnesota's offense ranks 32nd in third-down conversion rate (32.3%) and 27th in offensive EPA per play, raising serious questions about their ability to sustain drives",
+"Chicago's defense allows touchdowns on 67.3% of red-zone trips (29th) and gives up explosive plays on 10.5% of opponent plays (28th), leaving them vulnerable when opponents get into scoring position",
+"Minnesota's offensive line allows havoc on 17.9% of plays (30th) and pressure on 25.9% of dropbacks (29th), which could make life very difficult for Kyler Murray",
+"Both teams have played zero 2026 games, so all metrics carry a low-sample flag and the model's data quality score is 0.846, meaning some uncertainty remains"
+],
+"expected_game_script": "Chicago should control the pace early, as the Bears run the most plays per game in the league (66.1, 1st) at the fastest tempo (29.8 seconds per play, 4th), while Minnesota operates at a slower pace (55.5 plays per game, 30th). The Bears' quick-strike offense will look to exploit Minnesota's 30th-ranked havoc-allowed rate on offense, though Minnesota's defense will counter with the league's highest blitz rate (51.7%) and elite pressure without the blitz (2nd). Minnesota's offense will likely struggle to move the chains consistently given their last-place third-down conversion rate, putting pressure on their defense to keep the game close. Chicago's play-action game (2nd in play-action rate at 32.1%) should create opportunities against Minnesota's blitz-heavy scheme, as the Vikings' pressure-without-blitz rate of 18.1% (2nd) is less effective when play-action freezes linebackers. The red zone becomes the pivotal battleground: if Minnesota's defense (5th in red-zone TD rate allowed) can hold Chicago to field goals, and if the Vikings can convert their limited scoring chances, the game stays within a possession. The most likely outcome is a Bears win in the 23-20 range, with Minnesota keeping it competitive through defensive stops but unable to generate enough offense to overcome Chicago's turnover and home-field advantages."
+},
+"validation": {
+"numbers_checked": 130,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:38:43.232821+00:00",
+"tokens_in": 11235,
+"tokens_out": 2146,
+"stop_reason": "end_turn",
+"raw_text": null
+}

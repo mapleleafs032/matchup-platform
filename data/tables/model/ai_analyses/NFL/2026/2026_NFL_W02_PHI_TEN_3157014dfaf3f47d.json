@@ -1,0 +1,47 @@
+{
+"analysis_id": "2026_NFL_W02_PHI_TEN_3157014dfaf3f47d",
+"game_id": "2026_NFL_W02_PHI_TEN",
+"inputs_hash": "3157014dfaf3f47d",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Philadelphia Eagles 24.3, Tennessee Titans 17.93, a margin of 6.37 points in favor of the Eagles. The projected total is 42.23, sitting just 0.27 points below the market total of 42.5. Philadelphia's win probability is 74.42% per the model, compared to the market's implied 65.75% for the Eagles.",
+"offensive_matchup": "Philadelphia's offense ranks 22nd in EPA per play (expected points added, measuring value generated on each snap) at -0.0088, which is mediocre but far superior to Tennessee's 28th-ranked -0.1109. The Eagles' offensive success rate of 41.97% (share of plays generating positive EPA) runs into a Titans defense that allows a 46.23% success rate, ranking 24th \u2014 meaning Tennessee's defense has struggled to stop opponents from moving the chains consistently. Philadelphia's red zone efficiency is a standout, converting 72.22% of red zone trips into touchdowns (2nd in the league), while Tennessee's defense allows touchdowns on 66.42% of opponent red zone visits (26th), creating a significant scoring edge when the Eagles reach the 20.",
+"quarterback_edge": "Jalen Hurts carries a career EPA per dropback of +0.069 across 87 games and 2,540 attempts, with a career yards per attempt of 7.41. Tennessee's Cam Ward has a career EPA per dropback of -0.192 across 16 games and 537 attempts, with a career yards per attempt of 5.9. This quarterback edge is the single largest identifiable factor in the model's point allocation, contributing 1.38 points toward Philadelphia, and the gap in experience and efficiency is substantial.",
+"trenches": "The offensive line matchup is essentially neutral (edge score 0), but the details matter: Tennessee's offensive line allows pressure on 27.86% of dropbacks (ranked 30th, worst in the league), while Philadelphia's defensive front generates pressure on 25.75% of dropbacks without needing to blitz heavily (pressure without blitz rate of 14.40%, ranked 9th). Tennessee's run-blocking line yards of 2.85 per rush (16th) face a Philadelphia run defense that allows only 3.02 line yards per rush (25th allowed, meaning Philadelphia's run defense is actually below average in this metric). The defensive front edge scores +1 for Tennessee, driven by their ability to generate havoc (disruptive plays like sacks, TFLs, and turnovers) at a 15.96% rate (7th), which could create problems for Philadelphia's offense that allows havoc on 15.07% of its plays.",
+"explosive_play_edge": "Philadelphia holds a clear edge in the explosive play category (edge score -3 favoring away). The Eagles limit opponents to explosive plays (10-plus rushing or 20-plus passing yards) on just 7.98% of plays (12th), while Tennessee's defense allows them on 9.79% of plays (23rd). Both offenses generate explosives at similar rates \u2014 Eagles at 8.48% and Titans at 8.57% \u2014 but Philadelphia's superior defense against big plays is the differentiator, limiting Tennessee's ability to manufacture chunk yardage.",
+"third_down_red_zone": "Tennessee's third-down offense is the worst in the league at 32.76% conversion rate (31st), while Philadelphia converts at 37.67% (24th) \u2014 both units struggle, but the gap is meaningful. Philadelphia's defense allows third-down conversions at a 41.95% rate (22nd), while Tennessee's defense allows 41.00% (19th), so neither defense is elite at getting off the field. The red zone is where this game could be decided: Philadelphia's 72.22% touchdown rate in the red zone against Tennessee's 66.42% allowed rate creates a compounding advantage, while Tennessee's offense converts only 51.52% of red zone trips into touchdowns (25th) against a Philadelphia defense that allows touchdowns on 57.65% of opponent red zone visits (13th).",
+"roster_talent": "Insufficient reliable data on individual talent grades. However, roster continuity tells a meaningful story: Philadelphia returns 93% of its roster continuity index with no head coach change, while Tennessee sits at just 66% continuity with a new head coach. Philadelphia's returning production index is 0.928 versus Tennessee's 0.655, with the Titans returning only 46% of their offensive line starts compared to Philadelphia's 78 \u2014 a significant structural disadvantage heading into the season.",
+"recent_form": "Both teams have played zero games in the 2026 season, so recent form data reflects prior-season blended metrics only. The model assigns a neutral recent form edge (0 points) for both sides, as no in-season game results are available to measure momentum or trajectory.",
+"market_movement": "The spread has held at Tennessee +4.5 since the first market snapshot on DraftKings, with zero movement across 51 snapshots on 5 books. The total has similarly held at 42.5 with no movement. The model's projected margin of -6.37 (Eagles by 6.37) differs from the market spread of Eagles -4.5 by 1.87 points in Philadelphia's favor, but no line movement has occurred to confirm or deny directional pressure.",
+"key_advantages": [
+"Philadelphia's red zone touchdown rate (72.22%, 2nd) against Tennessee's porous red zone defense (66.42% allowed, 26th)",
+"Jalen Hurts' career EPA per dropback (+0.069) vastly outpaces Cam Ward's (-0.192) with far more experience",
+"Eagles' roster continuity (93%) and returning production (0.928) versus Titans' rebuilding roster (66% continuity, new head coach)",
+"Philadelphia's defensive EPA per play (-0.0916, 3rd) dominates Tennessee's offensive EPA per play (-0.1109, 28th)"
+],
+"key_concerns": [
+"Philadelphia's offensive line allows pressure on 18.30% of dropbacks (4th best) but their run blocking line yards rank 26th (2.71), limiting the ground game",
+"Tennessee's defensive front generates havoc at 15.96% (7th) and pressure without blitz at 14.40% (9th), capable of disrupting Hurts",
+"Philadelphia's third-down offense (37.67%, 24th) and overall offensive success rate (41.97%, 24th) suggest the Eagles can stall on drives",
+"Home field advantage adds 1.5 points to Tennessee, partially offsetting Philadelphia's structural edges"
+],
+"expected_game_script": "Philadelphia figures to control the line of scrimmage defensively, holding Tennessee's struggling offense (28th in EPA per play, 30th in success rate) to limited chunk gains and forcing Cam Ward into obvious passing situations on third down, where the Titans convert at only 32.76%. Tennessee's defensive front, generating pressure without blitz at a 14.40% rate, will test Hurts early, but Philadelphia's offensive line \u2014 which allows pressure on only 18.30% of dropbacks (4th best) \u2014 should provide enough time for the passing game to function. The Eagles' superior red zone efficiency becomes the decisive factor: when Philadelphia reaches the 20, their 72.22% touchdown conversion rate against Tennessee's 66.42% allowed rate means they are likely to cash in on scoring opportunities that the Titans' offense cannot match. Tennessee's offense may generate some explosive plays at an 8.57% rate against a Philadelphia defense that is not immune (allowing explosives on 7.98% of plays), keeping the game from becoming a complete blowout. A turnover margin edge for Philadelphia (0.5556 per game versus Tennessee's -0.3529) adds another layer of risk for the Titans. The model sees a final score around Eagles 24, Titans 18, with Philadelphia winning a controlled, lower-scoring road game driven by defensive efficiency and red zone execution rather than offensive fireworks."
+},
+"validation": {
+"numbers_checked": 123,
+"violations": [],
+"confident_about_unavailable": [
+"quarterback_edge"
+],
+"ok": false
+},
+"validation_failed": true,
+"attempts": 2,
+"generated_at": "2026-09-08T17:42:07.672761+00:00",
+"tokens_in": 11275,
+"tokens_out": 1895,
+"stop_reason": "end_turn",
+"raw_text": null
+}

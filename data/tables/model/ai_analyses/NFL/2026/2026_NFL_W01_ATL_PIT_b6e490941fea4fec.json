@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W01_ATL_PIT_b6e490941fea4fec",
+"game_id": "2026_NFL_W01_ATL_PIT",
+"inputs_hash": "b6e490941fea4fec",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Pittsburgh to win 23.7-21.5, a home margin of 2.2 points. The win probability sits at 54.9% for the Steelers. The projected total of 45.2 sits 2.7 points above the market number of 42.5, suggesting the model sees more scoring than the current line implies. The market has Pittsburgh favored by 3.5, while the model's margin is 1.3 points lighter than that, leaning slightly toward Atlanta on the spread.",
+"offensive_matchup": "Both offenses grade as middling units, but they attack differently. Pittsburgh's rushing attack is a genuine strength, ranking 4th in offensive EPA per rush (expected points added per rushing play, measuring value created above average), at +0.047 per carry, while Atlanta's run defense grades poorly, ranking 21st in defensive rushing EPA allowed. Atlanta's passing offense (18th in offensive passing EPA at +0.042 per dropback) faces a Pittsburgh pass defense that has allowed a positive 0.044 EPA per pass play, ranking only 16th, so there is room for Tua Tagovailoa to find openings. The bigger structural mismatch is Pittsburgh's ground game attacking Atlanta's soft run defense, which is the single largest point-swing factor in the model at +0.61 toward Pittsburgh.",
+"quarterback_edge": "Tua Tagovailoa carries a career EPA per dropback of +0.130, translating to a QB index of 1.30, meaningfully ahead of Aaron Rodgers' career mark of +0.038 and index of 0.38. Tagovailoa also edges Rodgers in career yards per attempt (7.62 vs. 6.95) and completion percentage (68.2% vs. 65.3%). The model awards Atlanta a two-point edge here worth -0.49 points toward Pittsburgh. The caveat is that Tagovailoa is flagged as a new-team starter, introducing execution uncertainty in Week 1, while Rodgers is a returning starter in Pittsburgh's system.",
+"trenches": "Pittsburgh holds a one-point edge in the offensive line category, driven primarily by its run-blocking advantage over Atlanta's run defense. The Steelers rank 4th in offensive rushing EPA and their offensive line generates 2.94 line yards per rush (a Football Outsiders metric crediting yards to the line before a back contributes), while Atlanta's defense allows 2.99 line yards, ranking 23rd. On the other side, Atlanta's defensive front earns a one-point edge, with the Falcons ranking 4th in sack rate (9.1% of dropbacks) and 1st in overall defensive havoc rate (18.6% of plays producing a disruptive event like a sack, TFL, or turnover). Pittsburgh's pass protection is legitimately strong, ranking 2nd in pressure rate allowed at 16.5%, which partially neutralizes Atlanta's pass rush.",
+"explosive_play_edge": "Atlanta holds a two-point edge in the explosive play category. The Falcons generate explosive plays (10-plus yard runs or 20-plus yard passes) on 9.96% of their offensive snaps, ranking 8th, while Pittsburgh's offense produces them on only 8.23% of plays, ranking 19th. Defensively, Atlanta allows explosive plays on just 8.19% of opponent snaps (14th) versus Pittsburgh allowing them on 8.79% (18th). This edge matters because big plays compress field position and create scoring opportunities outside of sustained drives, and Atlanta's ability to generate them while limiting Pittsburgh's is a meaningful structural advantage.",
+"third_down_red_zone": "Third down is a weakness for both teams, but Atlanta's is more acute. The Falcons convert only 33.7% of third downs offensively, ranking 29th, while Pittsburgh converts 38.7%, ranking 20th. Pittsburgh's defense, however, allows a 43.2% conversion rate (26th), partially offsetting their offensive advantage. In the red zone, Pittsburgh holds a two-point edge: the Steelers score touchdowns on 61.3% of red-zone trips and allow them on only 55.8% (10th), while Atlanta's defense surrenders touchdowns on 62.0% of opponent red-zone trips (22nd). The combination of Pittsburgh's better red-zone defense and higher points per scoring opportunity (3.04 vs. Atlanta's 2.75) suggests the Steelers are more likely to capitalize when drives reach the opponent's end of the field.",
+"roster_talent": "Insufficient reliable data on NFL talent ratings. Pittsburgh returns 77% of prior production overall, with a perfect 1.00 returning production score in passing and 79% on defense, indicating strong continuity on both sides of the ball. Atlanta returns 64% of overall production, with passing continuity at only 51%, reflecting the quarterback change. Pittsburgh's continuity index (0.69) edges Atlanta's (0.67), and Pittsburgh's 59 returning offensive line starts versus Atlanta's 68 suggests Atlanta's line has more experienced personnel returning, though Pittsburgh's protection metrics are superior.",
+"recent_form": "This is Week 1 of the 2026 season, so neither team has played a game. The recent form edge is neutral with a shift of 0.0 for both sides. No in-season performance data is available to assess momentum, hot streaks, or regression candidates. All metrics in this analysis are blended from prior-season opponent-adjusted data, flagged as low-sample inputs by the model.",
+"market_movement": "The spread has held at Pittsburgh -3.5 since the first recorded snapshot on DraftKings, with zero movement across 162 snapshots on nine books. The total has similarly held at 42.5 with no movement. There is a 0.5-point book disagreement on the spread across the market. The model's projected margin of 2.2 points is 1.3 points lighter than the market's -3.5, and the model's total of 45.2 is 2.7 points above the market number. Public ticket and money percentages are unavailable, so no claim is made about the source of any line positioning.",
+"key_advantages": [
+"Pittsburgh ground game vs. Atlanta's weak run defense: Steelers rank 4th in rushing EPA, Falcons rank 21st in run defense EPA allowed",
+"Pittsburgh red-zone defense: allows touchdowns on only 55.8% of opponent trips, 10th in the league",
+"Atlanta quarterback edge: Tua Tagovailoa's career EPA per dropback (+0.130) nearly triples Rodgers' (+0.038)",
+"Atlanta explosive play generation: 9.96% explosive play rate (8th) against Pittsburgh's below-average explosive play defense (18th)"
+],
+"key_concerns": [
+"Atlanta's third-down offense ranks 29th at 33.7%, limiting their ability to sustain drives even when gaining yards",
+"Pittsburgh's new head coach introduces scheme and execution uncertainty that the model penalizes by -0.57 points",
+"Tagovailoa is flagged as a new-team starter in Week 1, adding real-world uncertainty beyond what career numbers capture",
+"Atlanta's red-zone defense allows touchdowns on 62.0% of opponent trips (22nd), a vulnerability Pittsburgh's efficient scoring offense could exploit"
+],
+"expected_game_script": "Pittsburgh figures to establish the run early, leaning on a ground game that ranks 4th in rushing EPA against an Atlanta defense that has been porous against the run (21st in rushing EPA allowed and 23rd in line yards allowed). If the Steelers can control the clock and field position through their rushing attack, it limits Tagovailoa's opportunities and keeps Rodgers in manageable down-and-distance situations. Atlanta's best path to staying competitive is through the passing game, where Tagovailoa's efficiency metrics give him a genuine edge over Rodgers, and through generating explosive plays at a rate Pittsburgh's defense has historically struggled to contain. The Falcons' elite havoc rate (1st in the league at 18.6%) could disrupt Pittsburgh's rhythm if they can get Rodgers off his spot, though Pittsburgh's pass protection ranks 2nd in pressure rate allowed, making that a difficult task. Both red-zone units will matter late: Pittsburgh's defense is significantly better at preventing touchdowns inside the 20, which could be the difference in a game the model projects as a field-goal contest. Expect a physical, lower-scoring first half as Pittsburgh tries to run the ball, with Atlanta's passing offense potentially creating a competitive second half if the Falcons can convert enough third downs to stay on the field."
+},
+"validation": {
+"numbers_checked": 103,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:36:46.648806+00:00",
+"tokens_in": 11457,
+"tokens_out": 2022,
+"stop_reason": "end_turn",
+"raw_text": null
+}

@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W01_WAS_PHI_2033026d7b6db086",
+"game_id": "2026_NFL_W01_WAS_PHI",
+"inputs_hash": "2033026d7b6db086",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects Philadelphia Eagles 26, Washington Commanders 19, a home margin of 7.6 points on a total of 44.8. Philadelphia's win probability sits at 73.1%. The market opened and has held at Eagles -5.5 with a total of 44.5, meaning the model leans roughly 2.1 points more toward Philadelphia than the current line implies.",
+"offensive_matchup": "Washington's passing offense grades out reasonably well \u2014 their offensive EPA per pass play of +0.079 ranks 14th \u2014 but they are running into one of the league's stiffest pass defenses: Philadelphia's defensive passing EPA of -0.075 ranks 5th, meaning the Eagles actively suppress value on opponent dropbacks. On the ground, the mismatch is even sharper; Washington's rushing EPA per play of -0.100 ranks 23rd and they face an Eagles run defense that posts a defensive rushing EPA of -0.124, ranking 4th in the league. Philadelphia's own offense is middling in EPA terms (ranked 22nd overall), but their red-zone finishing is elite \u2014 a 72.2% touchdown rate on red-zone trips ranks 2nd in the NFL \u2014 so they convert opportunities into points at a rate Washington's defense (allowing a 63.5% red-zone TD rate, ranked 24th) has struggled to prevent.",
+"quarterback_edge": "Jayden Daniels carries a career EPA per dropback of +0.082 across 26 games, which actually edges Jalen Hurts's career mark of +0.069 over 87 games, giving Washington a narrow statistical quarterback edge. Hurts counters with far greater experience \u2014 2,540 career attempts versus Daniels's 784 \u2014 and a slightly higher career yards per attempt (7.41 vs. 7.22). The model scores this edge marginally to Washington (-0.07 points toward Philadelphia), but Daniels is flagged as a new starter in the same system, adding a layer of uncertainty that the raw career numbers alone do not fully capture.",
+"trenches": "Philadelphia's offensive line holds a meaningful protection edge: they allow pressure on just 18.3% of dropbacks (ranked 4th), nearly identical to Washington's 18.3% (ranked 5th), so both lines protect well. However, Washington's defensive front generates pressure without the blitz at only an 11.6% rate (ranked 22nd), while Philadelphia's front does so at 14.1% (ranked 12th), giving the Eagles a cleaner pass-rush profile when they choose not to blitz. In the run game, Philadelphia's defensive line yards allowed of 3.02 per rush (ranked 25th) is better than Washington's 3.17 (ranked 30th), meaning the Eagles' front does a better job limiting what the offensive line can generate at the point of attack. The offensive line edge scores +0.34 points toward Philadelphia, while Washington's defensive front provides a modest -0.24 counter.",
+"explosive_play_edge": "Both offenses produce explosive plays \u2014 defined as rushes of 10-plus yards or passes of 20-plus yards \u2014 at nearly identical rates: Washington at 8.6% (ranked 14th) and Philadelphia at 8.5% (ranked 18th). The separation comes on defense: Philadelphia limits opponents to explosive plays on just 8.0% of plays (ranked 12th), while Washington allows them on 9.3% (ranked 20th). That defensive gap means Philadelphia is better positioned to prevent the chunk plays Washington would need to stay in the game, and the explosive edge scores +0.17 points toward the Eagles.",
+"third_down_red_zone": "Third-down conversion rates are nearly a wash \u2014 Washington converts 38.0% offensively (ranked 23rd) against Philadelphia's 42.0% defensive rate allowed (ranked 22nd), and Philadelphia converts 37.7% (ranked 24th) against Washington's 41.7% allowed (ranked 21st) \u2014 producing a near-zero edge for either side. The red zone is where the gap opens decisively: Philadelphia scores touchdowns on 72.2% of red-zone trips (ranked 2nd) while Washington's defense allows touchdowns on 63.5% of opponent red-zone trips (ranked 24th). Washington's own red-zone offense at 63.6% (ranked 12th) is solid, but they face a Philadelphia defense that holds opponents to 57.7% (ranked 13th). The red-zone edge scores +0.39 points toward Philadelphia, the third-largest single contributor in the model.",
+"roster_talent": "Philadelphia enters Week 1 with a roster continuity index of 0.93 \u2014 meaning nearly the entire unit is returning \u2014 compared to Washington's 0.63. Returning production tells the same story: Philadelphia brings back 86% of total production, including 100% of passing production and 97% of rushing production, while Washington returns 71% overall with only 48% of receiving production and 56% of defensive production. That continuity advantage translates to a +0.56-point edge for Philadelphia in the returning production category, reflecting a team that should operate its system with greater cohesion from the opening snap. Roster talent ratings are unavailable for both teams.",
+"recent_form": "Insufficient reliable data. This is Week 1 of the 2026 season and neither team has played a game, so no recent form shift is recorded for either side.",
+"market_movement": "The spread has held at Eagles -5.5 since the first recorded snapshot on DraftKings, with zero movement across 162 snapshots spanning nine books. The total has similarly been stationary at 44.5. Books currently show a disagreement of 1.0 point on the spread across the market. The model's projected margin of 7.6 points sits 2.1 points above the market consensus, leaning toward Philadelphia, though public betting percentages are unavailable so the source of any pricing tension cannot be attributed.",
+"key_advantages": [
+"Eagles defense ranks 3rd in overall defensive EPA/play (-0.092) and 4th in rushing EPA allowed (-0.124), creating a wall against Washington's below-average ground game",
+"Philadelphia's red-zone touchdown rate of 72.2% (2nd in NFL) paired with Washington's red-zone defense allowing 63.5% (24th) is the game's sharpest scoring-efficiency mismatch",
+"Eagles roster continuity of 0.93 versus Washington's 0.63 gives Philadelphia a significant cohesion edge in a Week 1 environment where familiarity matters most",
+"Philadelphia's turnover margin of +0.56 per game (ranked 5th) against Washington's -0.71 (ranked 31st) represents the single largest point contributor in the model at +0.70 toward the Eagles"
+],
+"key_concerns": [
+"Washington's Jayden Daniels holds a higher career EPA per dropback (+0.082 vs. +0.069) and the model gives the Commanders a narrow quarterback edge that could be amplified if Daniels's mobility stresses Philadelphia's defense",
+"Washington's defensive front generates a -0.24-point edge against Philadelphia's offensive line, meaning the Commanders can create some disruption even against a well-protected pocket",
+"Philadelphia's own offensive EPA per play ranks just 22nd (-0.009) and their offensive success rate of 42.0% ranks 24th, so the Eagles offense is not dominant and could stall if Washington's pass defense improves on its prior metrics",
+"All metrics carry a low-sample flag with zero 2026 games played, meaning the blend relies on prior-season data and projection uncertainty is elevated"
+],
+"expected_game_script": "Philadelphia's dominant defense \u2014 particularly against the run \u2014 should force Washington into a pass-heavy script early, which is a mixed outcome: Daniels is capable through the air, but he is walking into one of the better pass defenses in the league (ranked 5th in defensive passing EPA). The Eagles are likely to establish their run game against a Washington front that ranks 29th in defensive rushing EPA allowed, grinding out possession and field position. When Philadelphia reaches the red zone, their elite finishing rate (72.2%) means those drives are likely to end in touchdowns rather than field goals, steadily building a lead. Washington's offense has enough passing efficiency to move the ball in chunks \u2014 their 8.6% explosive play rate and 14th-ranked offensive passing EPA give them the tools to score \u2014 but their turnover history (ranked 31st in margin) and poor red-zone defense create a ceiling on how many possessions they can convert. A mid-game Washington scoring burst is plausible given Daniels's playmaking, but Philadelphia's structural advantages in defense, continuity, and red-zone execution should allow the Eagles to maintain a comfortable cushion. The model's projected final of 26-19 reflects a game that stays within two scores but never truly feels in doubt for the home team."
+},
+"validation": {
+"numbers_checked": 122,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:37:47.475612+00:00",
+"tokens_in": 11507,
+"tokens_out": 2084,
+"stop_reason": "end_turn",
+"raw_text": null
+}

@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W02_NYG_LAR_7065ec9d01ff2cbb",
+"game_id": "2026_NFL_W02_NYG_LAR",
+"inputs_hash": "7065ec9d01ff2cbb",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects the Los Angeles Rams to win at home 31.73 to 18.24, a margin of 13.49 points. The projected total is 49.97. The Rams' win probability sits at 86.6%. Note that all metrics carry a low-sample flag, as neither team has played a game in the 2026 season yet, so these figures are blended from prior-season data.",
+"offensive_matchup": "The Rams' offense is historically dominant in this dataset, ranking 1st in EPA per play (a measure of how many expected points each play adds, at +0.208) and 1st in offensive success rate (51.7%, meaning more than half their plays generate positive expected value). They run play-action on 30.9% of dropbacks (3rd in the league), which is a significant weapon against a Giants defense that ranks 27th in defensive EPA per play (+0.0835, meaning opponents are consistently gaining value). The Giants' offense, meanwhile, ranks 23rd in offensive EPA per play at -0.020, and their 40.6% success rate (27th) suggests they struggle to move the chains consistently against a Rams defense that ranks 11th in defensive EPA per play. The Rams' offense should control the flow of this game.",
+"quarterback_edge": "Insufficient reliable data is available for in-season quarterback statistics, but the package includes career profiles. The Rams' quarterback Matthew Stafford carries a career EPA per dropback of +0.131 over 84 games and 2,904 attempts, translating to a QB index of 1.31. The Giants' Jaxson Dart has a career EPA per dropback of -0.021 across 12 games and 340 attempts, for a QB index of -0.21. That experience and efficiency gap is meaningful: Stafford has demonstrated the ability to generate positive value on a per-dropback basis at scale, while Dart is still early in his career. This edge contributes 0.80 projected points toward the Rams in the model.",
+"trenches": "The Rams' offensive line is a clear strength, ranking 3rd in sack rate allowed (3.87% of dropbacks) and 6th in pressure rate allowed (18.7%), while the Giants' defensive front generates pressure without the blitz at a rate that ranks only 5th league-wide (15.7%) \u2014 a modest counter. On the other side, the Giants' run defense is the most concerning unit in this matchup: they rank dead last (32nd) in defensive rushing EPA per play at +0.1589, meaning opponents consistently gain value running the ball against them. The Rams rank 1st in offensive line yards (3.41 per rush, a metric crediting the line for yards created before the ball carrier makes a move) and 6th in rushing EPA per play. That combination points to the Rams being able to establish and sustain the run, which will open up play-action opportunities and keep the Giants' offense off the field.",
+"explosive_play_edge": "The Rams rank 1st in explosive play rate at 12.25% (plays gaining 10+ rushing or 20+ passing yards), while the Giants allow explosive plays at a 10.86% rate, ranking 31st in the league. That pairing \u2014 the league's best explosive offense against one of the worst explosive-play defenses \u2014 is a significant mismatch. The Giants' own explosive play rate of 8.82% (11th) is a relative bright spot offensively, but the Rams allow explosives at just 7.45% (7th), limiting New York's ability to generate chunk plays. The Rams hold a clear edge in this category, contributing 0.47 projected points in the model.",
+"third_down_red_zone": "Third down is one of the few areas where the Giants are competitive: they convert at 40.8% (15th) and hold opponents to 40.0% (14th), while the Rams convert at only 38.2% (22nd) and allow 38.7% (12th). This is the one category that edges slightly toward the Giants, though the model scores it neutral. In the red zone, however, the Rams dominate: they score touchdowns on 67.4% of red-zone trips (6th) and generate 3.74 points per scoring opportunity (1st), while the Giants convert just 56.7% of red-zone trips to touchdowns (20th) and allow opponents to score touchdowns on 67.1% of their red-zone visits (28th). When the Rams reach the red zone, they are extremely likely to come away with seven points; when the Giants get there, they are more likely to settle for field goals.",
+"roster_talent": "Insufficient reliable data is available for NFL talent ratings. However, the roster continuity and returning production data tell a clear story. The Rams have a continuity index of 0.96 with no head coach change, and their returning production is near-perfect: 100% of passing production, 98% of rushing production, and 100% of receiving production returns, along with 78 offensive line starts. The Giants have a continuity index of 0.66, a new head coach, and notably lower returning production \u2014 77% passing, 60% receiving, and 61% defensive production \u2014 with only 63 offensive line starts. The Rams are essentially running back a proven system with the same personnel, while the Giants are integrating significant new pieces under new leadership.",
+"recent_form": "Insufficient reliable data is available for recent form, as neither team has played a game in the 2026 season. The model scores this category as neutral with zero form shift for both teams. All metrics in this package are blended from prior-season data and carry a low-sample flag for the current season.",
+"market_movement": "The market opened at Rams -8.5 with a total of 48.5, and across 50 snapshots on DraftKings, both lines have held without movement \u2014 zero points of spread movement and zero points of total movement. The no-vig implied home win probability from the market is 76%, compared to the model's 86.6%. The model's projected margin of 13.49 points differs from the market spread by approximately 5.0 points in the Rams' favor, and the projected total of 49.97 sits 1.47 points above the market total of 48.5. Public betting percentages are unavailable.",
+"key_advantages": [
+"Rams' run game vs. Giants' last-place run defense: Rams rank 1st in rushing EPA and offensive line yards; Giants rank 32nd in defensive rushing EPA allowed",
+"Rams' roster continuity and returning production: 96% continuity index, 100% passing and receiving production back, no coaching change vs. Giants' 66% continuity and new head coach",
+"Rams' red-zone efficiency: 67.4% TD rate and 3.74 points per scoring opportunity (1st) against a Giants defense allowing TDs on 67.1% of opponent red-zone trips (28th)",
+"Quarterback experience gap: Stafford's career EPA per dropback of +0.131 over 2,904 attempts vs. Dart's -0.021 over 340 attempts"
+],
+"key_concerns": [
+"All metrics carry a low-sample flag \u2014 no 2026 games have been played, so blended data may not reflect current team state",
+"Giants' third-down offense (40.8%, 15th) and defense (40.0% allowed, 14th) are competitive and could extend drives if the Giants stay in games",
+"Giants' defensive havoc rate ranks 11th (15.5%), meaning they do create disruption plays at a reasonable rate, which could affect Dart's development but also pressure Stafford on occasion",
+"Injury data is unavailable from the official league report, leaving roster health as an unknown factor for both sides"
+],
+"expected_game_script": "The Rams are expected to establish the run early, exploiting the Giants' last-place run defense to set up play-action passing \u2014 a combination the Rams use at the third-highest rate in the league (30.9% play-action). Stafford, operating behind one of the league's better-protected offensive lines (3rd in sack rate allowed), should have time to find explosive plays against a Giants secondary that allows chunk plays at the 5th-worst rate in the league. The Giants' offense, led by the inexperienced Dart, will face a Rams defense that ranks 11th in defensive EPA per play and generates pressure without the blitz at a top-5 rate \u2014 limiting New York's ability to sustain drives with a 40.6% success rate. If the Giants fall behind early, their below-average passing EPA (-0.003 per play, 23rd) and low neutral-script pass rate (57.2%, 22nd) suggest they may struggle to mount a comeback through the air. The Giants' best path to keeping it close is converting third downs at their above-average rate and hoping their 8.82% explosive play rate produces a few big plays against the Rams' defense. The model projects a comfortable Rams victory with the game largely decided by halftime, as the Rams' superior efficiency, continuity, and red-zone finishing make sustained Giants scoring drives unlikely."
+},
+"validation": {
+"numbers_checked": 119,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:43:01.994289+00:00",
+"tokens_in": 11183,
+"tokens_out": 2169,
+"stop_reason": "end_turn",
+"raw_text": null
+}

@@ -1,0 +1,45 @@
+{
+"analysis_id": "2026_NFL_W02_LV_LAC_c4b4bec82db63f71",
+"game_id": "2026_NFL_W02_LV_LAC",
+"inputs_hash": "c4b4bec82db63f71",
+"model_version": "NFL_v1.0",
+"llm_model": "claude-sonnet-4-6",
+"prompt_version": "ai_v1.0",
+"sections": {
+"model_projection": "The model projects the Los Angeles Chargers to win at home 25.86-17.1, a margin of 8.76 points. The Chargers are given a 76.3% win probability. The projected total of 42.95 points sits just above the market total of 42.5, and the model's spread of 8.76 is within a point of the market's Chargers -8.5, indicating strong alignment between the quantitative output and the betting market.",
+"offensive_matchup": "Las Vegas arrives with the league's worst offensive EPA per play (-0.228, ranked 32nd), meaning their plays generate negative expected value on average, while the Chargers defense ranks 9th in defensive EPA per play (-0.045), actively suppressing opponent scoring chances. The Raiders' offensive success rate of 37.4% (31st) \u2014 the share of plays that gain positive expected value \u2014 runs directly into a Chargers defense that holds opponents to a 42.3% success rate (6th best). On the other side, the Chargers' offense is middling at 19th in EPA per play but faces a Raiders defense that ranks only 13th, creating a modest but real advantage for Los Angeles. The Chargers' 63.3 plays per game (7th) against the Raiders' slower offensive pace sets up a possession-volume edge for the home team.",
+"quarterback_edge": "Insufficient reliable data on current-season quarterback performance is available; both quarterbacks have zero season attempts recorded. Based on career metrics in the package, Justin Herbert carries a career EPA per dropback of 0.053 over 83 games and 2,955 attempts, while Kirk Cousins posts 0.052 over 65 games and 2,269 attempts \u2014 essentially identical career profiles. The model scores this edge as a near-wash, contributing just 0.01 points toward the Chargers. The meaningful distinction is that Cousins is flagged as a new-team starter for Las Vegas, introducing scheme-fit uncertainty that the career numbers alone cannot capture.",
+"trenches": "The offensive line matchup is one of the sharpest edges in this game, and it cuts against the Chargers. Los Angeles allows pressure on 28.6% of dropbacks (31st) and gives up sacks on 9.1% of dropbacks (29th), while the Raiders' defensive front generates a sack rate of 6.2% and a havoc rate \u2014 plays producing a tackle for loss, sack, forced fumble, or turnover \u2014 of 15.4% (12th). The Chargers' run-blocking line yards of 2.64 (29th) face a Raiders run defense that ranks 5th in line yards allowed (2.65), making the ground game equally problematic. The model scores the offensive line edge at -3 favoring the Raiders' front, worth -0.85 points, and the defensive front edge at +3 favoring the Chargers' pass rush against the Raiders' porous protection (sack rate allowed 10.7%, dead last at 32nd), worth +0.99 points \u2014 the Raiders' offensive line is a liability on both sides of the ball.",
+"explosive_play_edge": "This category is essentially a coin flip. The Raiders' offensive explosive play rate (plays gaining 10-plus rushing or 20-plus passing yards) sits at 7.35% (25th), and the Chargers allow explosives at 8.57% (16th), giving Las Vegas a slight theoretical opening. The Chargers' offense generates explosives at 7.3% (27th) against a Raiders defense that allows them at 7.98% (13th), a similarly modest gap. The model scores this edge at 0, contributing just -0.01 points, so neither team projects to win the game through big plays.",
+"third_down_red_zone": "The Chargers own a commanding third-down advantage: they convert 44.6% of their own third downs (4th in the league) while holding opponents to just 35.9% (6th), compared to the Raiders' 33.8% conversion rate (28th) and a 46.7% rate allowed (31st). This gap \u2014 roughly 11 percentage points in conversion rate and 11 points in rate allowed \u2014 means the Chargers should sustain drives while the Raiders go three-and-out at a high rate. In the red zone, the Chargers' defense is the best in the league at preventing touchdowns, allowing scores on only 47.2% of opponent trips (ranked 1st), while the Raiders' red-zone offense converts at just 48.6% (28th) and scores only 2.20 points per scoring opportunity (32nd). Even when Las Vegas reaches the red zone, the Chargers' defense is built to hold them to field goals.",
+"roster_talent": "Insufficient reliable data on NFL roster talent ratings is available for either team. However, the returning production and continuity metrics tell a clear story: the Chargers carry a continuity index of 0.87 with 100% of passing production and 73% of total production returning, while the Raiders have a continuity index of just 0.38 with only 4% of passing production returning and a new head coach. The model values this returning production edge at +0.90 points toward the Chargers. Las Vegas's 38 returning offensive line starts versus the Chargers' 16 is the one area where the Raiders show more continuity up front, though their overall line performance metrics rank at the bottom of the league.",
+"recent_form": "Both teams have zero games played in the 2026 season at the time of this analysis, so no in-season form data is available. The model scores recent form as neutral (0.0 points in either direction) for both clubs. All performance metrics carry a low-sample flag and are drawn from prior-season blended data adjusted for opponent strength.",
+"market_movement": "The market has been exceptionally stable on this game. The spread opened at Chargers -8.5 and has not moved a single point across 40 snapshots from five books, holding at -8.5. The total has similarly held at 42.5 with zero movement. The model's projected spread of -8.76 and total of 42.95 are within a point of the market on both numbers, suggesting the model and the market are in close agreement. Public ticket and money percentages are unavailable, so no conclusions about betting-side distribution can be drawn.",
+"key_advantages": [
+"Chargers defense dominates third downs and red zone, holding opponents to 35.9% conversion rate (6th) and 47.2% red-zone TD rate (1st)",
+"Chargers defensive front generates pressure without the blitz at 14.2% (11th) against a Raiders offensive line that allows sacks on 10.7% of dropbacks (32nd)",
+"Chargers roster continuity index of 0.87 with 100% of passing production returning versus Raiders' 0.38 continuity and new head coach",
+"Chargers home-field advantage at SoFi Stadium in an indoor venue with no weather factors"
+],
+"key_concerns": [
+"Chargers offensive line allows pressure on 28.6% of dropbacks (31st) and sacks on 9.1% (29th), a vulnerability the Raiders' defense (havoc rate 15.4%, 12th) can exploit",
+"Chargers red-zone offense converts touchdowns on only 47.8% of trips (29th), risking field goals even when they move the ball",
+"Kirk Cousins is a new-team starter for Las Vegas, introducing unknown upside that career averages cannot fully price in",
+"All metrics carry a low-sample flag with zero 2026 games played, meaning prior-season data drives the entire projection"
+],
+"expected_game_script": "The Chargers should control the line of scrimmage on defense from the opening drive, forcing the Raiders into obvious passing situations where their 31st-ranked offensive success rate and 32nd-ranked offensive line become compounding problems. Kirk Cousins, operating behind a protection unit that allowed sacks on more than one in ten dropbacks last season, will face consistent pressure from a Chargers front that generates 14.2% pressure without blitzing \u2014 meaning Los Angeles can stay in base coverage and still disrupt the pocket. Las Vegas's offense is likely to go three-and-out frequently given their 33.8% third-down conversion rate against a defense that holds opponents to 35.9%, keeping the Raiders' total play count low and their scoring opportunities scarce. The Chargers' offense, while not explosive, should sustain drives through a 44.6% third-down conversion rate and eventually convert red-zone trips into touchdowns against a Raiders defense that ranks 31st in third-down rate allowed. A Chargers lead in the second half would push the Raiders into a pass-heavy script that their offensive line cannot protect, accelerating the negative feedback loop. The most likely path to a Raiders cover is if Cousins finds early rhythm through play-action \u2014 Las Vegas used play-action on 28.9% of dropbacks (7th) \u2014 and the Chargers' own red-zone inefficiency keeps the margin from growing. The model's 25.86-17.1 final score reflects a controlled Chargers win rather than a blowout, with the Raiders generating just enough offense to stay within two scores."
+},
+"validation": {
+"numbers_checked": 119,
+"violations": [],
+"confident_about_unavailable": [],
+"ok": true
+},
+"validation_failed": false,
+"attempts": 1,
+"generated_at": "2026-09-08T17:41:25.206976+00:00",
+"tokens_in": 11156,
+"tokens_out": 2191,
+"stop_reason": "end_turn",
+"raw_text": null
+}
