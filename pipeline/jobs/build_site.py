@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 import config
-from pipeline import storage, market_engine
+from pipeline import storage, market_engine, splits_engine
 from pipeline.log import JobRun
 
 AN = config.TABLES / "analytics"
@@ -158,6 +158,28 @@ def slate_entry(S: Season, g, mkt_row, edges: pd.DataFrame) -> dict:
             "filters": {"date": _local_date(kick, tz), "conf_home": home["conf"], "conf_away": away["conf"], "ranked": bool(home["rank"] or away["rank"]), "favorite": fav}}
 
 
+def build_odds(S: Season, week: int, slate: dict) -> dict:
+    """Odds tab payload: one entry per game with the splits history for both periods, plus the line history."""
+    sp = splits_engine.build_week(S.league, S.season, week, S.games[(S.games.week == week)], S.teams)
+    games = []
+    for entry in slate["games"]:
+        gid = entry["game_id"]
+        s_ = sp.get(gid) or {"periods": {}, "any_available": False}
+        mkt_path = OUT / "market" / f"{gid}.json"
+        mk = json.loads(mkt_path.read_text()) if mkt_path.exists() else None
+        line_series = (mk or {}).get("series", [])
+        games.append({"game_id": gid, "status": entry["status"], "kickoff_utc": entry["kickoff_utc"], "kickoff_is_tba": entry["kickoff_is_tba"],
+                      "away": entry["away"], "home": entry["home"], "market": entry["market"], "model": entry["model"], "result": entry["result"],
+                      "filters": entry["filters"], "splits": s_.get("periods", {}), "splits_available": s_.get("any_available", False),
+                      "line_series": line_series})
+    covered = sum(1 for g in games if g["splits_available"])
+    return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
+            "games": games, "coverage": {"with_splits": covered, "total": len(games)},
+            "source_note": ("Ticket and money percentages are entered from a splits table you have access to and are stamped 'manual'. "
+                            "No splits feed is licensed for automatic collection." if not config.SPLITS_FEED.get("enabled")
+                            else f"Splits from the licensed {config.SPLITS_FEED.get('provider')} feed.")}
+
+
 def build_slate(S: Season, week: int) -> dict:
     wk = S.games[(S.games.week == week) & (S.games.season_type == "REG")].copy()
     wk = wk[~(wk.home_team_id.str.startswith("CFB_FCS") & wk.away_team_id.str.startswith("CFB_FCS"))]
@@ -259,6 +281,7 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
     return {"game": entry, "status": g.status, "frozen_from_snapshot": bool(snap), "locked_at": snap["locked_at"] if snap else None,
             "teams": {"away": team_block(away, entry["away"]), "home": team_block(home, entry["home"])},
             "metrics": {"windows": WINDOWS, "default_window": "SEASON", "rows": metrics_rows, "quality_flags": qflags},
+            "splits": splits_engine.build_week(S.league, S.season, week, S.games[S.games.game_id == gid], S.teams).get(gid, {}).get("periods", {}),
             "edges": edge_list, "model": model, "market": market, "market_history_url": f"json/market/{gid}.json", "weather": wx, "result": result, "ai": S.ai_block(gid),
             "sources": {"metrics": "CollegeFootballData (PPA, advanced stats, plays) and nflverse (nflfastR EPA, FTN charting, PFR pressures)" if S.league == "CFB" else "nflverse (nflfastR play-by-play EPA, FTN charting, PFR pressures)",
                         "lines": "CollegeFootballData lines" if S.league == "CFB" else "The Odds API (US books)", "weather": "Open-Meteo", "injuries": "official league report" if S.league == "NFL" else "manual entries",
@@ -276,7 +299,8 @@ def build_status(leagues: list[str], season: int) -> dict:
                            ("Odds snapshots (NFL)", f"market/snapshots/NFL/{season}/*.csv"), ("Odds snapshots (CFB)", f"market/snapshots/CFB/{season}/*.csv"),
                            ("Rosters", f"roster/roster_snapshots/*/{season}/*.parquet"), ("Injuries (NFL)", f"roster/injuries/NFL/{season}.csv"), ("Weather", f"context/weather_snapshots/*/{season}/*.csv"),
                            ("Team metrics", f"analytics/team_metrics_asof/*/{season}/*.parquet"), ("Matchup edges", f"analytics/matchup_edges/*/{season}/*.parquet"),
-                           ("Predictions", f"model/predictions/*/{season}.csv"), ("AI analyses", "model/ai_analyses_index.csv")):
+                           ("Predictions", f"model/predictions/*/{season}.csv"), ("AI analyses", "model/ai_analyses_index.csv"),
+                           ("Betting splits", f"market/splits/*/{season}/*.csv")):
         files = glob.glob(str(config.TABLES / pattern))
         fresh[label] = max((datetime.fromtimestamp(__import__("os").path.getmtime(f), tz=timezone.utc) for f in files), default=None)
         fresh[label] = fresh[label].isoformat() if fresh[label] else None
@@ -328,6 +352,9 @@ def run(leagues: list[str], season: int, weeks: list[int] | None, job: JobRun) -
             rel = f"json/slate/{league}/{season}/W{wk:02d}.json"
             (config.SITE_DIR / rel).write_text(json.dumps(slate, default=str))
             manifest["slates"][league][str(wk)] = rel
+            (OUT / "odds" / league / str(season)).mkdir(parents=True, exist_ok=True)
+            (OUT / "odds" / league / str(season) / f"W{wk:02d}.json").write_text(json.dumps(build_odds(S, wk, slate), default=str))
+            manifest.setdefault("odds", {}).setdefault(league, {})[str(wk)] = f"json/odds/{league}/{season}/W{wk:02d}.json"
             (OUT / "matchup").mkdir(parents=True, exist_ok=True)
             n = 0
             for entry in slate["games"]:

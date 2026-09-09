@@ -154,3 +154,28 @@ table.plain th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
 }
 @media (prefers-reduced-motion: no-preference) { .bar i { transition: width .25s ease; } }
 :focus-visible { outline: 2px solid var(--home); outline-offset: 2px; }
+
+/* ---------- odds tab ---------- */
+.og { border-top: 1px solid var(--rule); padding: 16px 0 18px; }
+.og:first-child { border-top: 2px solid var(--ink); }
+.og-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; }
+.og-teams { font-family: var(--cond); font-weight: 700; font-size: 21px; text-decoration: none; display: inline-flex; gap: 8px; align-items: baseline; }
+.og-teams:hover { text-decoration: underline; }
+.og-teams .at { font-family: var(--font); font-weight: 400; font-size: 13px; color: var(--mute); }
+.og-kick { font-size: 13px; color: var(--ink-2); }
+.og-line { font-size: 14px; color: var(--ink-2); margin-left: auto; }
+.og-model { font-size: 14px; color: var(--home); }
+.og-chips { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 10px 0 4px; }
+.chip { display: inline-flex; align-items: baseline; gap: 6px; }
+.chip .k { font-size: 12px; color: var(--mute); text-transform: lowercase; }
+.chip .v { font-size: 19px; }
+.og-chart { margin: 6px 0 2px; }
+.og-chart svg { width: 100%; height: auto; max-width: 740px; display: block; }
+.og-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.og-legend i.sw { display: inline-block; width: 14px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+.og-legend i.sw.home { background: var(--home); } .og-legend i.sw.away { background: var(--away); }
+.og-legend i.sw.line { background: var(--ink); opacity: .55; }
+.og-notes { margin: 8px 0 0; padding-left: 18px; font-size: 14px; color: var(--ink-2); }
+.og-notes li { margin: 3px 0; }
+.og-empty { font-size: 14px; color: var(--mute); padding: 10px 0; }
+@media (max-width: 640px) { .og-line { margin-left: 0; } .og-teams { font-size: 19px; } }

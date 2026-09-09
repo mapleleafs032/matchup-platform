@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Matchup board</title>
+<title>Odds and betting splits</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="app.css">
@@ -11,14 +11,17 @@
 <body>
 <header class="top"><div class="wrap">
   <a class="brand" href="index.html">Matchup board<small>college football and NFL, opponent-adjusted</small></a>
-  <nav class="pages"><a href="index.html">Board</a><a href="odds.html">Odds</a><a href="admin.html">Status</a></nav>
+  <nav class="pages"><a href="index.html">Board</a><a href="odds.html" aria-current="page">Odds</a><a href="admin.html">Status</a></nav>
 </div></header>
 <main class="wrap">
   <div id="toolbar" class="toolbar"></div>
-  <div id="board" class="board"><div class="empty">Loading the board…</div></div>
+  <div id="market-toolbar" class="toolbar"></div>
+  <p id="coverage" class="note"></p>
+  <div id="odds"><div class="empty">Loading…</div></div>
   <p id="built" class="note"></p>
 </main>
 <script src="app.js"></script>
-<script>boardMain().catch(e => { document.getElementById("board").innerHTML = '<div class="empty">The board could not load: ' + e.message + '. If this persists, the site has not been built yet — run the Site workflow.</div>'; });</script>
+<script src="odds.js"></script>
+<script>oddsMain().catch(e => { document.getElementById("odds").innerHTML = '<div class="empty">The odds page could not load: ' + e.message + '. Run the Site workflow if the site has not been built yet.</div>'; });</script>
 </body>
 </html>

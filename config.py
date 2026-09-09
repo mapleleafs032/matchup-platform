@@ -135,9 +135,22 @@ AI_MODEL_CANDIDATES = ["claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-4-5
 AI_MAX_GAMES_PER_RUN = 120          # cost guard per job run
 AI_PROMPT_VERSION = "ai_v1.0"
 
+# ---- Betting splits (ticket % / money %) ------------------------------------------------
+# No free licensed feed exists. Input is either a manual paste (data/manual/splits_paste/) or a feed you license.
+SPLITS_FEED = {"enabled": False, "provider": None, "base_url": None}
+SPLITS_API_KEY = os.environ.get("SPLITS_API_KEY", "").strip()
+SPLITS_BOOK_DEFAULT = "draftkings"
+SPLITS_PERIODS = ("FULL", "1H")
+# Divergence: ticket share minus money share, in percentage points, at which the two disagree enough to note.
+SPLITS_DIVERGENCE_PTS = 12
+# Reverse line movement: the line moved toward the side with the MINORITY of tickets by at least this much.
+RLM_MIN_MOVE = 0.5
+RLM_MIN_TICKET_PCT = 0.60
+
 # ---- Storage --------------------------------------------------------------------
 APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to repo root
     "data/tables/market/snapshots",
+    "data/tables/market/splits",
     "data/tables/model/predictions",
     "data/tables/model/pregame_final_flags.csv",
     "data/tables/model/ai_analyses",
