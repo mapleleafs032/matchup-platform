@@ -158,7 +158,13 @@ def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, 
     for r in rows:
         if r.slug in known:
             continue
-        hit = lookup.get(slug_key(r.slug))
+        parts = r.slug.split("-")
+        hit = None
+        for cut in range(len(parts), 0, -1):          # full slug first, then drop mascot words one at a time
+            cand = lookup.get(slug_key("".join(parts[:cut])))
+            if cand and len(cand) == 1:
+                hit = cand
+                break
         if hit and len(hit) == 1:
             added.append({"provider": "vsin", "alias": r.slug, "provider_id": None, "team_id": next(iter(hit)), "season_from": None, "season_to": None})
             known.add(r.slug)
@@ -197,17 +203,16 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
     i = 0
     while i < len(rows) - 1:
         a, b = rows[i], rows[i + 1]
+        i += 2                     # ALWAYS advance a full pair: advancing by one desynchronizes every later game
         ta, tb = resolve(a.slug), resolve(b.slug)
         if ta is None or tb is None:
             problems.append({"why": f"unmapped VSiN slug: {a.slug if ta is None else b.slug}"})
-            i += 1
             continue
         cands = by_pair.get(frozenset((ta, tb)), [])
         future = [c for c in cands if pd.notna(c._kick) and c._kick >= snap - pd.Timedelta(hours=6)]
         pool = sorted(future or cands, key=lambda c: (pd.Timestamp.max.tz_localize("UTC") if pd.isna(c._kick) else c._kick))
         if not pool:
             problems.append({"why": f"no scheduled game for {ta} vs {tb}"})
-            i += 2
             continue
         game = pool[0]
         home_is_b = (tb == game.home_team_id)
@@ -227,9 +232,17 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
                 rec[f"{market}_{metric}_pct_home"] = round(side, 4)
         rec["line_spread_home"] = home_row.spread
         rec["line_total"] = home_row.total
-        if any(k.endswith("_pct_home") for k in rec):
-            out.append(rec)
+        # structural sanity: a genuine pair carries both teams' lines and most of the six percentages.
+        # A mis-paired row fails these, so partial junk can never reach a real game.
+        n_pct = sum(1 for k in rec if k.endswith("_pct_home"))
+        if home_row.spread is None or away_row.spread is None:
+            problems.append({"why": f"{game.game_id}: pair is missing a spread; treated as mis-paired"})
+        elif home_row.spread != -away_row.spread and abs(home_row.spread + away_row.spread) > 0.01:
+            problems.append({"why": f"{game.game_id}: spreads {home_row.spread} / {away_row.spread} are not opposites; treated as mis-paired"})
+        elif home_row.total != away_row.total:
+            problems.append({"why": f"{game.game_id}: totals {home_row.total} / {away_row.total} differ; treated as mis-paired"})
+        elif n_pct < 4:
+            problems.append({"why": f"{game.game_id}: only {n_pct} of 6 percentages usable; dropped"})
         else:
-            problems.append({"why": f"{game.game_id}: no usable percentages"})
-        i += 2
+            out.append(rec)
     return out, problems

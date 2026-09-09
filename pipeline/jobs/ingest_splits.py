@@ -69,6 +69,12 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
     added, unmatched = vsin.seed_aliases(rows, league, resolver, teams)
     for u in unmatched:
         vlog.warn("ALIAS_UNMATCHED", u, "vsin_slug", u, "add to team_aliases.csv (provider=vsin)")
+    if unmatched:
+        out = config.DATA / "manual" / f"vsin_unmapped_{league}.csv"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame({"provider": "vsin", "alias": unmatched, "provider_id": None, "team_id": "", "season_from": None, "season_to": None}).to_csv(out, index=False)
+        print(f"    unmapped slugs written to {out.relative_to(config.ROOT)} — fill team_id and paste the rows into data/tables/ref/team_aliases.csv")
+        print(f"    {', '.join(unmatched[:20])}" + (" ..." if len(unmatched) > 20 else ""))
     recs, probs = vsin.to_records(rows, league, games, resolver, ts)
     print(f"  VSiN {league}: {len(rows)} team rows -> {len(recs)} games"
           + (f"; {added} new team aliases learned" if added else "")

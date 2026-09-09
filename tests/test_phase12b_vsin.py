@@ -88,3 +88,28 @@ def test_unmapped_slug_is_reported_not_guessed():
     vsin.seed_aliases(rows[:2], "NFL", r, _teams())          # only the first game is mapped
     recs, problems = vsin.to_records(rows, "NFL", _games(), r, "2026-09-09T18:00:00+00:00")
     assert len(recs) == 1 and any("unmapped VSiN slug" in p["why"] for p in problems)
+
+
+def test_unmapped_slug_does_not_desynchronize_later_pairs():
+    """The bug this guards: advancing one row on an unmapped team married rows from different games."""
+    r = ids.AliasResolver.load()
+    rows, _ = vsin.parse(FIX.read_text())
+    teams = _teams()[~_teams().team_id.isin(["NFL_SF", "NFL_LAR"])]      # middle game's teams unknown
+    vsin.seed_aliases(rows, "NFL", r, teams)
+    recs, problems = vsin.to_records(rows, "NFL", _games(), r, "2026-09-09T18:00:00+00:00")
+    ids_out = {x["game_id"] for x in recs}
+    assert ids_out == {"2026_NFL_W01_NE_SEA", "2026_NFL_W01_NO_DET"}      # first and third still correct
+    det = [x for x in recs if x["game_id"] == "2026_NFL_W01_NO_DET"][0]
+    assert det["spread_ticket_pct_home"] == 0.74                          # Detroit's own number, not a neighbour's
+
+
+def test_mispaired_rows_are_rejected_by_structural_checks():
+    r = ids.AliasResolver.load()
+    rows, _ = vsin.parse(FIX.read_text())
+    vsin.seed_aliases(rows, "NFL", r, _teams())
+    scrambled = [rows[0], rows[3]]                                        # NE row + LAR row: not a real pair
+    games = _games().copy()
+    games.loc[len(games)] = {"game_id": "2026_NFL_W01_NE_LAR", "away_team_id": "NFL_NE", "home_team_id": "NFL_LAR",
+                             "week": 1, "status": "SCHEDULED", "kickoff_utc": "2026-09-13T17:00:00Z", "season_type": "REG"}
+    recs, problems = vsin.to_records(scrambled, "NFL", games, r, "2026-09-09T18:00:00+00:00")
+    assert not recs and any("mis-paired" in p["why"] for p in problems)
