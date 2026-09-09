@@ -23,7 +23,7 @@ import pandas as pd
 import config
 from pipeline import ids, storage
 from pipeline.log import JobRun, ValidationLog
-from providers import splits_manual, splits_feed
+from providers import splits_manual, splits_feed, vsin
 
 PASTE_DIR = config.DATA / "manual" / "splits_paste"
 OUT = config.TABLES / "market" / "splits"
@@ -48,6 +48,33 @@ def _current_lines(league: str, season: int, week: int) -> dict:
     s["_pri"] = s.book.map({b: i for i, b in enumerate(config.ODDS_BOOK_PRIORITY)}).fillna(99)
     s = s.sort_values(["game_id", "retrieved_at", "_pri"], ascending=[True, False, True]).drop_duplicates("game_id")
     return {r.game_id: {"line_spread_home": r.spread_home, "line_total": r.total} for _, r in s.iterrows()}
+
+
+def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.DataFrame, vlog: ValidationLog) -> tuple[list[dict], list[dict]]:
+    from providers.base import RequestManager, BudgetExceeded, ProviderError
+    rm = RequestManager("vsin", "splits")
+    teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
+    try:
+        html, ts = vsin.fetch(rm, league)
+    except (ProviderError, BudgetExceeded) as e:
+        vlog.warn("PROVIDER_FAIL", "vsin", league, str(e)[:120], "200")
+        print(f"  VSiN {league}: fetch failed ({str(e)[:80]})")
+        return [], []
+    rows, problems = vsin.parse(html)
+    if not rows:
+        for p in problems:
+            vlog.warn("SPLITS_UNREADABLE", "vsin", league, p.get("why", "")[:160], "parsed rows")
+        print(f"  VSiN {league}: no rows parsed — {problems[0].get('why') if problems else 'unknown'}")
+        return [], problems
+    added, unmatched = vsin.seed_aliases(rows, league, resolver, teams)
+    for u in unmatched:
+        vlog.warn("ALIAS_UNMATCHED", u, "vsin_slug", u, "add to team_aliases.csv (provider=vsin)")
+    recs, probs = vsin.to_records(rows, league, games, resolver, ts)
+    print(f"  VSiN {league}: {len(rows)} team rows -> {len(recs)} games"
+          + (f"; {added} new team aliases learned" if added else "")
+          + (f"; {len(unmatched)} slugs unmapped" if unmatched else "")
+          + (f"; {len(probs)} row problems" if probs else ""))
+    return recs, problems + probs
 
 
 def read_pastes(league: str, season: int, resolver: ids.AliasResolver, games: pd.DataFrame, vlog: ValidationLog) -> tuple[list[dict], list[dict]]:
@@ -106,7 +133,12 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
         job.status = "SKIPPED"; job.message = f"no games table for {league} {season}"; return
     resolver = ids.AliasResolver.load()
     vlog = ValidationLog(job.job_run_id, "betting_splits")
-    recs, problems = read_pastes(league, season, resolver, games, vlog)
+    recs, problems = [], []
+    if config.VSIN.get("enabled"):
+        r, p = read_vsin(league, season, resolver, games, vlog)
+        recs += r; problems += p
+    r, p = read_pastes(league, season, resolver, games, vlog)
+    recs += r; problems += p
     if config.SPLITS_FEED.get("enabled"):
         from providers.base import RequestManager
         rm = RequestManager("splits_feed", job.job_run_id)

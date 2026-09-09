@@ -42,6 +42,8 @@ API_BUDGET = {
     "open_meteo": {"monthly": 200000, "daily_soft": 5000},
     "nflverse": {"monthly": 10**9, "daily_soft": 10**9},
     "espn":     {"monthly": 5000, "daily_soft": 200},
+    "vsin":     {"monthly": 3000, "daily_soft": 120},
+    "splits_feed": {"monthly": 10000, "daily_soft": 500},
 }
 BUDGET_DEGRADE_AT_PCT_REMAINING = 0.15   # below this, odds cadence halves automatically
 
@@ -140,6 +142,9 @@ AI_PROMPT_VERSION = "ai_v1.0"
 SPLITS_FEED = {"enabled": False, "provider": None, "base_url": None}
 SPLITS_API_KEY = os.environ.get("SPLITS_API_KEY", "").strip()
 SPLITS_BOOK_DEFAULT = "draftkings"
+# VSiN publishes DraftKings ticket/handle splits on a public page. Polite cadence, identifying User-Agent,
+# attribution shown in the app. Set enabled=False to stop collecting immediately.
+VSIN = {"enabled": True, "attribution": "Betting splits: DraftKings action via VSiN (data.vsin.com)"}
 SPLITS_PERIODS = ("FULL", "1H")
 # Divergence: ticket share minus money share, in percentage points, at which the two disagree enough to note.
 SPLITS_DIVERGENCE_PTS = 12

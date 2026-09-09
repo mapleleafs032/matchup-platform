@@ -175,9 +175,11 @@ def build_odds(S: Season, week: int, slate: dict) -> dict:
     covered = sum(1 for g in games if g["splits_available"])
     return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
             "games": games, "coverage": {"with_splits": covered, "total": len(games)},
-            "source_note": ("Ticket and money percentages are entered from a splits table you have access to and are stamped 'manual'. "
-                            "No splits feed is licensed for automatic collection." if not config.SPLITS_FEED.get("enabled")
-                            else f"Splits from the licensed {config.SPLITS_FEED.get('provider')} feed.")}
+            "source_note": (f"{config.VSIN['attribution']}. Percentages are the share of tickets and of money on the home side "
+                            "(over side for totals), captured on a schedule and stored with a timestamp."
+                            if config.VSIN.get("enabled") else
+                            ("Ticket and money percentages are entered by hand and stamped 'manual'." if not config.SPLITS_FEED.get("enabled")
+                             else f"Splits from the licensed {config.SPLITS_FEED.get('provider')} feed."))}
 
 
 def build_slate(S: Season, week: int) -> dict:
