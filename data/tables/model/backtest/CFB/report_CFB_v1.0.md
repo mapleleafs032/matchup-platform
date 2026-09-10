@@ -1,6 +1,6 @@
 # Backtest report — CFB — CFB_v1.0
 
-Generated 2026-09-07T15:08+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
+Generated 2026-09-10T18:46+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
 **2021 has no earlier data; it was predicted by a model fit on the later seasons and is NOT out-of-sample. Treat it as a smoke test only.**
 
 ## Overall (out-of-sample seasons)
