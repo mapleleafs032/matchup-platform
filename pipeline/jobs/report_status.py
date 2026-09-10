@@ -92,6 +92,17 @@ def main():
         print("  none yet")
     else:
         print(f"  {len(ai_idx)} analyses | validation failures: {int(ai_idx.validation_failed.sum())} | tokens in/out: {int(ai_idx.tokens_in.fillna(0).sum())}/{int(ai_idx.tokens_out.fillna(0).sum())} | model: {ai_idx.llm_model.dropna().iloc[-1] if ai_idx.llm_model.notna().any() else '?'}")
+    print("\nPICKS")
+    for lg in ("NFL", "CFB"):
+        files = sorted(glob.glob(str(config.TABLES / f"model/picks/{lg}/*/W*.parquet")))
+        if files:
+            k = pd.read_parquet(files[-1])
+            print(f"  {lg} {files[-1].split('/')[-2]} {files[-1].split('/')[-1][:-8]}: {len(k)} plays {k.tier.value_counts().to_dict()}")
+        ev = storage.read_table(config.TABLES / "model" / "picks_evaluation" / lg / f"{config.SEASON}.csv")
+        if not ev.empty:
+            dec = ev[ev.result.isin(["WIN", "LOSS"])]
+            if len(dec):
+                print(f"  {lg} graded: {int((dec.result=='WIN').sum())}-{int((dec.result=='LOSS').sum())} ({100*(dec.result=='WIN').mean():.1f}%), {ev.profit_units.sum():+.2f} units")
     print("\nMARKET (latest week per league)")
     for lg in ("NFL", "CFB"):
         files = sorted(glob.glob(str(config.TABLES / f"analytics/market_analysis/{lg}/*/W*.parquet")))

@@ -152,6 +152,19 @@ SPLITS_DIVERGENCE_PTS = 12
 RLM_MIN_MOVE = 0.5
 RLM_MIN_TICKET_PCT = 0.60
 
+# ---- Picks engine (pipeline/picks_engine.py) --------------------------------------------
+# Minimum model-vs-market disagreement before a play is even a candidate.
+PICK_MIN_EDGE = {"NFL": {"SPREAD": 1.5, "TOTAL": 2.0, "MONEYLINE_EV": 0.04},
+                 "CFB": {"SPREAD": 2.5, "TOTAL": 3.0, "MONEYLINE_EV": 0.05}}
+PICK_EDGE_CAP = {"SPREAD": 7.0, "TOTAL": 8.0, "MONEYLINE": 7.0}   # beyond this, more disagreement is usually a data problem
+PICK_EV_TO_POINTS = 20.0            # converts moneyline expected value into the same scale as point edges
+PICK_SIGNAL = {"money_divergence": 0.12}
+PICK_SIGNAL_BONUS = {"rlm_agrees": 0.8, "money_agrees": 0.5, "key_number": 0.4, "line_agrees": 0.3}
+PICK_TIERS = {"A+": 4.0, "A": 2.5, "B": 1.4}        # score floors
+PICK_TIER_UPPER = {"A": 4.0, "B": 2.5}              # used only when measuring historical hit rate per tier
+PICK_MIN_CALIBRATION_N = 40         # below this many graded historical plays, a tier reports "unmeasured"
+PICK_MAX_PER_WEEK = 60
+
 # ---- Storage --------------------------------------------------------------------
 APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to repo root
     "data/tables/market/snapshots",
@@ -160,6 +173,7 @@ APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to re
     "data/tables/model/pregame_final_flags.csv",
     "data/tables/model/ai_analyses",
     "data/tables/model/ai_analyses_index.csv",
+    "data/tables/model/picks_evaluation",
     "data/tables/model/pregame_snapshots_index.csv",
     "data/tables/model/model_evaluation",
     "data/tables/results",

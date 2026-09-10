@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Picks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="index.html">Matchup board<small>college football and NFL, opponent-adjusted</small></a>
+  <nav class="pages"><a href="index.html">Board</a><a href="odds.html">Odds</a><a href="picks.html" aria-current="page">AI Picks</a><a href="admin.html">Status</a></nav>
+</div></header>
+<main class="wrap">
+  <div id="honesty" class="honesty"></div>
+  <div id="toolbar" class="toolbar"></div>
+  <div id="record"></div>
+  <div id="picks"><div class="empty">Loading…</div></div>
+  <p id="built" class="note"></p>
+  <p class="note">Plays are where the quantitative model disagrees with the current market number, adjusted for data quality and
+     for market evidence that agrees with the model's side. Tiers rank that disagreement; the hit rate shown for each tier is what
+     plays of that size actually did in the walk-forward backtest. Break-even at standard -110 pricing is 52.4%.
+     This is a research tool, not advice, and the model does not beat the closing line.</p>
+</main>
+<script src="app.js"></script>
+<script src="picks.js"></script>
+<script>picksMain().catch(e => { document.getElementById("picks").innerHTML = '<div class="empty">The picks page could not load: ' + e.message + '</div>'; });</script>
+</body>
+</html>

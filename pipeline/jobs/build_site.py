@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 import config
-from pipeline import storage, market_engine, splits_engine
+from pipeline import storage, market_engine, splits_engine, picks_engine
 from pipeline.log import JobRun
 
 AN = config.TABLES / "analytics"
@@ -180,6 +180,30 @@ def build_odds(S: Season, week: int, slate: dict) -> dict:
                             if config.VSIN.get("enabled") else
                             ("Ticket and money percentages are entered by hand and stamped 'manual'." if not config.SPLITS_FEED.get("enabled")
                              else f"Splits from the licensed {config.SPLITS_FEED.get('provider')} feed."))}
+
+
+def build_picks(S: Season, week: int) -> dict:
+    """Picks payload: tiered plays plus the measured hit rate for each tier and the season's graded record."""
+    path = config.TABLES / "model" / "picks" / S.league / str(S.season) / f"W{week:02d}.parquet"
+    picks = storage.read_table(path)
+    cal = picks_engine.calibrate(S.league)
+    ev = storage.read_table(config.TABLES / "model" / "picks_evaluation" / S.league / f"{S.season}.csv")
+    rec = None
+    if not ev.empty:
+        dec = ev[ev.result.isin(["WIN", "LOSS"])]
+        rec = {"n": int(len(dec)), "wins": int((dec.result == "WIN").sum()), "losses": int((dec.result == "LOSS").sum()),
+               "pushes": int((ev.result == "PUSH").sum()),
+               "hit_rate": round(float((dec.result == "WIN").mean()), 4) if len(dec) else None,
+               "profit_units": round(float(ev.profit_units.sum()), 3)}
+    out = []
+    if not picks.empty:
+        for _, k in picks.iterrows():
+            out.append({c: _j(k.get(c)) for c in ("game_id", "market", "side", "line", "price", "tier", "score", "edge_points",
+                                                  "model_number", "market_number", "data_quality", "signals", "signal_notes",
+                                                  "tickets_pct_side", "money_pct_side", "expected_value", "model_version",
+                                                  "kickoff_utc", "home", "away", "week")})
+    return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
+            "picks": out, "calibration": cal, "season_record": rec}
 
 
 def build_slate(S: Season, week: int) -> dict:
@@ -354,6 +378,9 @@ def run(leagues: list[str], season: int, weeks: list[int] | None, job: JobRun) -
             rel = f"json/slate/{league}/{season}/W{wk:02d}.json"
             (config.SITE_DIR / rel).write_text(json.dumps(slate, default=str))
             manifest["slates"][league][str(wk)] = rel
+            (OUT / "picks" / league / str(season)).mkdir(parents=True, exist_ok=True)
+            (OUT / "picks" / league / str(season) / f"W{wk:02d}.json").write_text(json.dumps(build_picks(S, wk), default=str))
+            manifest.setdefault("picks", {}).setdefault(league, {})[str(wk)] = f"json/picks/{league}/{season}/W{wk:02d}.json"
             (OUT / "odds" / league / str(season)).mkdir(parents=True, exist_ok=True)
             (OUT / "odds" / league / str(season) / f"W{wk:02d}.json").write_text(json.dumps(build_odds(S, wk, slate), default=str))
             manifest.setdefault("odds", {}).setdefault(league, {})[str(wk)] = f"json/odds/{league}/{season}/W{wk:02d}.json"
