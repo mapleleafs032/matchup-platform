@@ -125,22 +125,10 @@ async function boardMain() {
       const m = sp[mkey] || {};
       const t = m.ticket_pct_home, mo = m.money_pct_home;
       if (t == null && mo == null) return el("div", { class: "cell splits mute" }, "no splits");
-      // labels for the two sides of this market, home/over first
-      const labA = mkey === "total" ? "Over" : g.home.abbr;
-      const labB = mkey === "total" ? "Under" : g.away.abbr;
-      const pair = (v) => {
-        if (v == null) return el("span", { class: "sp-val" }, "—");
-        const a = Math.round(v * 100), b = 100 - a;
-        return el("span", { class: "sp-val" },
-          el("span", { class: a >= b ? "hi" : "" }, `${labA} = ${a}%`),
-          el("span", { class: "sep" }, " / "),
-          el("span", { class: b > a ? "hi" : "" }, `${labB} = ${b}%`));
-      };
+      const box = el("div", { class: "cell splits" },
+        App.splitsPair({ ticket: t, money: mo, market: mkey, homeAbbr: g.home.abbr, awayAbbr: g.away.abbr }));
       const disagree = t != null && mo != null && (t >= 0.5) !== (mo >= 0.5);
       const gap = t != null && mo != null ? Math.abs(t - mo) * 100 : 0;
-      const box = el("div", { class: "cell splits" + (disagree ? " disagree" : "") },
-        el("span", { class: "sp-line" }, el("span", { class: "k" }, "Bets:"), pair(t)),
-        el("span", { class: "sp-line" }, el("span", { class: "k" }, "Money:"), pair(mo)));
       const marks = [];
       if (disagree) marks.push("money and tickets on opposite sides");
       else if (gap >= 12) marks.push(`${gap.toFixed(0)} point gap`);
@@ -326,4 +314,35 @@ App.marketToggle = function (current, onChange) {
   }
   [...seg.children].forEach((b, i) => b.addEventListener("click", () => onChange(keys[i])));
   return seg;
+};
+
+/* ------------------------------------------------------------------
+   Ticket and money shares for BOTH sides of a market, one format used
+   everywhere (board and Odds tab):
+
+       Bets:   SEA = 65% / ARI = 35%
+       Money:  SEA = 40% / ARI = 60%
+
+   For totals the two sides are Over and Under. The majority side of each
+   line is emphasised, and when bets and money favour opposite sides the
+   emphasised figures turn red, because that disagreement is the signal.
+   opts: { ticket, money, labelA, labelB, market, homeAbbr, awayAbbr }
+------------------------------------------------------------------- */
+App.splitsPair = function (opts) {
+  const el = App.el;
+  const t = opts.ticket == null ? null : Number(opts.ticket);
+  const m = opts.money == null ? null : Number(opts.money);
+  const labA = opts.labelA || (opts.market === "total" ? "Over" : opts.homeAbbr || "Home");
+  const labB = opts.labelB || (opts.market === "total" ? "Under" : opts.awayAbbr || "Away");
+  const disagree = t != null && m != null && (t >= 0.5) !== (m >= 0.5);
+  const line = (label, v) => {
+    if (v == null) return el("span", { class: "sp-line" }, el("span", { class: "k" }, label), el("span", { class: "sp-val" }, "—"));
+    const a = Math.round(v * 100), b = 100 - a;
+    return el("span", { class: "sp-line" }, el("span", { class: "k" }, label),
+      el("span", { class: "sp-val" },
+        el("span", { class: a >= b ? "hi" : "" }, `${labA} = ${a}%`),
+        el("span", { class: "sep" }, " / "),
+        el("span", { class: b > a ? "hi" : "" }, `${labB} = ${b}%`)));
+  };
+  return el("div", { class: "splits-pair" + (disagree ? " disagree" : "") }, line("Bets:", t), line("Money:", m));
 };

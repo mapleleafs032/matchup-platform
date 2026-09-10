@@ -233,9 +233,12 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
             resolver.unmatched.pop()
             return None
 
+    matched_slugs: set = set()
+    seen_slugs: set = set()
     i = 0
     while i < len(rows) - 1:
         a, b = rows[i], rows[i + 1]
+        seen_slugs.update({a.slug, b.slug})
         i += 2                     # ALWAYS advance a full pair: advancing by one desynchronizes every later game
         ta, tb = resolve(a.slug), resolve(b.slug)
         if ta is None or tb is None:
@@ -245,7 +248,8 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
         future = [c for c in cands if pd.notna(c._kick) and c._kick >= snap - pd.Timedelta(hours=6)]
         pool = sorted(future or cands, key=lambda c: (pd.Timestamp.max.tz_localize("UTC") if pd.isna(c._kick) else c._kick))
         if not pool:
-            problems.append({"kind": "no_scheduled_game", "why": f"no scheduled game for {ta} vs {tb}"})
+            problems.append({"kind": "no_scheduled_game",
+                             "why": f"no scheduled game for {ta} vs {tb} (VSiN slugs: {a.slug} / {b.slug})"})
             continue
         game = pool[0]
         home_is_b = (tb == game.home_team_id)
@@ -259,6 +263,8 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
             for metric, side, other in (("ticket", t_side, t_other), ("money", m_side, m_other)):
                 if side is None or other is None:
                     continue
+                if side == 0 and other == 0:
+                    continue                      # market not posted (common on big college favourites)
                 if not (0.95 <= side + other <= 1.05):
                     problems.append({"kind": "sum_not_100", "why": f"{game.game_id} {market} {metric}: {side:.2f} + {other:.2f} does not sum to 1"})
                     continue
@@ -279,5 +285,18 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
         elif n_pct < 4:
             problems.append({"kind": "too_few_percentages", "why": f"{game.game_id}: only {n_pct} of 6 percentages usable"})
         else:
+            matched_slugs.update({a.slug, b.slug})
             out.append(rec)
+    never = sorted(seen_slugs - matched_slugs)
+    if never:
+        mapped = []
+        for sl in never:
+            try:
+                mapped.append(f"{sl} -> {resolver.resolve('vsin', alias=sl)}")
+            except ids.UnmatchedAlias:
+                resolver.unmatched.pop()
+        if mapped:
+            problems.append({"kind": "mapped_but_never_matched",
+                             "why": "these slugs resolve to a team but never matched a scheduled game, which is what a wrong "
+                                    "mapping looks like: " + "; ".join(mapped[:12])})
     return out, problems

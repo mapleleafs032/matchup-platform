@@ -135,3 +135,29 @@ def test_row_without_a_moneyline_is_still_read():
     assert len(rows) == 1 and not problems
     r = rows[0]
     assert r.spread == -24.5 and r.spread_handle == 0.61 and r.total == 52.5 and r.moneyline is None and r.ml_bets is None
+
+
+def test_unmatched_pair_reports_the_slugs_behind_it():
+    """A wrong alias mapping looks like 'no scheduled game'; the slugs must be visible to diagnose it."""
+    r = ids.AliasResolver.load()
+    rows, _ = vsin.parse(FIX.read_text())
+    vsin.seed_aliases(rows, "NFL", r, _teams())
+    only_one = _games().head(1)
+    recs, problems = vsin.to_records(rows, "NFL", only_one, r, "2026-09-09T18:00:00+00:00")
+    unmatched = [p for p in problems if p["kind"] == "no_scheduled_game"]
+    assert unmatched and "VSiN slugs:" in unmatched[0]["why"]
+    flagged = [p for p in problems if p["kind"] == "mapped_but_never_matched"]
+    assert flagged and "->" in flagged[0]["why"]
+
+
+def test_market_with_zero_on_both_sides_is_treated_as_not_posted():
+    """College favourites often have no moneyline; 0% / 0% is 'not posted', not a validation failure."""
+    html = FIX.read_text().replace('<td>+140</td><td>36%</td><td>29%</td>', '<td></td><td>0%</td><td>0%</td>') \
+                          .replace('<td>-166</td><td>64%</td><td>71%</td>', '<td></td><td>0%</td><td>0%</td>')
+    r = ids.AliasResolver.load()
+    rows, _ = vsin.parse(html)
+    vsin.seed_aliases(rows, "NFL", r, _teams())
+    recs, problems = vsin.to_records(rows, "NFL", _games(), r, "2026-09-09T18:00:00+00:00")
+    assert not [p for p in problems if p["kind"] == "sum_not_100"]
+    sea = [x for x in recs if x["game_id"] == "2026_NFL_W01_NE_SEA"][0]
+    assert "moneyline_ticket_pct_home" not in sea and sea["spread_ticket_pct_home"] == 0.65

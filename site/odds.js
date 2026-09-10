@@ -83,11 +83,7 @@ async function oddsMain() {
     document.getElementById("built").textContent = `Odds page generated ${fmt.ago(data.generated_at)}.`;
   }
 
-  function pctChip(label, v, side, cls) {
-    if (v == null) return null;
-    return el("div", { class: "chip" }, el("span", { class: "k" }, label), el("span", { class: "num v" }, (100 * v).toFixed(0) + "%"),
-      side ? el("span", { class: "badge " + cls }, side) : null);
-  }
+
 
   function card(g) {
     const sp = (g.splits || {})[S.period] || { available: false, notes: [], series: [], latest: {}, divergence: {}, rlm: {} };
@@ -109,9 +105,9 @@ async function oddsMain() {
     const lat = sp.latest[S.market] || {};
     const div = sp.divergence[S.market];
     const rlm = sp.rlm[S.market];
+    const pair = App.splitsPair({ ticket: lat.ticket_pct_home, money: lat.money_pct_home,
+                                  market: S.market, homeAbbr: g.home.abbr, awayAbbr: g.away.abbr });
     const chips = el("div", { class: "og-chips" },
-      pctChip("tickets", lat.ticket_pct_home, lat.ticket_side, lat.ticket_pct_home >= 0.5 ? "home" : "away"),
-      pctChip("money", lat.money_pct_home, lat.money_side, lat.money_pct_home >= 0.5 ? "home" : "away"),
       div ? el("div", { class: "chip" }, el("span", { class: "k" }, "gap"), el("span", { class: "num v" }, (div.points > 0 ? "+" : "") + div.points.toFixed(0) + " pts"),
         div.notable ? el("span", { class: "badge warn" }, "notable") : null) : null,
       rlm ? el("div", { class: "chip" }, el("span", { class: "badge warn" }, "line moved against the tickets")) : null,
@@ -119,7 +115,7 @@ async function oddsMain() {
     for (const chip of App.indicatorChips(g.market_state, S.market)) chips.append(chip);
     const notes = el("ul", { class: "og-notes" });
     for (const n of sp.notes) notes.append(el("li", {}, n));
-    return el("section", { class: "og" }, head, chips, chart(sp, g), notes);
+    return el("section", { class: "og" }, head, pair, chips, chart(sp, g), notes);
   }
 
   function chart(sp, g) {

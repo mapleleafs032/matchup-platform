@@ -245,3 +245,15 @@ table.plain th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
 .cell.splits.disagree .sp-val .hi { color: var(--rlm); }
 .sp-flag { font-size: 10.5px; color: var(--steam); margin-top: 1px; }
 @media (max-width: 900px) { .cell.splits { font-size: 12px; } }
+
+/* two-sided ticket/money block, shared by the board and the Odds tab */
+.splits-pair { display: flex; flex-direction: column; gap: 1px; }
+.splits-pair .sp-line { display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--mute); white-space: nowrap; }
+.splits-pair .sp-line .k { min-width: 42px; }
+.splits-pair .sp-val { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.splits-pair .sp-val .hi { color: var(--ink); font-weight: 600; }
+.splits-pair .sp-val .sep { color: var(--rule); }
+.splits-pair.disagree .sp-val .hi { color: var(--rlm); }
+.og .splits-pair { margin: 8px 0 2px; }
+.og .splits-pair .sp-val { font-size: 15px; }
+.og .splits-pair .sp-line .k { min-width: 50px; font-size: 12.5px; }
