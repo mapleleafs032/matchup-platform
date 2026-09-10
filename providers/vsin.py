@@ -265,6 +265,8 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
                 rec[f"{market}_{metric}_pct_home"] = round(side, 4)
         rec["line_spread_home"] = home_row.spread
         rec["line_total"] = home_row.total
+        rec["line_ml_home"] = home_row.moneyline
+        rec["line_ml_away"] = away_row.moneyline
         # structural sanity: a genuine pair carries both teams' lines and most of the six percentages.
         # A mis-paired row fails these, so partial junk can never reach a real game.
         n_pct = sum(1 for k in rec if k.endswith("_pct_home"))

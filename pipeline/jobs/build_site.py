@@ -214,13 +214,45 @@ def build_picks(S: Season, week: int) -> dict:
             "picks": out, "rejected": rej, "gates": config.PICK_GATES, "calibration": cal, "season_record": rec}
 
 
+def _latest_splits(hist: pd.DataFrame, gid: str, kickoff) -> dict | None:
+    """Most recent pre-kickoff ticket/money shares for the board, one number per market per metric."""
+    if hist.empty:
+        return None
+    g = hist[(hist.game_id == gid) & (hist.period == "FULL")]
+    if kickoff is not None and not g.empty:
+        g = g[g.retrieved_at < pd.Timestamp(kickoff)]
+    if g.empty:
+        return None
+    r = g.sort_values("retrieved_at").iloc[-1]
+    out = {"book": r.book, "retrieved_at": r.retrieved_at.isoformat(), "n": int(len(g))}
+    for m in ("spread", "total", "moneyline"):
+        t, mo = r.get(f"{m}_ticket_pct_home"), r.get(f"{m}_money_pct_home")
+        out[m] = {"ticket_pct_home": None if pd.isna(t) else round(float(t), 3),
+                  "money_pct_home": None if pd.isna(mo) else round(float(mo), 3)}
+    return out
+
+
 def build_slate(S: Season, week: int) -> dict:
     wk = S.games[(S.games.week == week) & (S.games.season_type == "REG")].copy()
     wk = wk[~(wk.home_team_id.str.startswith("CFB_FCS") & wk.away_team_id.str.startswith("CFB_FCS"))]
     mkt = storage.read_table(AN / "market_analysis" / S.league / str(S.season) / f"W{week:02d}.parquet")
     mkt = mkt.set_index("game_id") if not mkt.empty else mkt
     edges = storage.read_table(AN / "matchup_edges" / S.league / str(S.season) / f"W{week:02d}.parquet")
-    games = [slate_entry(S, g, (mkt.loc[g.game_id] if not mkt.empty and g.game_id in mkt.index else None), edges) for _, g in wk.sort_values("kickoff_utc", na_position="last").iterrows()]
+    hist = splits_engine.load(S.league, S.season, week)
+    games = []
+    for _, g in wk.sort_values("kickoff_utc", na_position="last").iterrows():
+        entry = slate_entry(S, g, (mkt.loc[g.game_id] if not mkt.empty and g.game_id in mkt.index else None), edges)
+        entry["splits"] = _latest_splits(hist, g.game_id, g.kickoff_utc)
+        gh = hist[hist.game_id == g.game_id] if not hist.empty else hist
+        if not gh.empty:
+            st = splits_engine.current_state(gh, "FULL", entry["home"]["abbr"], entry["away"]["abbr"],
+                                             pd.Timestamp(g.kickoff_utc) if pd.notna(g.kickoff_utc) else None)
+            entry["indicators"] = {"rlm": {k: v["toward"] for k, v in (st.get("rlm_active") or {}).items()},
+                                   "lopsided": {k: v for k, v in (st.get("lopsided") or {}).items() if v},
+                                   "steam": sorted({e["market"] for e in st.get("events", []) if e["kind"] == "steam"})}
+        else:
+            entry["indicators"] = None
+        games.append(entry)
     return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(), "games": games}
 
 

@@ -63,6 +63,15 @@ async function boardMain() {
     toolbar.append(el("label", {}, "Line ", fav));
     const st = el("select", { "aria-label": "Game status" }, el("option", { value: "all" }, "All games"), el("option", { value: "SCHEDULED" }, "Upcoming"), el("option", { value: "LOCKED" }, "In progress / locked"), el("option", { value: "FINAL" }, "Final"));
     st.value = state.status; st.addEventListener("change", () => { state.status = st.value; paint(window.__slate); });
+    App.boardSplitMarket = App.boardSplitMarket || localStorage.getItem("board.splitMarket") || "spread";
+    const segS = el("div", { class: "seg", role: "group", "aria-label": "Splits market" });
+    for (const [k, lab] of [["spread", "Spread"], ["total", "Total"], ["moneyline", "ML"]]) segS.append(el("button", { "aria-pressed": String(k === App.boardSplitMarket) }, lab));
+    [...segS.children].forEach((b, i) => b.addEventListener("click", () => {
+      App.boardSplitMarket = ["spread", "total", "moneyline"][i];
+      localStorage.setItem("board.splitMarket", App.boardSplitMarket);
+      paint(window.__slate);
+    }));
+    toolbar.append(el("label", {}, "Splits ", segS));
     toolbar.append(el("label", {}, "Status ", st));
     const rk = el("input", { type: "checkbox" }); rk.checked = state.ranked; rk.addEventListener("change", () => { state.ranked = rk.checked; paint(window.__slate); });
     toolbar.append(el("label", {}, rk, state.league === "CFB" ? "Ranked teams only" : "Playoff-caliber (top-8 rated)"));
@@ -89,7 +98,7 @@ async function boardMain() {
       if (g.filters.date !== lastDate) {
         lastDate = g.filters.date;
         root.append(el("div", { class: "date-head" }, lastDate ? fmt.day(lastDate + "T12:00:00") : "Date TBA", el("span", {}, `${shown.filter(x => x.filters.date === lastDate).length} games`)));
-        root.append(el("div", { class: "col-head" }, el("div", {}, "Matchup"), el("div", {}, "Kickoff"), el("div", {}, "Spread (open)"), el("div", {}, "Total (open)"), el("div", {}, "Model score"), el("div", {}, "Win probability"), el("div", {}, "Key edge")));
+        root.append(el("div", { class: "col-head" }, el("div", {}, "Matchup"), el("div", {}, "Kickoff"), el("div", {}, "Spread (open)"), el("div", {}, "Total (open)"), el("div", {}, "Bets / Money" + (App.boardSplitMarket && App.boardSplitMarket !== "spread" ? " (" + (App.boardSplitMarket === "total" ? "total" : "ML") + ")" : "")), el("div", {}, "Model score"), el("div", {}, "Win probability"), el("div", {}, "Key edge")));
       }
       root.append(row(g));
     }
@@ -109,11 +118,44 @@ async function boardMain() {
       : el("div", { class: "cell model" }, el("span", { class: "badge warn" }, "No model yet"));
     const wp = md ? el("div", { class: "wp" }, el("span", { class: "num", style: "color:var(--away)" }, fmt.pct(1 - md.win_prob_home)), el("div", { class: "wpbar", title: `Home win probability ${fmt.pct(md.win_prob_home)}` }, el("i", { style: `width:${(100 * md.win_prob_home).toFixed(0)}%` })), el("span", { class: "num", style: "color:var(--home)" }, fmt.pct(md.win_prob_home)))
       : el("div", { class: "wp" }, "—");
+    const sp = g.splits, ind = g.indicators || {};
+    const splitCell = (() => {
+      const mkey = App.boardSplitMarket || "spread";
+      if (!sp) return el("div", { class: "cell splits mute" }, "no splits");
+      const m = sp[mkey] || {};
+      const t = m.ticket_pct_home, mo = m.money_pct_home;
+      if (t == null && mo == null) return el("div", { class: "cell splits mute" }, "no splits");
+      // labels for the two sides of this market, home/over first
+      const labA = mkey === "total" ? "Over" : g.home.abbr;
+      const labB = mkey === "total" ? "Under" : g.away.abbr;
+      const pair = (v) => {
+        if (v == null) return el("span", { class: "sp-val" }, "—");
+        const a = Math.round(v * 100), b = 100 - a;
+        return el("span", { class: "sp-val" },
+          el("span", { class: a >= b ? "hi" : "" }, `${labA} = ${a}%`),
+          el("span", { class: "sep" }, " / "),
+          el("span", { class: b > a ? "hi" : "" }, `${labB} = ${b}%`));
+      };
+      const disagree = t != null && mo != null && (t >= 0.5) !== (mo >= 0.5);
+      const gap = t != null && mo != null ? Math.abs(t - mo) * 100 : 0;
+      const box = el("div", { class: "cell splits" + (disagree ? " disagree" : "") },
+        el("span", { class: "sp-line" }, el("span", { class: "k" }, "Bets:"), pair(t)),
+        el("span", { class: "sp-line" }, el("span", { class: "k" }, "Money:"), pair(mo)));
+      const marks = [];
+      if (disagree) marks.push("money and tickets on opposite sides");
+      else if (gap >= 12) marks.push(`${gap.toFixed(0)} point gap`);
+      if ((ind.rlm || {})[mkey]) marks.push("RLM toward " + ind.rlm[mkey]);
+      if ((ind.lopsided || {})[mkey]) marks.push("lopsided on " + ind.lopsided[mkey]);
+      if ((ind.steam || []).includes(mkey)) marks.push("steam");
+      if (marks.length) box.append(el("span", { class: "sp-flag" }, marks[0]));
+      box.setAttribute("title", `${sp.book || "splits"} · ${sp.n} snapshot${sp.n === 1 ? "" : "s"}${marks.length ? " · " + marks.join(" · ") : ""}`);
+      return box;
+    })();
     const ke = g.key_edge ? el("div", { class: "edge-chip" }, el("span", { class: "badge " + g.key_edge.side }, g.key_edge.side === "home" ? g.home.abbr : g.away.abbr), " ", g.key_edge.label, " ", el("b", {}, Math.abs(g.key_edge.points).toFixed(1) + " pts"))
       : el("div", { class: "edge-chip" }, el("span", { class: "badge mute" }, "Edges not built"));
     const when = g.result ? el("div", { class: "when" }, el("span", { class: "final" }, `Final ${g.result.away}–${g.result.home}`), g.result.model_ats ? el("span", { class: "tv" }, `model vs spread: ${g.result.model_ats}`) : null)
       : el("div", { class: "when" }, fmt.kick(g.kickoff_utc, g.kickoff_is_tba), el("span", { class: "tv" }, [g.tv, g.venue && g.venue.city, g.neutral_site ? "neutral site" : null].filter(Boolean).join(" · ")));
-    return el("a", { class: "row", href: `matchup.html?g=${g.game_id}` }, el("div", { class: "teams" }, team(g.away, "away"), team(g.home, "home")), when, spreadCell, totCell, modelCell, wp, ke);
+    return el("a", { class: "row", href: `matchup.html?g=${g.game_id}` }, el("div", { class: "teams" }, team(g.away, "away"), team(g.home, "home")), when, spreadCell, totCell, splitCell, modelCell, wp, ke);
   }
   render();
 }
@@ -157,8 +199,23 @@ App.marketChart = function (opts) {
   const el = App.el;
   const market = opts.market || "spread";
   const home = opts.homeAbbr || "HOME", away = opts.awayAbbr || "AWAY";
-  const line = (opts.lineSeries || []).filter(p => p && p.t).slice().sort((a, b) => new Date(a.t) - new Date(b.t));
   const splits = (opts.splitsSeries || []).slice().sort((a, b) => new Date(a.t) - new Date(b.t));
+  /* One book only. The splits source carries its own line at every snapshot, so the chart shows the
+     number people were actually betting into. Falling back to the odds feed, a single book is picked
+     rather than every book at once, which would look like the line was oscillating when it was not. */
+  const fromSplits = splits.filter(p => p.line_spread_home != null || p.line_total != null || p.line_ml_home != null)
+    .map(p => ({ t: p.t, book: p.book, spread_home: p.line_spread_home, total: p.line_total, ml_home: p.line_ml_home, ml_away: p.line_ml_away }));
+  let line = fromSplits;
+  let bookUsed = fromSplits.length ? (splits[0] || {}).book : null;
+  if (!line.length) {
+    const raw = (opts.lineSeries || []).filter(p => p && p.t);
+    const counts = {};
+    for (const p of raw) counts[p.book] = (counts[p.book] || 0) + 1;
+    const prefer = ["draftkings", "consensus", "fanduel", "betmgm", "caesars", "espnbet", "bovada"];
+    bookUsed = prefer.find(b => counts[b]) || Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || null;
+    line = raw.filter(p => p.book === bookUsed);
+  }
+  line = line.slice().sort((a, b) => new Date(a.t) - new Date(b.t));
   const events = (opts.events || []).filter(e => e.market === (market === "moneyline" ? "spread" : market));
 
   // the two plotted series, per market
@@ -255,7 +312,7 @@ App.marketChart = function (opts) {
     el("b", { style: "color:var(--steam)" }, "STEAM"), " fast move, ",
     el("b", { style: "color:var(--rlm)" }, "RLM"), " moved against the crowd, ",
     el("b", { style: "color:var(--split)" }, "$"), " tickets and money split.",
-    opts.book ? ` Prices from ${opts.book}.` : ""));
+    bookUsed ? ` Prices from ${bookUsed === "draftkings" ? "DraftKings" : bookUsed}.` : ""));
   return wrap;
 };
 

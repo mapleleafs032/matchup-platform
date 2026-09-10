@@ -51,7 +51,9 @@ def analyze_game(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: str
     for _, r in h.iterrows():
         row = {"t": r.retrieved_at.isoformat(), "book": r.book,
                "line_spread_home": None if pd.isna(r.get("line_spread_home")) else float(r.line_spread_home),
-               "line_total": None if pd.isna(r.get("line_total")) else float(r.line_total)}
+               "line_total": None if pd.isna(r.get("line_total")) else float(r.line_total),
+               "line_ml_home": None if pd.isna(r.get("line_ml_home")) else float(r.line_ml_home),
+               "line_ml_away": None if pd.isna(r.get("line_ml_away")) else float(r.line_ml_away)}
         for m in MARKETS:
             for k in ("ticket", "money"):
                 c = f"{m}_{k}_pct_home"

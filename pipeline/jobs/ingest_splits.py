@@ -174,11 +174,11 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
         lines = _current_lines(league, season, int(wk))
         part = part.copy()
         # the source's own line is the number the splits refer to; our snapshot only fills a gap
-        for col in ("line_spread_home", "line_total"):
+        for col in ("line_spread_home", "line_total", "line_ml_home", "line_ml_away"):
             fallback = part.game_id.map(lambda g: (lines.get(g) or {}).get(col))
             part[col] = part[col].where(part[col].notna(), fallback) if col in part.columns else fallback
         part["split_id"] = part.game_id + "_" + part.period + "_" + part.book + "_" + part.retrieved_at.astype(str)
-        cols = ["split_id", "game_id", "week", "retrieved_at", "book", "period"] + PCT_COLS + ["line_spread_home", "line_total", "source"]
+        cols = ["split_id", "game_id", "week", "retrieved_at", "book", "period"] + PCT_COLS + ["line_spread_home", "line_total", "line_ml_home", "line_ml_away", "source"]
         part = part.reindex(columns=cols)
         if dry:
             print(part.head(8).to_string(index=False)); written += len(part); continue
