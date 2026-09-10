@@ -169,3 +169,31 @@ def test_events_carry_timestamps_for_the_chart():
     assert all("t" in e and e["market"] in ("spread", "total") for e in ev)
     steam = [e for e in ev if e["kind"] == "steam"][0]
     assert steam["toward"] == "SEA" and steam["move"] == -1.5
+
+
+def test_append_csv_rewrites_the_header_when_a_column_is_added(tmp_path):
+    """A metric added later must not corrupt an append-only file: the header grows, old values survive."""
+    from pipeline import storage
+    f = tmp_path / "splits.csv"
+    storage.append_csv(f, pd.DataFrame([{"split_id": "a", "line_spread_home": -3.0}]), ["split_id"])
+    storage.append_csv(f, pd.DataFrame([{"split_id": "b", "line_spread_home": -3.5, "line_ml_home": -166}]), ["split_id"])
+    df = pd.read_csv(f)
+    assert list(df.columns) == ["split_id", "line_spread_home", "line_ml_home"]
+    assert df.loc[df.split_id == "a", "line_spread_home"].iloc[0] == -3.0
+    assert pd.isna(df.loc[df.split_id == "a", "line_ml_home"].iloc[0])
+    assert df.loc[df.split_id == "b", "line_ml_home"].iloc[0] == -166
+
+
+def test_repair_csv_realigns_a_file_corrupted_by_the_old_writer(tmp_path):
+    """Files already written by the buggy writer have rows wider than the header; repair recovers them."""
+    from pipeline import storage
+    f = tmp_path / "broken.csv"
+    f.write_text("split_id,game_id,line_spread_home\na,G,-3.0\nb,G,-3.5,-166,140\n")
+    with pytest.raises(Exception):
+        pd.read_csv(f)
+    n = storage.repair_csv(f, ["split_id", "game_id", "line_spread_home", "line_ml_home", "line_ml_away"])
+    assert n == 2
+    df = pd.read_csv(f)
+    assert len(df) == 2 and df.loc[df.split_id == "b", "line_ml_home"].iloc[0] == -166
+    assert pd.isna(df.loc[df.split_id == "a", "line_ml_home"].iloc[0])
+    assert storage.repair_csv(f, ["split_id", "game_id", "line_spread_home", "line_ml_home", "line_ml_away"]) == 0

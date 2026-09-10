@@ -15,6 +15,35 @@ import pandas as pd
 import config
 
 
+def repair_csv(path: Path, expected_cols: list[str]) -> int:
+    """
+    Repair an append-only CSV whose rows gained fields without the header being rewritten (a bug fixed in
+    append_csv, but files written by the older code are already malformed). Rows are re-aligned against
+    `expected_cols`: short rows gain empty cells, and the header is rewritten. No recorded value changes.
+    Returns the number of rows recovered, or 0 if the file was already sound.
+    """
+    import csv
+    if not path.exists():
+        return 0
+    with path.open(newline="") as f:
+        rows = list(csv.reader(f))
+    if not rows:
+        return 0
+    header, data = rows[0], rows[1:]
+    widest = max((len(r) for r in data), default=len(header))
+    if widest <= len(header):
+        return 0                                    # already sound
+    if len(expected_cols) < widest:
+        expected_cols = expected_cols + [f"extra_{i}" for i in range(widest - len(expected_cols))]
+    new_header = expected_cols[:widest]
+    fixed = [r + [""] * (widest - len(r)) for r in data]
+    with path.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(new_header)
+        w.writerows(fixed)
+    return len(fixed)
+
+
 def read_table(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
@@ -49,10 +78,18 @@ def append_csv(path: Path, df: pd.DataFrame, key_cols: list[str],
             df = df[~dup_mask]
             if df.empty:
                 return 0
-        # column union, preserving existing order
-        cols = list(existing.columns) + [c for c in df.columns if c not in existing.columns]
+        # Column union, preserving existing order. When the schema has GROWN (a metric added after this
+        # file was first written), the header must be rewritten or every appended row carries more fields
+        # than the header declares and the file becomes unreadable. Existing values are never altered:
+        # old rows simply gain empty cells for the new columns.
+        new_cols = [c for c in df.columns if c not in existing.columns]
+        cols = list(existing.columns) + new_cols
         df = df.reindex(columns=cols)
-        df.to_csv(path, mode="a", header=False, index=False)
+        if new_cols:
+            existing.reindex(columns=cols).to_csv(path, index=False)
+            df.to_csv(path, mode="a", header=False, index=False)
+        else:
+            df.to_csv(path, mode="a", header=False, index=False)
     else:
         df.to_csv(path, index=False)
     return len(df)

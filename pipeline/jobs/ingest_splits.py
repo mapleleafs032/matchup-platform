@@ -28,6 +28,8 @@ from providers import splits_manual, splits_feed, vsin
 PASTE_DIR = config.DATA / "manual" / "splits_paste"
 OUT = config.TABLES / "market" / "splits"
 PCT_COLS = [f"{m.lower()}_{k}_pct_home" for m in splits_manual.MARKETS for k in ("ticket", "money")]
+SPLIT_COLS = ["split_id", "game_id", "week", "retrieved_at", "book", "period"] + PCT_COLS + \
+             ["line_spread_home", "line_total", "line_ml_home", "line_ml_away", "source"]
 _ISO = re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
 
 
@@ -178,11 +180,14 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
             fallback = part.game_id.map(lambda g: (lines.get(g) or {}).get(col))
             part[col] = part[col].where(part[col].notna(), fallback) if col in part.columns else fallback
         part["split_id"] = part.game_id + "_" + part.period + "_" + part.book + "_" + part.retrieved_at.astype(str)
-        cols = ["split_id", "game_id", "week", "retrieved_at", "book", "period"] + PCT_COLS + ["line_spread_home", "line_total", "line_ml_home", "line_ml_away", "source"]
-        part = part.reindex(columns=cols)
+        part = part.reindex(columns=SPLIT_COLS)
         if dry:
             print(part.head(8).to_string(index=False)); written += len(part); continue
-        written += storage.append_csv(OUT / league / str(season) / f"W{int(wk):02d}.csv", part, ["split_id"], on_duplicate="skip")
+        out_path = OUT / league / str(season) / f"W{int(wk):02d}.csv"
+        n_fixed = storage.repair_csv(out_path, SPLIT_COLS)     # heal files written before a column was added
+        if n_fixed:
+            print(f"    repaired {out_path.name}: {n_fixed} existing rows re-aligned to the current columns")
+        written += storage.append_csv(out_path, part, ["split_id"], on_duplicate="skip")
     vlog.flush()
     job.rows_written = written
     print(f"{league} {season}: {written} splits rows{' (dry run, nothing written)' if dry else ''}; {len(problems)} unreadable lines; "
