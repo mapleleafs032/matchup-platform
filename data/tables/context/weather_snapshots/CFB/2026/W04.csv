@@ -1,0 +1,2 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
+2026_CFB_W04_LIB_CCU,2026-09-10T11:10:50.898878+00:00,2026-09-24T23:30:00+00:00,348.3,False,False,open_meteo,72.4,71.6,8.1,22.4,358.0,0.1,0.0,60.0,0.0
