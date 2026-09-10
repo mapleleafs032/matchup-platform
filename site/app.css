@@ -212,3 +212,15 @@ table.plain th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
 .badge.sig { background: transparent; border: 1px solid var(--home); color: var(--home); font-size: 11px; padding: 1px 7px; }
 .pk-notes { font-size: 13px; color: var(--ink-2); margin: 6px 0 0; }
 @media (max-width: 640px) { .pk-score { margin-left: 0; } .tier-rate { margin-left: 0; width: 100%; } }
+.hon-card.even { border-left: 3px solid var(--mute); }
+.hon-bands { margin-top: 10px; font-size: 13px; }
+.hon-bands summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.band-tbl { border-collapse: collapse; margin: 8px 0 2px; font-size: 13px; }
+.band-tbl th, .band-tbl td { border-bottom: 1px solid var(--rule); padding: 4px 12px 4px 0; text-align: left; }
+.band-tbl th { font-family: var(--cond); font-weight: 600; color: var(--mute); }
+.band-tbl td.good { color: var(--home); font-weight: 600; } .band-tbl td.bad { color: var(--away); }
+.gates { margin: 6px 0 4px; }
+.gates-det { margin-top: 6px; font-size: 13px; }
+.gates-det summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.gate-counts { margin: 8px 0; padding-left: 18px; color: var(--ink-2); }
+.band-tbl td.why { color: var(--away); max-width: 460px; }

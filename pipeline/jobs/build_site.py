@@ -195,15 +195,18 @@ def build_picks(S: Season, week: int) -> dict:
                "pushes": int((ev.result == "PUSH").sum()),
                "hit_rate": round(float((dec.result == "WIN").mean()), 4) if len(dec) else None,
                "profit_units": round(float(ev.profit_units.sum()), 3)}
-    out = []
-    if not picks.empty:
-        for _, k in picks.iterrows():
-            out.append({c: _j(k.get(c)) for c in ("game_id", "market", "side", "line", "price", "tier", "score", "edge_points",
-                                                  "model_number", "market_number", "data_quality", "signals", "signal_notes",
-                                                  "tickets_pct_side", "money_pct_side", "expected_value", "model_version",
-                                                  "kickoff_utc", "home", "away", "week")})
+    cols = ("game_id", "market", "side", "line", "price", "tier", "score", "edge_points", "model_number", "market_number",
+            "data_quality", "signals", "signal_notes", "tickets_pct_side", "money_pct_side", "expected_value",
+            "model_version", "kickoff_utc", "home", "away", "week", "marquee_why", "rlm", "lopsided_side", "move_against")
+    out = [{c: _j(k.get(c)) for c in cols} for _, k in picks.iterrows()] if not picks.empty else []
+    rej_path = config.TABLES / "model" / "picks_rejected" / S.league / str(S.season) / f"W{week:02d}.parquet"
+    rejected = storage.read_table(rej_path)
+    rej = []
+    if not rejected.empty:
+        rejected = rejected.sort_values("score", ascending=False).head(80)
+        rej = [{**{c: _j(k.get(c)) for c in cols}, "veto_reasons": _j(k.get("veto_reasons"))} for _, k in rejected.iterrows()]
     return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
-            "picks": out, "calibration": cal, "season_record": rec}
+            "picks": out, "rejected": rej, "gates": config.PICK_GATES, "calibration": cal, "season_record": rec}
 
 
 def build_slate(S: Season, week: int) -> dict:

@@ -49,27 +49,45 @@ async function picksMain() {
     box.replaceChildren();
     const be = (cal.break_even * 100).toFixed(1);
     const tiers = cal.tiers || {};
-    const measured = Object.entries(tiers).filter(([, v]) => v.hit_rate != null);
-    const anyBeats = measured.some(([, v]) => v.beats_break_even);
     box.append(el("h2", {}, "What these tiers have actually done"));
     const row = el("div", { class: "hon-row" });
     for (const t of ["A+", "A", "B"]) {
       const v = tiers[t];
       if (!v) continue;
       const has = v.hit_rate != null;
-      row.append(el("div", { class: "hon-card " + (has ? (v.beats_break_even ? "good" : "bad") : "unk") },
+      const cls = !has ? "unk" : (v.significant ? "good" : (v.beats_break_even ? "even" : "bad"));
+      row.append(el("div", { class: "hon-card " + cls },
         el("div", { class: "hon-tier" }, t),
         el("div", { class: "hon-rate num" }, has ? (v.hit_rate * 100).toFixed(1) + "%" : "unmeasured"),
-        el("div", { class: "hon-n" }, has ? `on ${v.n} graded plays` : `${v.n} graded, need more`)));
+        el("div", { class: "hon-n" }, has ? `${v.n} graded · 95% range ${(v.ci_low * 100).toFixed(0)}–${(v.ci_high * 100).toFixed(0)}%` : "not enough history"),
+        has && v.range ? el("div", { class: "hon-n" }, `score ${v.range[0]}${v.range[1] ? "–" + v.range[1] : "+"}`) : null));
     }
     box.append(row);
     box.append(el("p", { class: "hon-note" },
       `Break-even at -110 pricing is ${be}%. `,
-      measured.length
-        ? (anyBeats ? "Some tiers cleared that bar historically; on samples this size that is not yet evidence of an edge."
-                    : "No tier has cleared that bar historically, so these plays would have lost money at standard pricing.")
-        : "Not enough graded history yet to say how these tiers perform.",
+      cal.tier_basis === "unmeasured"
+        ? "Nothing has been graded yet, so tiers here rank disagreement only and carry no evidence."
+        : (cal.any_band_beats_break_even
+            ? "At least one band clears break-even with its whole confidence interval above the line."
+            : "No band clears break-even once its confidence interval is taken into account, so treat every tier as unproven."),
       cal.note ? " " + cal.note : ""));
+    if (cal.bands && cal.bands.length) {
+      const det = el("details", { class: "hon-bands" }, el("summary", {}, "How score relates to winning, measured"));
+      const tbl = el("table", { class: "band-tbl" });
+      tbl.append(el("tr", {}, el("th", {}, "score band"), el("th", {}, "plays"), el("th", {}, "hit rate"), el("th", {}, "95% range"), el("th", {}, "vs break-even")));
+      for (const b of cal.bands) {
+        tbl.append(el("tr", {},
+          el("td", {}, `${b.lo}${b.hi ? "–" + b.hi : "+"}`),
+          el("td", { class: "num" }, String(b.n)),
+          el("td", { class: "num" }, (b.hit_rate * 100).toFixed(1) + "%"),
+          el("td", { class: "num" }, `${(b.ci_low * 100).toFixed(0)}–${(b.ci_high * 100).toFixed(0)}%`),
+          el("td", { class: b.significant ? "good" : (b.beats_break_even ? "" : "bad") },
+            b.significant ? "clears it" : (b.beats_break_even ? "above, within noise" : "below"))));
+      }
+      det.append(tbl);
+      det.append(el("p", { class: "hon-note" }, "A higher score means the model disagrees with the market more. If the hit rate does not rise with the score, disagreement size is not telling you anything useful — which is worth knowing."));
+      box.append(det);
+    }
     if (cal.live_total) {
       box.append(el("p", { class: "hon-note" }, `This season, graded live: ${(cal.live_total.hit_rate * 100).toFixed(1)}% on ${cal.live_total.n} plays.`));
     }
@@ -106,6 +124,7 @@ async function picksMain() {
       document.getElementById("built").textContent = `Picks generated ${fmt.ago(data.generated_at)}.`;
       return;
     }
+    root.append(gateSummary(data));
     for (const t of ["A+", "A", "B"]) {
       const group = plays.filter(p => p.tier === t);
       if (!group.length) continue;
@@ -119,6 +138,38 @@ async function picksMain() {
       for (const p of group) root.append(card(p));
     }
     document.getElementById("built").textContent = `Picks generated ${fmt.ago(data.generated_at)} from model ${data.picks[0].model_version}.`;
+  }
+
+  function gateSummary(data) {
+    const rej = data.rejected || [];
+    const box = el("div", { class: "gates" });
+    box.append(el("p", { class: "note" },
+      `A statistical edge alone is not a play. Candidates must also agree with the market: no reverse line movement, `
+      + `no side holding ${(data.gates.lopsided_threshold * 100).toFixed(0)}% of both tickets and money, the number not moving `
+      + `more than ${data.gates.max_line_move_against} against us, splits on record, and — in college — a game that draws real volume.`));
+    if (!rej.length) return box;
+    const counts = {};
+    for (const r of rej) for (const why of String(r.veto_reasons).split(" | ")) {
+      const k = why.split(":")[0].split(",")[0];
+      counts[k] = (counts[k] || 0) + 1;
+    }
+    const det = el("details", { class: "gates-det" },
+      el("summary", {}, `${rej.length} candidate${rej.length > 1 ? "s" : ""} filtered out — see why`));
+    const ul = el("ul", { class: "gate-counts" });
+    for (const [k, v] of Object.entries(counts).sort((a, b) => b[1] - a[1])) ul.append(el("li", {}, `${v} · ${k}`));
+    det.append(ul);
+    const tbl = el("table", { class: "band-tbl" });
+    tbl.append(el("tr", {}, el("th", {}, "play"), el("th", {}, "game"), el("th", {}, "edge"), el("th", {}, "filtered because")));
+    for (const r of rej.slice(0, 25)) {
+      tbl.append(el("tr", {},
+        el("td", {}, `${r.side} ${r.market === "MONEYLINE" ? (r.price > 0 ? "+" : "") + r.price : fmt.num(r.line, 1)}`),
+        el("td", {}, `${r.away} at ${r.home}`),
+        el("td", { class: "num" }, fmt.num(r.edge_points, 1)),
+        el("td", { class: "why" }, String(r.veto_reasons))));
+    }
+    det.append(tbl);
+    box.append(det);
+    return box;
   }
 
   function sideLabel(p) {

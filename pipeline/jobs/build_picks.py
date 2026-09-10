@@ -70,19 +70,36 @@ def run(league: str, season: int, weeks: list[int] | None, job: JobRun) -> None:
         weeks = [cur, cur + 1]
     total = 0
     for wk in weeks:
-        picks, calib = picks_engine.build_week(league, season, wk)
+        picks, rejected, calib = picks_engine.build_week(league, season, wk)
+        if picks.empty and rejected.empty:
+            print(f"{league} {season} W{wk}: no candidates clear the minimum edge"); continue
+        if not rejected.empty:
+            storage.write_parquet(MODEL / "picks_rejected" / league / str(season) / f"W{wk:02d}.parquet", rejected)
+            counts: dict = {}
+            for r in rejected.veto_reasons:
+                for reason in str(r).split(" | "):
+                    key = reason.split(":")[0].split(",")[0][:52]
+                    counts[key] = counts.get(key, 0) + 1
+            print(f"{league} {season} W{wk}: {len(rejected)} candidates filtered out by the gates:")
+            for k, v in sorted(counts.items(), key=lambda kv: -kv[1]):
+                print(f"      {v:3d}  {k}")
         if picks.empty:
-            print(f"{league} {season} W{wk}: no plays clear the minimum edge"); continue
+            print(f"{league} {season} W{wk}: nothing survived the gates"); continue
         picks = picks.head(config.PICK_MAX_PER_WEEK)
         storage.write_parquet(MODEL / "picks" / league / str(season) / f"W{wk:02d}.parquet", picks)
         total += len(picks)
         by_tier = picks.tier.value_counts().to_dict()
         print(f"{league} {season} W{wk}: {len(picks)} plays {by_tier}")
+        if calib.get("bands"):
+            print(f"    measured relationship between score and winning ({league}):")
+            for b in calib["bands"]:
+                hi = f"-{b['hi']}" if b["hi"] else "+"
+                verdict = "clears break-even" if b["significant"] else ("above, within noise" if b["beats_break_even"] else "below break-even")
+                print(f"      score {b['lo']}{hi}: n={b['n']:4d} hit={b['hit_rate']*100:5.1f}%  95% [{b['ci_low']*100:.0f}-{b['ci_high']*100:.0f}]  {verdict}")
         for t in ("A+", "A", "B"):
             c = (calib.get("tiers") or {}).get(t)
-            if c:
-                r = f"{c['hit_rate']*100:.1f}% on {c['n']} graded" if c["hit_rate"] is not None else f"unmeasured ({c['n']} graded, need {config.PICK_MIN_CALIBRATION_N})"
-                print(f"    tier {t}: historical {r}")
+            if c and c.get("hit_rate") is not None:
+                print(f"    tier {t} = score {c['range'][0]}{'-' + str(c['range'][1]) if c['range'][1] else '+'}: {c['hit_rate']*100:.1f}% on {c['n']} graded")
     job.rows_written = total + grade(league, season, job)
 
 
