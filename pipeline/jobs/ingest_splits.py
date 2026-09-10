@@ -68,7 +68,7 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
             vlog.warn("SPLITS_UNREADABLE", "vsin", league, p.get("why", "")[:160], "parsed rows")
         print(f"  VSiN {league}: no rows parsed — {problems[0].get('why') if problems else 'unknown'}")
         return [], problems
-    added, unmatched = vsin.seed_aliases(rows, league, resolver, teams)
+    added, unmatched, conflicts = vsin.seed_aliases(rows, league, resolver, teams)
     for u in unmatched:
         vlog.warn("ALIAS_UNMATCHED", u, "vsin_slug", u, "add to team_aliases.csv (provider=vsin)")
     if unmatched:
@@ -77,6 +77,12 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
         pd.DataFrame({"provider": "vsin", "alias": unmatched, "provider_id": None, "team_id": "", "season_from": None, "season_to": None}).to_csv(out, index=False)
         print(f"    unmapped slugs written to {out.relative_to(config.ROOT)} — fill team_id and paste the rows into data/tables/ref/team_aliases.csv")
         print(f"    {', '.join(unmatched[:20])}" + (" ..." if len(unmatched) > 20 else ""))
+    if conflicts:
+        print(f"    CORRECTED {len(conflicts)} team alias(es) written by an earlier, looser matcher:")
+        for c in conflicts:
+            print(f"      {c['slug']}: was {c['stored']} -> now {c['expected']}")
+        vlog.warn("ALIAS_CORRECTED", ";".join(c["slug"] for c in conflicts), "vsin_slug",
+                  "; ".join(f"{c['slug']} {c['stored']}->{c['expected']}" for c in conflicts), "verified mapping")
     recs, probs = vsin.to_records(rows, league, games, resolver, ts)
     print(f"  VSiN {league}: {len(rows)} team rows ({len(rows)//2} pairs) -> {len(recs)} games"
           + (f"; {added} new team aliases learned" if added else "")

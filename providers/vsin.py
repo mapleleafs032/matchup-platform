@@ -153,6 +153,14 @@ _TOKEN_EXPANSIONS = {
 }
 
 
+# Tokens that CHANGE which school is meant. Dropping one turns Florida Atlantic into Florida and
+# Miami (OH) into Miami, so a shorter match is never accepted past one of these.
+_QUALIFIERS = {"st", "state", "oh", "fl", "la", "ny", "nc", "sc", "am", "atlantic", "tech", "international", "intl",
+               "north", "northern", "south", "southern", "east", "eastern", "west", "western", "central",
+               "n", "s", "e", "w", "c", "coastal", "gulf", "valley", "dominion", "commonwealth", "poly", "polytechnic",
+               "a&m", "aandm", "christian", "wesleyan", "southeastern", "northwestern", "southwestern", "northeastern"}
+
+
 def _slug_variants(slug: str) -> list[str]:
     """Candidate normalized spellings for a VSiN slug, longest first (full name, then dropping mascot words)."""
     parts = [p for p in slug.split("-") if p]
@@ -162,8 +170,12 @@ def _slug_variants(slug: str) -> list[str]:
         expanded = [prev + [o] for prev in expanded for o in opts][:32]
     out = []
     for toks in expanded:
-        for cut in range(len(toks), 0, -1):
-            out.append(slug_key("".join(toks[:cut])))
+        # never cut past a qualifier: "florida atlantic owls" may shorten to "florida atlantic", never "florida"
+        last_q = max((i for i, t in enumerate(toks) if t in _QUALIFIERS), default=-1)
+        floor = max(last_q + 1, 1)
+        for cut in range(len(toks), floor - 1, -1):
+            if cut >= floor:
+                out.append(slug_key("".join(toks[:cut])))
     seen, uniq = set(), []
     for k in out:
         if k and k not in seen:
@@ -171,13 +183,14 @@ def _slug_variants(slug: str) -> list[str]:
     return uniq
 
 
-def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, teams: pd.DataFrame) -> tuple[int, list[str]]:
+def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, teams: pd.DataFrame,
+                 fix_conflicts: bool = True) -> tuple[int, list[str], list[dict]]:
     """
     Map VSiN team slugs to our team_ids by exact normalized match against display name, school+mascot and
     school alone. Ambiguous or unmatched slugs are returned for manual mapping — never fuzzy-matched.
     """
     if teams.empty:
-        return 0, [r.slug for r in rows]
+        return 0, [r.slug for r in rows], []
     t = teams[teams.league == league]
     lookup: dict[str, set] = {}
     for _, x in t.iterrows():
@@ -187,10 +200,21 @@ def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, 
         for c in cands:
             if isinstance(c, str) and c.strip():
                 lookup.setdefault(slug_key(c), set()).add(x.team_id)
-    known = set(resolver.aliases[resolver.aliases.provider == "vsin"].alias)
-    added, unmatched = [], []
+    existing = dict(zip(resolver.aliases[resolver.aliases.provider == "vsin"].alias,
+                        resolver.aliases[resolver.aliases.provider == "vsin"].team_id))
+    known = set(existing)
+    added, unmatched, conflicts = [], [], []
     for r in rows:
         if r.slug in known:
+            # an alias written by an earlier matcher can be wrong and would never be revisited; re-check it
+            best = None
+            for key in _slug_variants(r.slug):
+                cand = lookup.get(key)
+                if cand and len(cand) == 1:
+                    best = next(iter(cand))
+                    break
+            if best and best != existing[r.slug]:
+                conflicts.append({"slug": r.slug, "stored": existing[r.slug], "expected": best})
             continue
         hit = None
         for key in _slug_variants(r.slug):
@@ -205,7 +229,13 @@ def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, 
             unmatched.append(r.slug)
     if added:
         resolver.add(added); resolver.save()
-    return len(added), sorted(set(unmatched))
+    if conflicts and fix_conflicts:
+        keep = resolver.aliases[~((resolver.aliases.provider == "vsin") & (resolver.aliases.alias.isin([c["slug"] for c in conflicts])))]
+        resolver.aliases = keep
+        resolver.add([{"provider": "vsin", "alias": c["slug"], "provider_id": None, "team_id": c["expected"],
+                       "season_from": None, "season_to": None} for c in conflicts])
+        resolver.save()
+    return len(added), sorted(set(unmatched)), conflicts
 
 
 def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: ids.AliasResolver,
