@@ -121,10 +121,7 @@ async function matchupMain() {
     for (const [k, lab] of [["spread", "Spread"], ["total", "Total"], ["moneyline", "Moneyline"]]) segM.append(el("button", { "aria-pressed": String(k === SP.market) }, lab));
     [...segM.children].forEach((b, i) => b.addEventListener("click", () => { SP.market = ["spread", "total", "moneyline"][i]; redraw(); }));
     bar.append(el("label", {}, "Market ", segM));
-    const segT = el("div", { class: "seg", role: "group", "aria-label": "Show splits for" });
-    for (const lab of [H.identity.abbr, A.identity.abbr]) segT.append(el("button", { "aria-pressed": String((lab === H.identity.abbr) === (SP.perspective === "home")) }, lab));
-    [...segT.children].forEach((b, i) => b.addEventListener("click", () => { SP.perspective = i === 0 ? "home" : "away"; redraw(); }));
-    bar.append(el("label", {}, "Showing ", segT));
+
     spSec.append(bar);
     const chips = el("div", { class: "og-chips" });
     spSec.append(chips);
@@ -138,12 +135,8 @@ async function matchupMain() {
       const key = SP.market === "moneyline" ? "spread" : SP.market;
       chips.replaceChildren();
       for (const c of App.indicatorChips(mstate, SP.market)) chips.append(c);
-      const isTotal = SP.market === "total";
-      const teamLabel = isTotal ? (SP.perspective === "home" ? "the over" : "the under")
-                                : (SP.perspective === "home" ? H.identity.abbr : A.identity.abbr);
-      [...segT.children].forEach((b, i) => b.setAttribute("aria-pressed", String((i === 0) === (SP.perspective === "home"))));
       [...segM.children].forEach((b, i) => b.setAttribute("aria-pressed", String(["spread", "total", "moneyline"][i] === SP.market)));
-      spChart.replaceChildren(splitsChart(spFull, mstate, SP, teamLabel));
+      spChart.replaceChildren(splitsChart(spFull, mstate, SP));
       spNotes.replaceChildren();
       for (const n of spFull.notes || []) spNotes.append(el("li", {}, n));
       evList.replaceChildren();
@@ -156,57 +149,15 @@ async function matchupMain() {
     redraw();
   }
 
-  function splitsChart(sp, state, SP, teamLabel) {
-    const W = 800, Hh = 200, L = 42, R = 48, T = 16, B = 26;
-    const key = SP.market === "moneyline" ? "moneyline" : SP.market;
-    const flip = SP.perspective === "away";
-    const pts = (sp.series || []).filter(p => p[`${key}_ticket`] != null || p[`${key}_money`] != null);
-    if (!pts.length) return el("p", { class: "sub-note" }, "No snapshots for this market yet.");
-    const ts = pts.map(p => new Date(p.t).getTime());
-    const t0 = Math.min(...ts), t1 = Math.max(...ts), span = Math.max(t1 - t0, 1);
-    const x = t => L + ((t - t0) / span) * (W - L - R);
-    const y = v => T + (1 - v) * (Hh - T - B);
-    const val = (p, m) => { const v = p[`${key}_${m}`]; return v == null ? null : (flip ? 1 - v : v); };
-    const lineCol = key === "total" ? "line_total" : "line_spread_home";
-    const lineVals = pts.map(p => p[lineCol]).filter(v => v != null);
-    const lo = lineVals.length ? Math.min(...lineVals) : 0, hi = lineVals.length ? Math.max(...lineVals) : 1;
-    const pad = (hi - lo) < 1 ? 1 : (hi - lo) * 0.35;
-    const ly = v => T + (1 - (v - (lo - pad)) / ((hi + pad) - (lo - pad))) * (Hh - T - B);
-    const path = (m) => { const seg = pts.filter(p => val(p, m) != null); return seg.length ? seg.map((p, i) => `${i ? "L" : "M"}${x(new Date(p.t).getTime()).toFixed(1)},${y(val(p, m)).toFixed(1)}`).join(" ") : null; };
-    const out = [`<line x1="${L}" y1="${y(0.5)}" x2="${W - R}" y2="${y(0.5)}" stroke="var(--rule)" stroke-dasharray="3 3"/>`];
-    for (const v of [0, 0.25, 0.5, 0.75, 1]) out.push(`<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="var(--mute)">${v * 100}%</text>`);
-    if (lineVals.length && key !== "moneyline") {
-      const seg = pts.filter(p => p[lineCol] != null);
-      out.push(`<path d="${seg.map((p, i) => `${i ? "L" : "M"}${x(new Date(p.t).getTime()).toFixed(1)},${ly(p[lineCol]).toFixed(1)}`).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5 3" opacity=".55"/>`);
-      out.push(`<text x="${W - R + 6}" y="${ly(hi) + 4}" font-size="10" fill="var(--ink-2)">${hi.toFixed(1)}</text>`);
-      out.push(`<text x="${W - R + 6}" y="${ly(lo) + 4}" font-size="10" fill="var(--ink-2)">${lo.toFixed(1)}</text>`);
-    }
-    const dt = path("ticket"); if (dt) out.push(`<path d="${dt}" fill="none" stroke="var(--away)" stroke-width="2.5"/>`);
-    const dm = path("money"); if (dm) out.push(`<path d="${dm}" fill="none" stroke="var(--home)" stroke-width="2.5"/>`);
-    for (const p of pts) {
-      const t = new Date(p.t).getTime();
-      if (val(p, "ticket") != null) out.push(`<circle cx="${x(t).toFixed(1)}" cy="${y(val(p, "ticket")).toFixed(1)}" r="2.5" fill="var(--away)"><title>${new Date(p.t).toLocaleString()} · tickets ${(100 * val(p, "ticket")).toFixed(0)}%</title></circle>`);
-      if (val(p, "money") != null) out.push(`<circle cx="${x(t).toFixed(1)}" cy="${y(val(p, "money")).toFixed(1)}" r="2.5" fill="var(--home)"><title>${new Date(p.t).toLocaleString()} · money ${(100 * val(p, "money")).toFixed(0)}%</title></circle>`);
-    }
-    for (const e of (mstate.events || []).filter(e => e.market === (key === "moneyline" ? "spread" : key))) {
-      const t = new Date(e.t).getTime();
-      if (t < t0 || t > t1) continue;
-      const xx = x(t).toFixed(1);
-      const col = e.kind === "rlm" ? "var(--away)" : e.kind === "steam" ? "var(--home)" : "var(--mute)";
-      out.push(`<line x1="${xx}" y1="${T}" x2="${xx}" y2="${Hh - B}" stroke="${col}" stroke-width="1" stroke-dasharray="2 3" opacity=".85"><title>${e.kind.toUpperCase()}: ${e.detail}</title></line>`);
-      out.push(`<circle cx="${xx}" cy="${T + 4}" r="3.2" fill="${col}"><title>${e.kind.toUpperCase()}: ${e.detail}</title></circle>`);
-    }
-    out.push(`<text x="${L}" y="${Hh - 8}" font-size="10" fill="var(--mute)">${new Date(t0).toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })}</text>`);
-    out.push(`<text x="${W - R}" y="${Hh - 8}" text-anchor="end" font-size="10" fill="var(--mute)">${new Date(t1).toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })}</text>`);
-    const wrap = el("div", {});
-    wrap.append(el("div", { html: `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Betting splits over time">${out.join("")}</svg>` }));
-    wrap.append(el("div", { class: "og-legend" },
-      el("span", {}, el("i", { class: "sw away" }), `tickets on ${teamLabel}`),
-      el("span", {}, el("i", { class: "sw home" }), `money on ${teamLabel}`),
-      key === "moneyline" ? null : el("span", {}, el("i", { class: "sw line" }), key === "total" ? "total" : "spread"),
-      el("span", {}, el("i", { class: "sw rlmmark" }), "reverse line movement"),
-      el("span", {}, el("i", { class: "sw steammark" }), "steam")));
-    return wrap;
+  function splitsChart(sp, mstate, SP) {
+    return App.marketChart({
+      lineSeries: (d.market && d.market.series) || [],
+      splitsSeries: sp.series || [],
+      events: mstate.events || [],
+      market: SP.market,
+      homeAbbr: H.identity.abbr, awayAbbr: A.identity.abbr,
+      book: sp.book || (d.market && d.market.primary_book) || null,
+    });
   }
 
   // ---- AI

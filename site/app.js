@@ -146,3 +146,127 @@ App.indicatorChips = function (state, market) {
   }
   return out;
 };
+
+/* ------------------------------------------------------------------
+   Market chart: the line for both sides over time, with event marks.
+   Hover a dot for the number, the time, and the ticket/money split.
+   Shared by the Odds tab and the matchup page.
+   opts: { lineSeries, splitsSeries, events, market, homeAbbr, awayAbbr, book }
+------------------------------------------------------------------- */
+App.marketChart = function (opts) {
+  const el = App.el;
+  const market = opts.market || "spread";
+  const home = opts.homeAbbr || "HOME", away = opts.awayAbbr || "AWAY";
+  const line = (opts.lineSeries || []).filter(p => p && p.t).slice().sort((a, b) => new Date(a.t) - new Date(b.t));
+  const splits = (opts.splitsSeries || []).slice().sort((a, b) => new Date(a.t) - new Date(b.t));
+  const events = (opts.events || []).filter(e => e.market === (market === "moneyline" ? "spread" : market));
+
+  // the two plotted series, per market
+  const spec = {
+    spread: { a: p => (p.spread_home == null ? null : -p.spread_home), b: p => (p.spread_home == null ? null : p.spread_home),
+              fmt: v => (v > 0 ? "+" : "") + v.toFixed(1), aLab: away, bLab: home, splitKey: "spread" },
+    total: { a: p => (p.total == null ? null : p.total), b: () => null,
+             fmt: v => v.toFixed(1), aLab: "total", bLab: null, splitKey: "total" },
+    moneyline: { a: p => (p.ml_away == null ? null : p.ml_away), b: p => (p.ml_home == null ? null : p.ml_home),
+                 fmt: v => (v > 0 ? "+" : "") + Math.round(v), aLab: away, bLab: home, splitKey: "moneyline" },
+  }[market];
+
+  const pts = line.filter(p => spec.a(p) != null || (spec.b && spec.b(p) != null));
+  if (pts.length < 1) return el("p", { class: "sub-note" }, "No line history recorded for this market yet.");
+
+  // nearest ticket/money split at or before each point, for the hover
+  const splitAt = (t) => {
+    let found = null;
+    for (const s of splits) { if (new Date(s.t) <= new Date(t)) found = s; else break; }
+    return found;
+  };
+  const pctTxt = (s, side) => {
+    if (!s) return "no splits recorded";
+    const tk = s[`${spec.splitKey}_ticket`], mn = s[`${spec.splitKey}_money`];
+    if (tk == null && mn == null) return "no splits recorded";
+    const v = x => (x == null ? "?" : Math.round((side === "home" ? x : 1 - x) * 100) + "%");
+    return `Bet ${v(tk)} · Money ${v(mn)}`;
+  };
+
+  const W = 860, H = 260, L = 54, R = 18, T = 34, B = 34;
+  const ts = pts.map(p => new Date(p.t).getTime());
+  const t0 = Math.min(...ts), t1 = Math.max(...ts), span = Math.max(t1 - t0, 1);
+  const x = t => L + ((t - t0) / span) * (W - L - R);
+  const vals = [];
+  for (const p of pts) { const a = spec.a(p), b = spec.b ? spec.b(p) : null; if (a != null) vals.push(a); if (b != null) vals.push(b); }
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+  const pad = (hi - lo) * 0.22;
+  lo -= pad; hi += pad;
+  const y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+
+  const out = [];
+  const ticks = 5;
+  for (let i = 0; i < ticks; i++) {
+    const v = lo + (hi - lo) * (i / (ticks - 1));
+    out.push(`<line x1="${L}" y1="${y(v).toFixed(1)}" x2="${W - R}" y2="${y(v).toFixed(1)}" stroke="var(--rule)" opacity=".6"/>`);
+    out.push(`<text x="${L - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--mute)" class="num">${spec.fmt(v)}</text>`);
+  }
+
+  // event marks: dashed verticals with a label at the top
+  const EV = { line_move: { c: "var(--mute)", lab: "" }, steam: { c: "var(--steam)", lab: "STEAM" },
+               rlm: { c: "var(--rlm)", lab: "RLM" }, divergence: { c: "var(--split)", lab: "$" },
+               key_number: { c: "var(--mute)", lab: "KEY" }, lopsided: { c: "var(--split)", lab: "LOP" } };
+  const placed = [];
+  for (const e of events) {
+    const t = new Date(e.t).getTime();
+    if (t < t0 || t > t1) continue;
+    const cfg = EV[e.kind] || EV.line_move;
+    const xx = x(t);
+    out.push(`<line x1="${xx.toFixed(1)}" y1="${T - 8}" x2="${xx.toFixed(1)}" y2="${H - B}" stroke="${cfg.c}" stroke-width="1.2" stroke-dasharray="4 4" opacity=".9"><title>${new Date(e.t).toLocaleString()} — ${e.kind.replace("_", " ")}: ${e.detail}</title></line>`);
+    if (cfg.lab && !placed.some(px => Math.abs(px - xx) < 26)) {
+      placed.push(xx);
+      out.push(`<text x="${xx.toFixed(1)}" y="${T - 14}" text-anchor="middle" font-size="10" font-weight="700" fill="${cfg.c}">${cfg.lab}<title>${e.detail}</title></text>`);
+    }
+  }
+
+  // the two series
+  const draw = (getter, colour, sideKey, label) => {
+    const seg = pts.filter(p => getter(p) != null);
+    if (!seg.length) return;
+    out.push(`<path d="${seg.map((p, i) => `${i ? "L" : "M"}${x(new Date(p.t).getTime()).toFixed(1)},${y(getter(p)).toFixed(1)}`).join(" ")}" fill="none" stroke="${colour}" stroke-width="2"/>`);
+    for (const p of seg) {
+      const t = new Date(p.t).getTime();
+      const sp = splitAt(p.t);
+      const tip = `${label} ${spec.fmt(getter(p))} · ${new Date(p.t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${pctTxt(sp, sideKey)}${p.book ? " · " + p.book : ""}`;
+      out.push(`<circle cx="${x(t).toFixed(1)}" cy="${y(getter(p)).toFixed(1)}" r="3.4" fill="${colour}"><title>${tip}</title></circle>`);
+    }
+  };
+  draw(spec.a, "var(--away)", "away", spec.aLab);
+  if (spec.b) draw(spec.b, "var(--home)", "home", spec.bLab);
+
+  // team labels, top left
+  out.push(`<text x="${L}" y="${T - 14}" font-size="12" font-weight="700" fill="var(--away)">${spec.aLab}</text>`);
+  if (spec.bLab) out.push(`<text x="${L + 46}" y="${T - 14}" font-size="12" font-weight="700" fill="var(--home)">${spec.bLab}</text>`);
+  const fmtT = t => new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  out.push(`<text x="${L}" y="${H - 10}" font-size="11" fill="var(--mute)">${fmtT(t0)}</text>`);
+  out.push(`<text x="${W - R}" y="${H - 10}" text-anchor="end" font-size="11" fill="var(--mute)">${fmtT(t1)}</text>`);
+
+  const wrap = el("div", { class: "mchart" });
+  wrap.append(el("div", { html: `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Line movement with market events">${out.join("")}</svg>` }));
+  wrap.append(el("p", { class: "mchart-key" },
+    "Hover a dot for the number, time and the ticket/money split. Dashed marks: ",
+    el("b", { style: "color:var(--mute)" }, "grey"), " line move, ",
+    el("b", { style: "color:var(--steam)" }, "STEAM"), " fast move, ",
+    el("b", { style: "color:var(--rlm)" }, "RLM"), " moved against the crowd, ",
+    el("b", { style: "color:var(--split)" }, "$"), " tickets and money split.",
+    opts.book ? ` Prices from ${opts.book}.` : ""));
+  return wrap;
+};
+
+/* Spread / Total / Moneyline toggle bound to a redraw callback. */
+App.marketToggle = function (current, onChange) {
+  const el = App.el;
+  const seg = el("div", { class: "seg", role: "group", "aria-label": "Market" });
+  const keys = ["spread", "total", "moneyline"];
+  for (const [i, lab] of ["Spread", "Total", "Moneyline"].entries()) {
+    seg.append(el("button", { "aria-pressed": String(keys[i] === current) }, lab));
+  }
+  [...seg.children].forEach((b, i) => b.addEventListener("click", () => onChange(keys[i])));
+  return seg;
+};

@@ -55,10 +55,7 @@ async function oddsMain() {
     for (const [k, lab] of [["FULL", "Full game"], ["1H", "First half"]]) per.append(el("button", { "aria-pressed": String(k === S.period) }, lab));
     [...per.children].forEach((b, i) => b.addEventListener("click", () => { S.period = ["FULL", "1H"][i]; localStorage.setItem("odds.period", S.period); paint(window.__odds); }));
     mt.append(el("label", {}, "Period ", per));
-    const met = el("div", { class: "seg", role: "group", "aria-label": "Show" });
-    for (const [k, lab] of [["both", "Tickets + money"], ["ticket", "Tickets"], ["money", "Money"]]) met.append(el("button", { "aria-pressed": String(k === S.metric) }, lab));
-    [...met.children].forEach((b, i) => b.addEventListener("click", () => { S.metric = ["both", "ticket", "money"][i]; localStorage.setItem("odds.metric", S.metric); paint(window.__odds); }));
-    mt.append(el("label", {}, "Show ", met));
+
   }
 
   function fillSelect(id, values, current, label) {
@@ -125,68 +122,15 @@ async function oddsMain() {
     return el("section", { class: "og" }, head, chips, chart(sp, g), notes);
   }
 
-  /* splits over time, with the line drawn on a second axis */
   function chart(sp, g) {
-    const W = 720, H = 190, L = 40, R = 46, T = 14, B = 26;
-    const pts = sp.series.filter(p => p[`${S.market}_ticket`] != null || p[`${S.market}_money`] != null);
-    if (pts.length < 1) return el("div", { class: "og-empty" }, "Not enough snapshots to chart yet.");
-    const ts = pts.map(p => new Date(p.t).getTime());
-    const t0 = Math.min(...ts), t1 = Math.max(...ts), span = Math.max(t1 - t0, 1);
-    const x = t => L + ((t - t0) / span) * (W - L - R);
-    const y = v => T + (1 - v) * (H - T - B);
-    const lineKey = S.market === "total" ? "line_total" : "line_spread_home";
-    const lineVals = pts.map(p => p[lineKey]).filter(v => v != null);
-    const lo = lineVals.length ? Math.min(...lineVals) : 0, hi = lineVals.length ? Math.max(...lineVals) : 1;
-    const pad = (hi - lo) < 1 ? 1 : (hi - lo) * 0.35;
-    const ly = v => T + (1 - (v - (lo - pad)) / ((hi + pad) - (lo - pad))) * (H - T - B);
-    const path = (key, mapper) => {
-      const seg = pts.filter(p => p[key] != null);
-      if (!seg.length) return null;
-      return seg.map((p, i) => `${i ? "L" : "M"}${x(new Date(p.t).getTime()).toFixed(1)},${mapper(p[key]).toFixed(1)}`).join(" ");
-    };
-    const svg = [];
-    svg.push(`<line x1="${L}" y1="${y(0.5)}" x2="${W - R}" y2="${y(0.5)}" stroke="var(--rule)" stroke-dasharray="3 3"/>`);
-    for (const v of [0, 0.25, 0.5, 0.75, 1]) {
-      svg.push(`<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="var(--mute)">${v * 100}%</text>`);
-    }
-    if (lineVals.length) {
-      const d = path(lineKey, ly);
-      if (d) svg.push(`<path d="${d}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5 3" opacity=".55"/>`);
-      svg.push(`<text x="${W - R + 6}" y="${ly(hi) + 4}" font-size="10" fill="var(--ink-2)">${hi.toFixed(1)}</text>`);
-      svg.push(`<text x="${W - R + 6}" y="${ly(lo) + 4}" font-size="10" fill="var(--ink-2)">${lo.toFixed(1)}</text>`);
-    }
-    if (S.metric !== "money") {
-      const d = path(`${S.market}_ticket`, y);
-      if (d) svg.push(`<path d="${d}" fill="none" stroke="var(--away)" stroke-width="2.5"/>`);
-    }
-    if (S.metric !== "ticket") {
-      const d = path(`${S.market}_money`, y);
-      if (d) svg.push(`<path d="${d}" fill="none" stroke="var(--home)" stroke-width="2.5"/>`);
-    }
-    for (const p of pts) {
-      const t = new Date(p.t).getTime();
-      if (S.metric !== "money" && p[`${S.market}_ticket`] != null) svg.push(`<circle cx="${x(t).toFixed(1)}" cy="${y(p[`${S.market}_ticket`]).toFixed(1)}" r="2.5" fill="var(--away)"><title>${new Date(p.t).toLocaleString()} · tickets ${(100 * p[`${S.market}_ticket`]).toFixed(0)}%</title></circle>`);
-      if (S.metric !== "ticket" && p[`${S.market}_money`] != null) svg.push(`<circle cx="${x(t).toFixed(1)}" cy="${y(p[`${S.market}_money`]).toFixed(1)}" r="2.5" fill="var(--home)"><title>${new Date(p.t).toLocaleString()} · money ${(100 * p[`${S.market}_money`]).toFixed(0)}%</title></circle>`);
-    }
-    const evs = (g.events || []).filter(e => e.market === (S.market === "moneyline" ? "spread" : S.market));
-    for (const e of evs) {
-      const t = new Date(e.t).getTime();
-      if (t < t0 || t > t1) continue;
-      const xx = x(t).toFixed(1);
-      const col = e.kind === "rlm" ? "var(--away)" : e.kind === "steam" ? "var(--home)" : "var(--mute)";
-      svg.push(`<line x1="${xx}" y1="${T}" x2="${xx}" y2="${H - B}" stroke="${col}" stroke-width="1" stroke-dasharray="2 3" opacity=".8"><title>${new Date(e.t).toLocaleString()} · ${e.kind.toUpperCase()}: ${e.detail}</title></line>`);
-      svg.push(`<circle cx="${xx}" cy="${T + 4}" r="3.2" fill="${col}"><title>${e.kind.toUpperCase()}: ${e.detail}</title></circle>`);
-    }
-    svg.push(`<text x="${L}" y="${H - 8}" font-size="10" fill="var(--mute)">${new Date(t0).toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })}</text>`);
-    svg.push(`<text x="${W - R}" y="${H - 8}" text-anchor="end" font-size="10" fill="var(--mute)">${new Date(t1).toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })}</text>`);
-    const legend = el("div", { class: "og-legend" },
-      S.metric !== "money" ? el("span", {}, el("i", { class: "sw away" }), `tickets on ${S.market === "total" ? "the over" : g.home.abbr}`) : null,
-      S.metric !== "ticket" ? el("span", {}, el("i", { class: "sw home" }), `money on ${S.market === "total" ? "the over" : g.home.abbr}`) : null,
-      el("span", {}, el("i", { class: "sw line" }), S.market === "total" ? "total" : "spread"),
-      evs.length ? el("span", {}, el("i", { class: "sw rlmmark" }), "reverse line movement") : null,
-      evs.some(e => e.kind === "steam") ? el("span", {}, el("i", { class: "sw steammark" }), "steam") : null);
-    return el("div", { class: "og-chart" },
-      el("div", { html: `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Betting splits over time">${svg.join("")}</svg>` }), legend);
+    return App.marketChart({
+      lineSeries: g.line_series || [],
+      splitsSeries: sp.series || [],
+      events: g.events || [],
+      market: S.market,
+      homeAbbr: g.home.abbr, awayAbbr: g.away.abbr,
+      book: sp.book || (g.market && g.market.book) || null,
+    });
   }
 
   load();

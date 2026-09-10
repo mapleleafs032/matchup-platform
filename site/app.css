@@ -228,3 +228,8 @@ table.plain th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
 .og-legend i.sw.steammark { background: var(--home); height: 0; border-top: 2px dashed var(--home); }
 .sp-toolbar { margin: 6px 0 10px; }
 .market-notes.evt li { font-size: 13px; color: var(--ink-2); }
+
+/* ---------- market chart (line movement with event marks) ---------- */
+:root { --steam: #c26a12; --rlm: #b3261e; --split: #1d7a4c; }
+.mchart svg { width: 100%; height: auto; max-width: 880px; display: block; }
+.mchart-key { font-size: 12px; color: var(--mute); margin: 4px 0 0; max-width: 880px; }

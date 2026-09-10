@@ -166,7 +166,14 @@ def detect_events(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: st
                                 "move": round(delta, 1), "ticket_pct_majority": round(max(float(tp), 1 - float(tp)), 3),
                                 "detail": f"{mkt} moved {abs(delta):.1f} toward {_dir_label(mkt, toward_home, home_abbr, away_abbr)} "
                                           f"while {max(float(tp), 1-float(tp))*100:.0f}% of tickets sat the other way"})
-            if abs(delta) >= config.STEAM_MIN_MOVE and hours <= config.STEAM_WINDOW_HOURS:
+            is_steam = abs(delta) >= config.STEAM_MIN_MOVE and hours <= config.STEAM_WINDOW_HOURS
+            is_rlm = any(e["kind"] == "rlm" and e["t"] == b.retrieved_at.isoformat() and e["market"] == mkt for e in out)
+            if not is_steam and not is_rlm:
+                out.append({"t": b.retrieved_at.isoformat(), "kind": "line_move", "market": mkt,
+                            "toward": _dir_label(mkt, toward_home, home_abbr, away_abbr), "toward_home": bool(toward_home),
+                            "move": round(delta, 1),
+                            "detail": f"{mkt} moved {abs(delta):.1f} toward {_dir_label(mkt, toward_home, home_abbr, away_abbr)}"})
+            if is_steam:
                 out.append({"t": b.retrieved_at.isoformat(), "kind": "steam", "market": mkt,
                             "toward": _dir_label(mkt, toward_home, home_abbr, away_abbr), "toward_home": bool(toward_home),
                             "move": round(delta, 1),
@@ -177,8 +184,20 @@ def detect_events(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: st
                         out.append({"t": b.retrieved_at.isoformat(), "kind": "key_number", "market": mkt, "toward": None,
                                     "move": round(delta, 1), "key": k,
                                     "detail": f"spread crossed {k} ({a[line_col]:+.1f} to {b[line_col]:+.1f})"})
+        prev_div = False
         for i in range(len(rows)):
             r = rows.iloc[i]
+            if pd.notna(r.get(tc)) and pd.notna(r.get(mc)):
+                gap = abs(float(r[tc]) - float(r[mc])) * 100
+                now_div = gap >= config.SPLITS_DIVERGENCE_PTS
+                if now_div and not prev_div:
+                    crowd = _dir_label(mkt, float(r[tc]) >= 0.5, home_abbr, away_abbr)
+                    money = _dir_label(mkt, float(r[mc]) >= 0.5, home_abbr, away_abbr)
+                    out.append({"t": r.retrieved_at.isoformat(), "kind": "divergence", "market": mkt,
+                                "toward": money, "toward_home": float(r[mc]) >= 0.5, "move": None,
+                                "detail": (f"tickets and money split by {gap:.0f} points"
+                                           + (f": tickets on {crowd}, money on {money}" if crowd != money else f", both on {crowd}"))})
+                prev_div = now_div
             side = None
             if pd.notna(r.get(tc)) and pd.notna(r.get(mc)):
                 side = lopsided(float(r[tc]), float(r[mc]))
