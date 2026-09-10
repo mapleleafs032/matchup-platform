@@ -1,3 +1,4 @@
 game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
 2026_NFL_W03_ATL_GB,2026-09-10T11:09:10.867156+00:00,2026-09-25T00:15:00+00:00,349.1,False,False,open_meteo,60.1,54.9,12.0,20.1,72.0,0.13,0.0,68.0,3.0
 2026_NFL_W03_ATL_GB,2026-09-10T17:02:18.772173+00:00,2026-09-25T00:15:00+00:00,343.2,False,False,open_meteo,60.8,58.3,8.8,20.1,201.0,0.06,0.004,78.0,51.0
+2026_NFL_W03_ATL_GB,2026-09-10T20:02:18.271611+00:00,2026-09-25T00:15:00+00:00,340.2,False,False,open_meteo,54.7,44.5,17.0,29.3,286.0,0.16,0.004,50.0,51.0
