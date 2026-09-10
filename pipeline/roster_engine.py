@@ -330,3 +330,51 @@ def continuity(league: str, season: int, rp: pd.DataFrame, qb: pd.DataFrame, coa
         rows.append({"team_id": r.team_id, "season": season, "continuity_index": idx, **{f"c_{k}": v for k, v in parts.items()},
                      "hc_changed": (not hc_same[r.team_id]) if hc_same.get(r.team_id) is not None else None})
     return pd.DataFrame(rows)
+
+
+def talent_scores_nfl(season: int, roster_now: pd.DataFrame, players: pd.DataFrame, usage_prior: pd.DataFrame) -> pd.DataFrame:
+    """
+    NFL roster talent from draft capital (§14 has no recruiting equivalent for the NFL).
+
+    Each rostered player carries the value of the pick used on him, on a decaying curve where the first
+    overall pick is 100 and value halves roughly every 55 selections. Undrafted players score zero, which
+    understates a few of them; the measure is a team-level proxy, not a player rating, and it is labelled
+    as draft capital rather than "talent" wherever it is shown.
+
+    Snap-weighted where prior-season usage exists, so capital sitting on the bench counts for less.
+    """
+    if roster_now.empty or players.empty:
+        return pd.DataFrame()
+    pl = players.set_index("player_id")
+    snaps = {}
+    if usage_prior is not None and not usage_prior.empty and "off_snaps" in usage_prior.columns:
+        u = usage_prior.copy()
+        u["_tot"] = pd.to_numeric(u.off_snaps, errors="coerce").fillna(0) + pd.to_numeric(u.get("def_snaps", 0), errors="coerce").fillna(0)
+        snaps = dict(zip(u.player_id, u._tot))
+    rows = []
+    for tid, team in roster_now.groupby("team_id"):
+        raw, weighted, drafted, first_round = 0.0, 0.0, 0, 0
+        for pid in team.player_id:
+            if pid not in pl.index:
+                continue
+            pick = pl.at[pid, "draft_pick"] if "draft_pick" in pl.columns else None
+            if pick is None or pd.isna(pick):
+                continue
+            v = 100.0 * float(np.exp(-0.0126 * (float(pick) - 1)))
+            raw += v
+            drafted += 1
+            if pl.at[pid, "draft_round"] == 1:
+                first_round += 1
+            w = min(snaps.get(pid, 0) / 600.0, 1.0) if snaps else 1.0
+            weighted += v * w
+        rows.append({"team_id": tid, "season": season, "draft_capital": round(raw, 1),
+                     "draft_capital_weighted": round(weighted, 1), "drafted_players": drafted,
+                     "first_round_players": first_round})
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+    base = df.draft_capital_weighted if df.draft_capital_weighted.sum() > 0 else df.draft_capital
+    df["talent_score"] = base.rank(pct=True).round(3)
+    df["talent_rank"] = base.rank(ascending=False, method="min").astype(int)
+    df["method"] = "nfl_draft_capital"
+    return df

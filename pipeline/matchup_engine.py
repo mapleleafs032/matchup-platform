@@ -56,7 +56,11 @@ class Week:
         self.rat = rat[rat.as_of_week == week].set_index("team_id") if not rat.empty and (rat.as_of_week == week).any() else pd.DataFrame()
         self.qb = _latest(ROSTER / "qb_status" / league / str(season), week)
         self.cont = storage.read_table(ROSTER / "continuity" / league / f"{season}.parquet")
-        self.talent = storage.read_table(ROSTER / "talent_scores.parquet") if league == "CFB" else pd.DataFrame()
+        self.coaches = storage.read_table(ROSTER / "coaches.csv")
+        prior = storage.read_table(AN / "team_ratings" / league / f"{season - 1}.parquet")
+        self.prior_rating = (prior[prior.as_of_week == prior.as_of_week.max()].set_index("team_id").rating_overall
+                             if not prior.empty else pd.Series(dtype=float))
+        self.talent = storage.read_table(ROSTER / "talent_scores.parquet") if league == "CFB" else storage.read_table(ROSTER / "talent_scores_nfl.parquet")
         self.inj = storage.read_table(ROSTER / "injuries" / league / f"{season}.csv")
         self.depth = _latest(ROSTER / "depth_charts" / league / str(season), week)
         self.games = storage.read_table(storage.games_path(league, season))
@@ -98,12 +102,57 @@ class Week:
         zv = (v - mu) / sd
         return float(zv if self.hib.get(key, True) else -zv)
 
+    def coach_state(self, team_id: str) -> dict:
+        """Head-coach continuity from the coaches table; coordinator continuity only where entered manually."""
+        out = {"hc": None, "hc_first_season": None, "coordinators_known": False, "coordinator_change": False, "oc": None, "dc": None}
+        if self.coaches.empty:
+            return out
+        c = self.coaches[self.coaches.team_id == team_id]
+        if c.empty:
+            return out
+        now = c[(c.season == self.season) & (c.role == "HC")]
+        prev = c[(c.season == self.season - 1) & (c.role == "HC")]
+        if not now.empty:
+            out["hc"] = now.coach_name.iloc[-1]
+            if not prev.empty:
+                out["hc_first_season"] = not bool(set(now.coach_id) & set(prev.coach_id))
+            else:
+                out["hc_first_season"] = False          # no prior record: assume continuity rather than invent a change
+        for role in ("OC", "DC"):
+            r_now = c[(c.season == self.season) & (c.role == role)]
+            r_prev = c[(c.season == self.season - 1) & (c.role == role)]
+            if not r_now.empty:
+                out[role.lower()] = r_now.coach_name.iloc[-1]
+                out["coordinators_known"] = True
+                if not r_prev.empty and not (set(r_now.coach_id) & set(r_prev.coach_id)):
+                    out["coordinator_change"] = True
+        return out
+
+    def schedule_strength(self, team_id: str) -> float | None:
+        """Average opponent quality over the whole scheduled slate, using last season's final ratings.
+        Lets strength of schedule mean something in week 1, when nobody has faced anybody."""
+        if self.prior_rating.empty or self.games.empty:
+            return None
+        g = self.games[(self.games.season_type == "REG") & ((self.games.home_team_id == team_id) | (self.games.away_team_id == team_id))]
+        opps = [(r.away_team_id if r.home_team_id == team_id else r.home_team_id) for _, r in g.iterrows()]
+        vals = [float(self.prior_rating[o]) for o in opps if o in self.prior_rating.index]
+        return round(float(np.mean(vals)), 2) if vals else None
+
     def val(self, team_id: str, game_id: str, key: str, window: str = "BLEND", adj: str = "OPP_ADJ"):
         df = self._table(window, adj)
         if key not in df.columns or (team_id, game_id) not in df.index:
             return None
         v = df[key].loc[(team_id, game_id)]
         return None if pd.isna(v) else float(v)
+
+
+def _j_num(x):
+    if x is None:
+        return None
+    try:
+        return None if pd.isna(x) else float(x)
+    except (TypeError, ValueError):
+        return None
 
 
 def _latest(d, week: int) -> pd.DataFrame:
@@ -320,17 +369,39 @@ def build_game(w: Week, g, weights: dict) -> list[dict]:
     hz, az, inp = unit_vs_unit(w, g, ["off_rz_td_rate", "off_pts_per_scoring_opp"], ["def_rz_td_rate_allowed", "def_pts_per_scoring_opp_allowed"]); add("RED_ZONE", _sub(hz, az), inp)
     tm = _sub(w.z(H, gid, "turnover_margin"), w.z(A, gid, "turnover_margin"))
     add("TURNOVER", None if tm is None else tm * config.TURNOVER_REGRESSION, {"home": w.val(H, gid, "turnover_margin"), "away": w.val(A, gid, "turnover_margin"), "regression": config.TURNOVER_REGRESSION})
-    add("SPECIAL_TEAMS", None, {"note": "special-teams metrics not yet ingested (Phase 4D)"}, unavailable=True)
+    hst, ast, inp = unit_vs_unit(w, g, ["off_st_epa"], ["def_st_epa_allowed"])
+    add("SPECIAL_TEAMS", _sub(hst, ast), inp)
     # coaching / roster / talent
     cont = w.cont.drop_duplicates("team_id", keep="last").set_index("team_id") if not w.cont.empty else pd.DataFrame()
-    hc = lambda t: (None if cont.empty or t not in cont.index or pd.isna(cont.loc[t].hc_changed) else (-1.0 if cont.loc[t].hc_changed else 0.0))
-    add("COACHING", _sub(hc(H), hc(A)), {"home_hc_changed": None if hc(H) is None else hc(H) < 0, "away_hc_changed": None if hc(A) is None else hc(A) < 0}, unavailable=(hc(H) is None or hc(A) is None))
-    if w.league == "CFB" and not w.talent.empty:
-        tl = w.talent[w.talent.season == w.season].set_index("team_id")
-        ht = tl.talent_score.get(H); at = tl.talent_score.get(A)
-        add("TALENT", None if pd.isna(ht) or pd.isna(at) else (float(ht) - float(at)) * 2.0, {"home_talent_pct": ht, "away_talent_pct": at, "home_blue_chip": tl.blue_chip_ratio_4yr.get(H), "away_blue_chip": tl.blue_chip_ratio_4yr.get(A)})
+    coach_info = {t: w.coach_state(t) for t in (H, A)}
+    def coach_score(t):
+        c = coach_info[t]
+        if c["hc_first_season"] is None:
+            return None
+        v = -1.0 if c["hc_first_season"] else 0.0
+        if c["coordinator_change"]:
+            v -= 0.5                                   # a new coordinator also breaks scheme continuity
+        elif c["coordinators_known"]:
+            v += 0.25                                  # continuity we can actually verify
+        return v
+    ch, ca = coach_score(H), coach_score(A)
+    add("COACHING", _sub(ch, ca), {"home": coach_info[H], "away": coach_info[A],
+                                   "note": "Coordinator continuity is only counted where names have been entered manually."},
+        unavailable=(ch is None or ca is None))
+    if not w.talent.empty and "talent_score" in w.talent.columns:
+        tl = w.talent[w.talent.season == w.season].drop_duplicates("team_id").set_index("team_id")
+        ht, at = tl.talent_score.get(H), tl.talent_score.get(A)
+        extra = {}
+        for side, t in (("home", H), ("away", A)):
+            if t in tl.index:
+                r = tl.loc[t]
+                extra[side] = {k: _j_num(r.get(k)) for k in ("talent_rank", "blue_chip_ratio_4yr", "draft_capital_weighted", "first_round_players") if k in tl.columns}
+        basis = "recruiting composite over four classes" if w.league == "CFB" else "draft capital on the current roster"
+        add("TALENT", None if ht is None or at is None or pd.isna(ht) or pd.isna(at) else (float(ht) - float(at)) * 2.0,
+            {"home_talent_pct": _j_num(ht), "away_talent_pct": _j_num(at), "basis": basis, **extra},
+            unavailable=(ht is None or at is None or pd.isna(ht) or pd.isna(at)))
     else:
-        add("TALENT", None, {"note": "NFL talent not modeled" if w.league == "NFL" else "talent table missing"}, unavailable=True)
+        add("TALENT", None, {"note": "talent table not built yet"}, unavailable=True)
     ci = lambda t: (None if cont.empty or t not in cont.index else cont.loc[t].continuity_index)
     add("RETURNING_PROD", None if ci(H) is None or ci(A) is None else (ci(H) - ci(A)) * 2.0, {"home_continuity": ci(H), "away_continuity": ci(A)}, unavailable=(ci(H) is None or ci(A) is None))
     # recent form: blend vs season on net EPA

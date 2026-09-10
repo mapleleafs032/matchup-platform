@@ -185,7 +185,14 @@ def aggregate(rows: pd.DataFrame, adjusted: bool = False) -> dict[str, tuple[flo
         if kind == "mean":
             w = w_all
         elif kind == "wmean":
-            w = (np.nan_to_num(cols[b]) if b in cols else np.ones_like(v)) * w_all
+            # a game whose weight column is missing (e.g. a metric added after that game was ingested)
+            # falls back to equal weight rather than being silently dropped from the average
+            if b in cols:
+                wcol = cols[b].copy()
+                wcol[np.isnan(wcol)] = np.nanmedian(wcol) if np.isfinite(np.nanmedian(wcol)) else 1.0
+                w = wcol * w_all
+            else:
+                w = w_all
         else:  # ratio
             if b not in cols:
                 out[key] = (None, 0); continue

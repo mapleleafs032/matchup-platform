@@ -168,6 +168,12 @@ def derive(league: str, season: int, week: int, job: JobRun, season_level: bool 
         if not dc.empty:
             storage.write_parquet(ROSTER / "depth_charts" / "CFB" / str(season) / f"W{week:02d}.parquet", dc)
             print(f"CFB {season} W{week} projected depth charts: {len(dc)} slots; basis {dc.projection_basis.value_counts().to_dict()}")
+    if league == "NFL" and season_level:
+        ts_nfl = eng.talent_scores_nfl(season, roster_now, players, usage_prior)
+        if not ts_nfl.empty:
+            _merge(ROSTER / "talent_scores_nfl.parquet", ts_nfl, ["team_id", "season"])
+            top = ts_nfl.sort_values("talent_score", ascending=False).head(3)
+            print(f"NFL {season} draft capital: {len(ts_nfl)} teams; most capital " + ", ".join(f"{r.team_id.split('_')[1]}" for _, r in top.iterrows()))
     cont = eng.continuity(league, season, rp, qb, coaches, tr) if season_level else pd.DataFrame()
     if not cont.empty:
         storage.write_parquet(ROSTER / "continuity" / league / f"{season}.parquet", cont)

@@ -162,3 +162,34 @@ def test_overlay_handles_all_null_native_column():
         adv[c] = adv[c].astype(float); adv.loc[common, c] = nat.loc[common, c].astype(float)
     adv = adv.reset_index()
     assert adv.off_ppa_play.iloc[0] == 0.31 and adv.off_havoc_allowed.iloc[0] == 0.05 and cols == ["off_ppa_play"]
+
+
+def test_special_teams_from_plays():
+    """Special teams comes from the kicking-game plays a team executes; the opponent's kicks are the other side."""
+    from pipeline import metrics_game as mg
+    plays = pd.DataFrame([
+        {"game_id": "G", "offense_team_id": "A", "defense_team_id": "B", "play_type": "FG", "ppa": 1.2, "yardline_100": 25, "yards_gained": 0},
+        {"game_id": "G", "offense_team_id": "A", "defense_team_id": "B", "play_type": "FG", "ppa": -2.0, "yardline_100": 40, "yards_gained": 0},
+        {"game_id": "G", "offense_team_id": "A", "defense_team_id": "B", "play_type": "PUNT", "ppa": 0.4, "yardline_100": 60, "yards_gained": 45},
+        {"game_id": "G", "offense_team_id": "B", "defense_team_id": "A", "play_type": "KICKOFF", "ppa": -0.6, "yardline_100": 65, "yards_gained": 20},
+        {"game_id": "G", "offense_team_id": "A", "defense_team_id": "B", "play_type": "PASS", "ppa": 5.0, "yardline_100": 30, "yards_gained": 30},
+    ])
+    st = mg.special_teams(plays, "A", "B")
+    assert st["off_st_plays"] == 3 and st["def_st_plays_faced"] == 1
+    assert abs(st["off_st_epa"] - (1.2 - 2.0 + 0.4) / 3) < 1e-9      # the passing play is excluded
+    assert st["def_st_epa_allowed"] == -0.6
+    assert st["off_fg_att"] == 2 and abs(st["off_fg_avg_distance"] - (25 + 40) / 2 - 17) < 1e-9
+    assert st["off_fg_pct"] is None                                   # no result field ingested yet: NULL, not 0
+    assert st["off_kickoff_epa"] is None                              # team A kicked off zero times
+
+
+def test_wmean_falls_back_to_equal_weight_when_the_weight_is_missing():
+    """A metric added after some games were ingested must not silently drop those games from the average."""
+    import numpy as np
+    from pipeline import asof
+    rows = pd.DataFrame([
+        {"weight": 1.0, "off_st_epa": 0.5, "off_st_plays": np.nan},
+        {"weight": 1.0, "off_st_epa": 0.1, "off_st_plays": 10.0},
+    ])
+    v, n = asof.aggregate(rows)["off_st_epa"]
+    assert n == 2 and 0.1 < v < 0.5

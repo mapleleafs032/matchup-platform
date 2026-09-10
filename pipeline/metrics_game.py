@@ -27,6 +27,7 @@ import pandas as pd
 import config
 
 SCRIMMAGE = ("PASS", "RUSH", "SACK")
+ST_TYPES = ("PUNT", "KICKOFF", "FG", "XP")
 
 
 def _rate(num, den):
@@ -171,6 +172,40 @@ def offense_side(plays: pd.DataFrame, drives: pd.DataFrame, team_id: str, prefix
     return out
 
 
+def special_teams(plays: pd.DataFrame, team_id: str, opponent_id: str) -> dict:
+    """
+    Special teams from the play table (master prompt §68). Kicking-game plays are attributed to the team
+    executing them, so a team's own units are the plays where it is the offense, and the coverage/return
+    picture is the opponent's kicking plays against it.
+
+    Field-goal distance is derived from the spot (distance to goal + 17 yards for the snap and posts).
+    Make rate needs a result field that older ingests did not store; it is NULL until a re-ingest supplies it.
+    """
+    out: dict = {}
+    st = plays[plays.play_type.isin(ST_TYPES)]
+    own = st[st.offense_team_id == team_id]
+    faced = st[st.defense_team_id == team_id]
+    def epa(df):
+        v = pd.to_numeric(df.ppa, errors="coerce").dropna()
+        return float(v.mean()) if len(v) else None
+    out["off_st_plays"] = int(len(own)) if len(own) else None
+    out["def_st_plays_faced"] = int(len(faced)) if len(faced) else None
+    out["off_st_epa"] = epa(own)
+    out["def_st_epa_allowed"] = epa(faced)
+    out["off_punt_epa"] = epa(own[own.play_type == "PUNT"])
+    out["off_kickoff_epa"] = epa(own[own.play_type == "KICKOFF"])
+    fg = own[own.play_type == "FG"]
+    out["off_fg_epa"] = epa(fg)
+    out["off_fg_att"] = int(len(fg)) if len(fg) else None
+    if len(fg) and fg.yardline_100.notna().any():
+        out["off_fg_avg_distance"] = float(pd.to_numeric(fg.yardline_100, errors="coerce").dropna().mean() + 17)
+    made = fg[fg.st_result == "GOOD"] if "st_result" in fg.columns else fg.iloc[0:0]
+    known = fg[fg.st_result.notna()] if "st_result" in fg.columns else fg.iloc[0:0]
+    out["off_fg_pct"] = float(len(made) / len(known)) if len(known) else None
+    out["off_punts"] = int(len(own[own.play_type == "PUNT"])) if len(own[own.play_type == "PUNT"]) else None
+    return out
+
+
 def team_game_advanced(plays: pd.DataFrame, drives: pd.DataFrame, game_id: str, team_id: str, opponent_id: str,
                        league: str, garbage_filtered: bool, source: str, retrieved_at: str, effective_at: str) -> dict:
     p = plays[plays.game_id == game_id]
@@ -182,6 +217,7 @@ def team_game_advanced(plays: pd.DataFrame, drives: pd.DataFrame, game_id: str, 
            "metric_system": "PPA_CFBD" if league == "CFB" else "EPA_NFLFASTR"}
     row.update(offense_side(p, d, team_id, "off_", league))
     row.update(offense_side(p, d, opponent_id, "def_", league))   # opponent's offense = this team's defense
+    row.update(special_teams(p, team_id, opponent_id))
     row.update({"source": source, "retrieved_at": retrieved_at, "effective_at": effective_at})
     return row
 

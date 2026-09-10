@@ -101,6 +101,15 @@ _add("off_neutral_sec_per_play", "Neutral-Script Seconds/Play", "Seconds per pla
 _add("off_pass_rate", "Pass Rate", "Dropbacks per scrimmage play.", "pct", True, "OFF", "wmean:off_plays", lo=0, hi=1, group="STYLE")
 _add("off_early_down_pass_rate", "Early-Down Pass Rate", "Dropbacks per play on 1st and 2nd down.", "pct", True, "OFF", "wmean:off_plays", lo=0, hi=1, group="STYLE")
 _add("off_neutral_pass_rate", "Neutral-Script Pass Rate", "Dropbacks per play when the game is within 8 points in the first three quarters.", "pct", True, "OFF", "wmean:off_plays", lo=0, hi=1, group="STYLE")
+# ---- SPECIAL TEAMS (§68) --------------------------------------------------------------
+_add("off_st_epa", "Special Teams EPA/Play", "Expected points added per kicking-game play this team executes (punts, kickoffs, field goals, extra points).", "points", True, "ST", "wmean:off_st_plays", source="derived", lo=-3, hi=3, min_n=3, group="SPECIAL_TEAMS")
+_add("def_st_epa_allowed", "Opp Special Teams EPA/Play", "Expected points added per kicking-game play the opponent executes against this team.", "points", False, "ST", "wmean:def_st_plays_faced", source="derived", lo=-3, hi=3, min_n=3, group="SPECIAL_TEAMS")
+_add("off_punt_epa", "Punt EPA/Play", "Expected points added per punt, capturing distance, hang time and coverage together.", "points", True, "ST", "mean", source="derived", lo=-3, hi=3, min_n=3, group="SPECIAL_TEAMS")
+_add("off_kickoff_epa", "Kickoff EPA/Play", "Expected points added per kickoff, capturing touchback rate and coverage.", "points", True, "ST", "mean", source="derived", lo=-3, hi=3, min_n=3, group="SPECIAL_TEAMS")
+_add("off_fg_epa", "Field Goal EPA/Attempt", "Expected points added per field-goal attempt relative to the expectation from that distance.", "points", True, "ST", "mean", source="derived", lo=-4, hi=4, min_n=3, group="SPECIAL_TEAMS")
+_add("off_fg_avg_distance", "Avg FG Distance", "Average field-goal attempt distance in yards.", "yards", False, "ST", "mean", source="derived", lo=15, hi=60, min_n=3, group="SPECIAL_TEAMS")
+_add("off_fg_pct", "Field Goal %", "Field goals made divided by attempts (available once play results are ingested).", "pct", True, "ST", "mean", source="derived", lo=0, hi=1, min_n=5, group="SPECIAL_TEAMS")
+
 # ---- NFL charting ------------------------------------------------------------------------
 for k, lab, d in (("off_play_action_rate", "Play-Action Rate", "Play-action dropbacks per dropback (FTN)."), ("off_rpo_rate", "RPO Rate", "RPO plays per scrimmage play (FTN)."),
                   ("off_shotgun_rate", "Shotgun Rate", "Snaps from shotgun per scrimmage play."), ("off_avg_air_yards", "Avg Air Yards", "Average depth of target on pass attempts."),
