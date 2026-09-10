@@ -224,3 +224,7 @@ table.plain th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
 .gates-det summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
 .gate-counts { margin: 8px 0; padding-left: 18px; color: var(--ink-2); }
 .band-tbl td.why { color: var(--away); max-width: 460px; }
+.og-legend i.sw.rlmmark { background: var(--away); height: 0; border-top: 2px dashed var(--away); }
+.og-legend i.sw.steammark { background: var(--home); height: 0; border-top: 2px dashed var(--home); }
+.sp-toolbar { margin: 6px 0 10px; }
+.market-notes.evt li { font-size: 13px; color: var(--ink-2); }

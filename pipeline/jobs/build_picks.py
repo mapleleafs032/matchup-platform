@@ -83,6 +83,10 @@ def run(league: str, season: int, weeks: list[int] | None, job: JobRun) -> None:
             print(f"{league} {season} W{wk}: {len(rejected)} candidates filtered out by the gates:")
             for k, v in sorted(counts.items(), key=lambda kv: -kv[1]):
                 print(f"      {v:3d}  {k}")
+        if not picks.empty and "rlm_earlier_only" in picks.columns:
+            reb = int(picks.rlm_earlier_only.fillna(False).astype(bool).sum())
+            if reb:
+                print(f"      ({reb} of these showed reverse movement earlier in the week but have since rebounded, so they were kept)")
         if picks.empty:
             print(f"{league} {season} W{wk}: nothing survived the gates"); continue
         picks = picks.head(config.PICK_MAX_PER_WEEK)

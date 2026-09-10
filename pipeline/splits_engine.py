@@ -121,3 +121,129 @@ def build_week(league: str, season: int, week: int, games: pd.DataFrame, teams: 
         out[g.game_id] = {"game_id": g.game_id, "home_abbr": ha, "away_abbr": aa, "periods": periods,
                           "any_available": any(v["available"] for v in periods.values())}
     return out
+
+# ---- market events over time ---------------------------------------------------------------------
+def _dir_label(market: str, toward_home: bool, home_abbr: str, away_abbr: str) -> str:
+    if market == "total":
+        return "the over" if toward_home else "the under"
+    return home_abbr if toward_home else away_abbr
+
+
+def detect_events(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: str,
+                  kickoff: pd.Timestamp | None = None) -> list[dict]:
+    """
+    Walk the snapshot history and record what happened, when. Each event carries a timestamp so the
+    charts can mark it and the gates can ask "is this happening NOW?" rather than "did it ever happen?".
+
+    Events: rlm (the number moved toward the minority-ticket side), steam (a fast move), lopsided
+    (a side crossed the threshold on both tickets and money), key_number (the spread crossed 3 or 7).
+    """
+    h = hist[hist.period == period].sort_values("retrieved_at")
+    if kickoff is not None:
+        h = h[h.retrieved_at < kickoff]
+    if len(h) < 2:
+        return []
+    out: list[dict] = []
+    prev_lop = {}
+    for (mkt, line_col, is_total) in (("spread", "line_spread_home", False), ("total", "line_total", True)):
+        tc, mc = f"{mkt}_ticket_pct_home", f"{mkt}_money_pct_home"
+        if line_col not in h.columns or tc not in h.columns:
+            continue
+        rows = h[h[line_col].notna()]
+        for i in range(1, len(rows)):
+            a, b = rows.iloc[i - 1], rows.iloc[i]
+            delta = float(b[line_col]) - float(a[line_col])
+            if abs(delta) < config.RLM_MIN_MOVE:
+                continue
+            toward_home = (delta > 0) if is_total else (delta < 0)
+            tp = b[tc] if pd.notna(b[tc]) else a[tc]
+            hours = max((b.retrieved_at - a.retrieved_at).total_seconds() / 3600.0, 0.01)
+            if pd.notna(tp) and abs(float(tp) - 0.5) >= (config.RLM_MIN_TICKET_PCT - 0.5):
+                majority_home = float(tp) >= 0.5
+                if toward_home != majority_home:
+                    out.append({"t": b.retrieved_at.isoformat(), "kind": "rlm", "market": mkt,
+                                "toward": _dir_label(mkt, toward_home, home_abbr, away_abbr), "toward_home": bool(toward_home),
+                                "move": round(delta, 1), "ticket_pct_majority": round(max(float(tp), 1 - float(tp)), 3),
+                                "detail": f"{mkt} moved {abs(delta):.1f} toward {_dir_label(mkt, toward_home, home_abbr, away_abbr)} "
+                                          f"while {max(float(tp), 1-float(tp))*100:.0f}% of tickets sat the other way"})
+            if abs(delta) >= config.STEAM_MIN_MOVE and hours <= config.STEAM_WINDOW_HOURS:
+                out.append({"t": b.retrieved_at.isoformat(), "kind": "steam", "market": mkt,
+                            "toward": _dir_label(mkt, toward_home, home_abbr, away_abbr), "toward_home": bool(toward_home),
+                            "move": round(delta, 1),
+                            "detail": f"{mkt} moved {abs(delta):.1f} toward {_dir_label(mkt, toward_home, home_abbr, away_abbr)} within {hours:.1f}h"})
+            if not is_total:
+                for k in (3, 7, 10, 14):
+                    if (abs(float(a[line_col])) < k) != (abs(float(b[line_col])) < k):
+                        out.append({"t": b.retrieved_at.isoformat(), "kind": "key_number", "market": mkt, "toward": None,
+                                    "move": round(delta, 1), "key": k,
+                                    "detail": f"spread crossed {k} ({a[line_col]:+.1f} to {b[line_col]:+.1f})"})
+        for i in range(len(rows)):
+            r = rows.iloc[i]
+            side = None
+            if pd.notna(r.get(tc)) and pd.notna(r.get(mc)):
+                side = lopsided(float(r[tc]), float(r[mc]))
+            if side and prev_lop.get(mkt) != side:
+                who = _dir_label(mkt, side == "home", home_abbr, away_abbr)
+                out.append({"t": r.retrieved_at.isoformat(), "kind": "lopsided", "market": mkt, "toward": who,
+                            "toward_home": side == "home", "move": None,
+                            "detail": f"{who} crossed {config.PICK_GATES['lopsided_threshold']*100:.0f}% of both tickets and money"})
+            prev_lop[mkt] = side
+    return sorted(out, key=lambda e: (e["t"], e["kind"]))
+
+
+def lopsided(ticket_pct_home: float, money_pct_home: float) -> str | None:
+    th = config.PICK_GATES["lopsided_threshold"]
+    if ticket_pct_home >= th and money_pct_home >= th:
+        return "home"
+    if (1 - ticket_pct_home) >= th and (1 - money_pct_home) >= th:
+        return "away"
+    return None
+
+
+def current_state(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: str,
+                  kickoff: pd.Timestamp | None = None, window_hours: float | None = None) -> dict:
+    """
+    What is true RIGHT NOW, judged over a recent window rather than over the whole week.
+    A line that moved against a side on Tuesday and came back by Friday is NOT currently in reverse movement.
+    """
+    window_hours = window_hours or config.MARKET_STATE_WINDOW_HOURS
+    events = detect_events(hist, period, home_abbr, away_abbr, kickoff)
+    h = hist[hist.period == period].sort_values("retrieved_at")
+    if kickoff is not None:
+        h = h[h.retrieved_at < kickoff]
+    if h.empty:
+        return {"rlm_active": {}, "rlm_ever": {}, "lopsided": {}, "recent_move": {}, "window_hours": window_hours, "events": events}
+    last_t = h.retrieved_at.max()
+    cutoff = last_t - pd.Timedelta(hours=window_hours)
+    recent = h[h.retrieved_at >= cutoff]
+    state = {"rlm_active": {}, "rlm_ever": {}, "lopsided": {}, "recent_move": {}, "window_hours": window_hours, "events": events}
+    for mkt, line_col, is_total in (("spread", "line_spread_home", False), ("total", "line_total", True)):
+        ever = [e for e in events if e["kind"] == "rlm" and e["market"] == mkt]
+        state["rlm_ever"][mkt] = ever[-1] if ever else None
+        rows = recent[recent[line_col].notna()] if line_col in recent.columns else recent.iloc[0:0]
+        if len(rows) >= 2:
+            delta = float(rows[line_col].iloc[-1]) - float(rows[line_col].iloc[0])
+            state["recent_move"][mkt] = round(delta, 2)
+            tc = f"{mkt}_ticket_pct_home"
+            tp = rows[tc].dropna()
+            if abs(delta) >= config.RLM_MIN_MOVE and len(tp):
+                toward_home = (delta > 0) if is_total else (delta < 0)
+                t_now = float(tp.iloc[-1])
+                if abs(t_now - 0.5) >= (config.RLM_MIN_TICKET_PCT - 0.5) and toward_home != (t_now >= 0.5):
+                    state["rlm_active"][mkt] = {"toward": _dir_label(mkt, toward_home, home_abbr, away_abbr),
+                                                "toward_home": bool(toward_home), "move": round(delta, 2),
+                                                "ticket_pct_majority": round(max(t_now, 1 - t_now), 3)}
+        else:
+            state["recent_move"][mkt] = None
+        last = h.iloc[-1]
+        tc, mc = f"{mkt}_ticket_pct_home", f"{mkt}_money_pct_home"
+        if tc in last and mc in last and pd.notna(last[tc]) and pd.notna(last[mc]):
+            side = lopsided(float(last[tc]), float(last[mc]))
+            state["lopsided"][mkt] = None if side is None else _dir_label(mkt, side == "home", home_abbr, away_abbr)
+    for mkt in ("moneyline",):
+        tc, mc = f"{mkt}_ticket_pct_home", f"{mkt}_money_pct_home"
+        last = h.iloc[-1]
+        if tc in last and mc in last and pd.notna(last[tc]) and pd.notna(last[mc]):
+            side = lopsided(float(last[tc]), float(last[mc]))
+            state["lopsided"][mkt] = None if side is None else (home_abbr if side == "home" else away_abbr)
+    return state

@@ -119,6 +119,7 @@ async function oddsMain() {
         div.notable ? el("span", { class: "badge warn" }, "notable") : null) : null,
       rlm ? el("div", { class: "chip" }, el("span", { class: "badge warn" }, "line moved against the tickets")) : null,
       el("div", { class: "chip" }, el("span", { class: "k" }, "source"), el("span", { class: "badge mute" }, sp.book || "manual")));
+    for (const chip of App.indicatorChips(g.market_state, S.market)) chips.append(chip);
     const notes = el("ul", { class: "og-notes" });
     for (const n of sp.notes) notes.append(el("li", {}, n));
     return el("section", { class: "og" }, head, chips, chart(sp, g), notes);
@@ -167,12 +168,23 @@ async function oddsMain() {
       if (S.metric !== "money" && p[`${S.market}_ticket`] != null) svg.push(`<circle cx="${x(t).toFixed(1)}" cy="${y(p[`${S.market}_ticket`]).toFixed(1)}" r="2.5" fill="var(--away)"><title>${new Date(p.t).toLocaleString()} · tickets ${(100 * p[`${S.market}_ticket`]).toFixed(0)}%</title></circle>`);
       if (S.metric !== "ticket" && p[`${S.market}_money`] != null) svg.push(`<circle cx="${x(t).toFixed(1)}" cy="${y(p[`${S.market}_money`]).toFixed(1)}" r="2.5" fill="var(--home)"><title>${new Date(p.t).toLocaleString()} · money ${(100 * p[`${S.market}_money`]).toFixed(0)}%</title></circle>`);
     }
+    const evs = (g.events || []).filter(e => e.market === (S.market === "moneyline" ? "spread" : S.market));
+    for (const e of evs) {
+      const t = new Date(e.t).getTime();
+      if (t < t0 || t > t1) continue;
+      const xx = x(t).toFixed(1);
+      const col = e.kind === "rlm" ? "var(--away)" : e.kind === "steam" ? "var(--home)" : "var(--mute)";
+      svg.push(`<line x1="${xx}" y1="${T}" x2="${xx}" y2="${H - B}" stroke="${col}" stroke-width="1" stroke-dasharray="2 3" opacity=".8"><title>${new Date(e.t).toLocaleString()} · ${e.kind.toUpperCase()}: ${e.detail}</title></line>`);
+      svg.push(`<circle cx="${xx}" cy="${T + 4}" r="3.2" fill="${col}"><title>${e.kind.toUpperCase()}: ${e.detail}</title></circle>`);
+    }
     svg.push(`<text x="${L}" y="${H - 8}" font-size="10" fill="var(--mute)">${new Date(t0).toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })}</text>`);
     svg.push(`<text x="${W - R}" y="${H - 8}" text-anchor="end" font-size="10" fill="var(--mute)">${new Date(t1).toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })}</text>`);
     const legend = el("div", { class: "og-legend" },
       S.metric !== "money" ? el("span", {}, el("i", { class: "sw away" }), `tickets on ${S.market === "total" ? "the over" : g.home.abbr}`) : null,
       S.metric !== "ticket" ? el("span", {}, el("i", { class: "sw home" }), `money on ${S.market === "total" ? "the over" : g.home.abbr}`) : null,
-      el("span", {}, el("i", { class: "sw line" }), S.market === "total" ? "total" : "spread"));
+      el("span", {}, el("i", { class: "sw line" }), S.market === "total" ? "total" : "spread"),
+      evs.length ? el("span", {}, el("i", { class: "sw rlmmark" }), "reverse line movement") : null,
+      evs.some(e => e.kind === "steam") ? el("span", {}, el("i", { class: "sw steammark" }), "steam") : null);
     return el("div", { class: "og-chart" },
       el("div", { html: `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Betting splits over time">${svg.join("")}</svg>` }), legend);
   }

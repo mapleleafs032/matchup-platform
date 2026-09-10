@@ -161,6 +161,7 @@ def slate_entry(S: Season, g, mkt_row, edges: pd.DataFrame) -> dict:
 def build_odds(S: Season, week: int, slate: dict) -> dict:
     """Odds tab payload: one entry per game with the splits history for both periods, plus the line history."""
     sp = splits_engine.build_week(S.league, S.season, week, S.games[(S.games.week == week)], S.teams)
+    hist_all = splits_engine.load(S.league, S.season, week)
     games = []
     for entry in slate["games"]:
         gid = entry["game_id"]
@@ -168,10 +169,14 @@ def build_odds(S: Season, week: int, slate: dict) -> dict:
         mkt_path = OUT / "market" / f"{gid}.json"
         mk = json.loads(mkt_path.read_text()) if mkt_path.exists() else None
         line_series = (mk or {}).get("series", [])
+        gh = hist_all[hist_all.game_id == gid] if not hist_all.empty else hist_all
+        ha, aa = entry["home"]["abbr"], entry["away"]["abbr"]
+        kick = pd.Timestamp(entry["kickoff_utc"]) if entry["kickoff_utc"] else None
+        state = splits_engine.current_state(gh, "FULL", ha, aa, kick) if not gh.empty else {"events": [], "rlm_active": {}, "rlm_ever": {}, "lopsided": {}, "recent_move": {}}
         games.append({"game_id": gid, "status": entry["status"], "kickoff_utc": entry["kickoff_utc"], "kickoff_is_tba": entry["kickoff_is_tba"],
                       "away": entry["away"], "home": entry["home"], "market": entry["market"], "model": entry["model"], "result": entry["result"],
                       "filters": entry["filters"], "splits": s_.get("periods", {}), "splits_available": s_.get("any_available", False),
-                      "line_series": line_series})
+                      "line_series": line_series, "market_state": state, "events": state.get("events", [])})
     covered = sum(1 for g in games if g["splits_available"])
     return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
             "games": games, "coverage": {"with_splits": covered, "total": len(games)},
@@ -243,6 +248,15 @@ def comparison_rows(S: Season, week: int, gid: str, home: str, away: str, snap_m
     return rows, flags
 
 
+def _market_state_for(S: Season, week: int, gid: str, entry: dict) -> dict:
+    hist = splits_engine.load(S.league, S.season, week)
+    gh = hist[hist.game_id == gid] if not hist.empty else hist
+    if gh.empty:
+        return {"events": [], "rlm_active": {}, "rlm_ever": {}, "lopsided": {}, "recent_move": {}}
+    kick = pd.Timestamp(entry["kickoff_utc"]) if entry.get("kickoff_utc") else None
+    return splits_engine.current_state(gh, "FULL", entry["home"]["abbr"], entry["away"]["abbr"], kick)
+
+
 def build_matchup(S: Season, week: int, entry: dict) -> dict:
     gid = entry["game_id"]
     g = S.games.set_index("game_id").loc[gid]
@@ -311,6 +325,7 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
             "teams": {"away": team_block(away, entry["away"]), "home": team_block(home, entry["home"])},
             "metrics": {"windows": WINDOWS, "default_window": "SEASON", "rows": metrics_rows, "quality_flags": qflags},
             "splits": splits_engine.build_week(S.league, S.season, week, S.games[S.games.game_id == gid], S.teams).get(gid, {}).get("periods", {}),
+            "market_state": _market_state_for(S, week, gid, entry),
             "edges": edge_list, "model": model, "market": market, "market_history_url": f"json/market/{gid}.json", "weather": wx, "result": result, "ai": S.ai_block(gid),
             "sources": {"metrics": "CollegeFootballData (PPA, advanced stats, plays) and nflverse (nflfastR EPA, FTN charting, PFR pressures)" if S.league == "CFB" else "nflverse (nflfastR play-by-play EPA, FTN charting, PFR pressures)",
                         "lines": "CollegeFootballData lines" if S.league == "CFB" else "The Odds API (US books)", "weather": "Open-Meteo", "injuries": "official league report" if S.league == "NFL" else "manual entries",

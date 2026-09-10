@@ -117,3 +117,32 @@ async function boardMain() {
   }
   render();
 }
+
+/* Market indicator chips, shared by the odds tab and the matchup page. */
+App.indicatorChips = function (state, market) {
+  const el = App.el, out = [];
+  if (!state) return out;
+  const key = market === "moneyline" ? "spread" : (market || "spread");
+  const act = (state.rlm_active || {})[key];
+  const past = (state.rlm_ever || {})[key];
+  if (act) {
+    out.push(el("span", { class: "badge warn", title: `Moved ${Math.abs(act.move).toFixed(1)} toward ${act.toward} while ${(act.ticket_pct_majority * 100).toFixed(0)}% of tickets sat the other way` },
+      `reverse line movement toward ${act.toward}`));
+  } else if (past) {
+    out.push(el("span", { class: "badge mute", title: past.detail || "" }, "reverse movement earlier, since rebounded"));
+  }
+  const lop = (state.lopsided || {})[key];
+  if (lop) out.push(el("span", { class: "badge warn" }, `lopsided on ${lop}`));
+  const steam = (state.events || []).filter(e => e.kind === "steam" && e.market === key);
+  if (steam.length) {
+    const last = steam[steam.length - 1];
+    out.push(el("span", { class: "badge sig", title: last.detail }, `steam toward ${last.toward}`));
+  }
+  const kn = (state.events || []).filter(e => e.kind === "key_number" && e.market === key);
+  if (kn.length) out.push(el("span", { class: "badge mute", title: kn[kn.length - 1].detail }, `crossed ${kn[kn.length - 1].key}`));
+  const mv = (state.recent_move || {})[key];
+  if (mv != null && Math.abs(mv) >= 0.5) {
+    out.push(el("span", { class: "badge mute" }, `${Math.abs(mv).toFixed(1)} move in the last ${state.window_hours || 36}h`));
+  }
+  return out;
+};

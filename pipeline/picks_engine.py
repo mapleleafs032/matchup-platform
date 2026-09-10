@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from pipeline import storage
+from pipeline import storage, splits_engine
 
 AN = config.TABLES / "analytics"
 MODEL = config.TABLES / "model"
@@ -197,6 +197,10 @@ def candidates(league: str, season: int, week: int) -> pd.DataFrame:
         sg = splits[splits.game_id == gid] if not splits.empty else pd.DataFrame()
         last_split = sg.iloc[-1] if not sg.empty else None
         first_split = sg.iloc[0] if not sg.empty else None
+        abbr0 = lambda t: (teams.abbr.get(t, t.split("_")[-1]) if not teams.empty else t.split("_")[-1])
+        kick_ts = pd.Timestamp(g.kickoff_utc) if pd.notna(g.kickoff_utc) else None
+        mstate = (splits_engine.current_state(sg, "FULL", abbr0(g.home_team_id), abbr0(g.away_team_id), kick_ts)
+                  if not sg.empty else {"rlm_active": {}, "rlm_ever": {}, "lopsided": {}, "recent_move": {}, "events": []})
         abbr = lambda t: (teams.abbr.get(t, t.split("_")[-1]) if not teams.empty else t.split("_")[-1])
         base = {"game_id": gid, "league": league, "season": season, "week": week, "kickoff_utc": g.kickoff_utc,
                 "home_team_id": g.home_team_id, "away_team_id": g.away_team_id, "home": abbr(g.home_team_id), "away": abbr(g.away_team_id),
@@ -216,9 +220,12 @@ def candidates(league: str, season: int, week: int) -> pd.DataFrame:
                 ml_present = False
         ok, why = marquee(league, g, teams, ranks, rating_pct, ml_present)
         ctx = {"marquee_ok": ok, "marquee_why": why, "home": base["home"], "away": base["away"]}
+        base["_mstate"] = mstate
         plays = _spread_play(base, p, last_split, first_split) + _total_play(base, p, last_split, first_split) \
             + _moneyline_play(base, p, gid, league, season, week, last_split)
+        base.pop("_mstate", None)
         for pl in plays:
+            pl.pop("_mstate", None)
             pl["marquee_ok"] = ok
             pl["marquee_why"] = why
             reasons = apply_gates(pl, ctx)
@@ -271,7 +278,10 @@ def _spread_play(base, p, last_split, first_split) -> list[dict]:
     kn = _key_number_side(sh, side_home)
     if kn:
         signals.append("key_number"); notes.append(f"{side} is {kn}.")
-    rlm = rlm_state(base["spread_move"], tp)
+    ms = base.get("_mstate") or {}
+    rlm_now = (ms.get("rlm_active") or {}).get("spread")
+    rlm_past = (ms.get("rlm_ever") or {}).get("spread")
+    rlm = None if not rlm_now else ("toward_home" if rlm_now["toward_home"] else "toward_away")
     lop = lopsided_side(tp, mp, config.PICK_GATES["lopsided_threshold"])
     move_against = None
     if base["open_spread_home"] is not None and sh is not None:
@@ -311,8 +321,10 @@ def _total_play(base, p, last_split, first_split) -> list[dict]:
         if abs(move) >= 1.0 and ((move > 0) == over):
             signals.append("line_agrees"); notes.append(f"The total has moved {abs(move):.1f} toward the {side.lower()} since opening.")
         move_against = round(-move if over else move, 2)           # positive = against our side
-    total_move = None if base["open_total"] is None else t - base["open_total"]
-    rlm = rlm_state(total_move, tp, is_total=True)
+    ms = base.get("_mstate") or {}
+    rlm_now = (ms.get("rlm_active") or {}).get("total")
+    rlm_past = (ms.get("rlm_ever") or {}).get("total")
+    rlm = None if not rlm_now else ("toward_over" if rlm_now["toward_home"] else "toward_under")
     lop = lopsided_side(tp, mp, config.PICK_GATES["lopsided_threshold"])
     return [{**base, "market": "TOTAL",
              "_rlm": rlm, "_rlm_against_us": (rlm == ("toward_under" if over else "toward_over")) if rlm else False,
@@ -352,7 +364,9 @@ def _moneyline_play(base, p, gid, league, season, week, last_split) -> list[dict
             our_m = mpc if side_home else 1 - mpc
             if our_m - our_t >= config.PICK_SIGNAL["money_divergence"]:
                 signals.append("money_agrees"); notes.append(f"{our_m*100:.0f}% of moneyline money on {side} against {our_t*100:.0f}% of tickets.")
-        rlm = rlm_state(base["spread_move"], tp)
+        ms = base.get("_mstate") or {}
+        rlm_now = (ms.get("rlm_active") or {}).get("spread")
+        rlm = None if not rlm_now else ("toward_home" if rlm_now["toward_home"] else "toward_away")
         lop = lopsided_side(tp, mpc, config.PICK_GATES["lopsided_threshold"])
         out.append({**base, "market": "MONEYLINE",
                     "_rlm": rlm, "_rlm_against_us": (rlm == ("toward_home" if not side_home else "toward_away")) if rlm else False,

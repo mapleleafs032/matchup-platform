@@ -130,6 +130,8 @@ HFA_SHRINK_GAMES = {"NFL": 120, "CFB": 400}         # games of fit needed before
 
 # ---- Market engine (pipeline/market_engine.py) -----------------------------------------
 STEAM_WINDOW_HOURS = 3
+STEAM_MIN_MOVE = 1.0            # points a number must move inside the steam window to count
+MARKET_STATE_WINDOW_HOURS = 36  # how recent a move must be to describe the market RIGHT NOW
 MIN_PROJ_SIDE = {"NFL": 7.0, "CFB": 10.0}   # projected total is raised so neither team is projected below this (blowouts run up the total)
 
 # ---- AI analysis layer (pipeline/ai_agent.py, jobs/build_ai.py) -------------------------------

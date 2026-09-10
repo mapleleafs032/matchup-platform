@@ -120,3 +120,52 @@ def test_pair_resolves_to_the_upcoming_meeting_not_a_past_one():
     rows, _ = splits_manual.parse_paste("Chicago Bears 71% 66% 48% 45% 74% 70%\nCarolina Panthers 29% 34% 52% 55% 26% 30%\n", "NFL", r)
     recs, problems = splits_manual.pair_rows(rows, games, "FULL", "dk", "2026-12-03T15:00:00+00:00", "manual_paste")
     assert len(recs) == 1 and recs[0]["game_id"] == "2026_NFL_W14_CHI_CAR" and not problems
+
+
+def _series(rows):
+    d = pd.DataFrame(rows)
+    d["retrieved_at"] = pd.to_datetime(d.retrieved_at, utc=True)
+    d["period"] = "FULL"
+    for c in ("spread_ticket_pct_home", "spread_money_pct_home", "total_ticket_pct_home", "total_money_pct_home",
+              "moneyline_ticket_pct_home", "moneyline_money_pct_home", "line_spread_home", "line_total", "book"):
+        if c not in d.columns:
+            d[c] = None
+    d["book"] = "dk"
+    return d.sort_values("retrieved_at")
+
+
+def test_rlm_that_rebounds_is_not_active_now():
+    """The line moved against the home side on Tuesday, then came back by Friday.
+    That game must NOT be treated as being in reverse line movement at kickoff."""
+    h = _series([
+        {"game_id": "G", "retrieved_at": "2026-09-08T12:00:00Z", "spread_ticket_pct_home": 0.75, "spread_money_pct_home": 0.60, "line_spread_home": -3.5, "line_total": 45.0},
+        {"game_id": "G", "retrieved_at": "2026-09-09T12:00:00Z", "spread_ticket_pct_home": 0.75, "spread_money_pct_home": 0.58, "line_spread_home": -2.0, "line_total": 45.0},  # away, against the crowd
+        {"game_id": "G", "retrieved_at": "2026-09-11T12:00:00Z", "spread_ticket_pct_home": 0.74, "spread_money_pct_home": 0.62, "line_spread_home": -3.0, "line_total": 45.0},
+        {"game_id": "G", "retrieved_at": "2026-09-12T12:00:00Z", "spread_ticket_pct_home": 0.74, "spread_money_pct_home": 0.64, "line_spread_home": -3.5, "line_total": 45.0},  # back our way
+    ])
+    st = splits_engine.current_state(h, "FULL", "SEA", "NE", pd.Timestamp("2026-09-13T17:00:00Z"))
+    assert st["rlm_ever"]["spread"] is not None            # it did happen, and is still reported
+    assert "spread" not in st["rlm_active"]                # but it is not happening now
+    assert st["recent_move"]["spread"] == -0.5             # the recent window moved toward the home side
+
+
+def test_rlm_still_active_is_reported():
+    h = _series([
+        {"game_id": "G", "retrieved_at": "2026-09-11T12:00:00Z", "spread_ticket_pct_home": 0.76, "spread_money_pct_home": 0.55, "line_spread_home": -3.5, "line_total": 45.0},
+        {"game_id": "G", "retrieved_at": "2026-09-12T12:00:00Z", "spread_ticket_pct_home": 0.78, "spread_money_pct_home": 0.52, "line_spread_home": -2.0, "line_total": 45.0},
+    ])
+    st = splits_engine.current_state(h, "FULL", "SEA", "NE", pd.Timestamp("2026-09-13T17:00:00Z"))
+    assert st["rlm_active"]["spread"]["toward"] == "NE" and st["rlm_active"]["spread"]["move"] == 1.5
+
+
+def test_events_carry_timestamps_for_the_chart():
+    h = _series([
+        {"game_id": "G", "retrieved_at": "2026-09-11T12:00:00Z", "spread_ticket_pct_home": 0.76, "spread_money_pct_home": 0.55, "line_spread_home": -2.5, "line_total": 45.0},
+        {"game_id": "G", "retrieved_at": "2026-09-11T14:00:00Z", "spread_ticket_pct_home": 0.78, "spread_money_pct_home": 0.52, "line_spread_home": -4.0, "line_total": 45.0},
+    ])
+    ev = splits_engine.detect_events(h, "FULL", "SEA", "NE")
+    kinds = {e["kind"] for e in ev}
+    assert "steam" in kinds and "key_number" in kinds       # 1.5 pts in 2h, crossing 3
+    assert all("t" in e and e["market"] in ("spread", "total") for e in ev)
+    steam = [e for e in ev if e["kind"] == "steam"][0]
+    assert steam["toward"] == "SEA" and steam["move"] == -1.5
