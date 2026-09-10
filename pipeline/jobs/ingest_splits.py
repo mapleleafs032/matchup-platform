@@ -76,10 +76,17 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
         print(f"    unmapped slugs written to {out.relative_to(config.ROOT)} — fill team_id and paste the rows into data/tables/ref/team_aliases.csv")
         print(f"    {', '.join(unmatched[:20])}" + (" ..." if len(unmatched) > 20 else ""))
     recs, probs = vsin.to_records(rows, league, games, resolver, ts)
-    print(f"  VSiN {league}: {len(rows)} team rows -> {len(recs)} games"
+    print(f"  VSiN {league}: {len(rows)} team rows ({len(rows)//2} pairs) -> {len(recs)} games"
           + (f"; {added} new team aliases learned" if added else "")
-          + (f"; {len(unmatched)} slugs unmapped" if unmatched else "")
-          + (f"; {len(probs)} row problems" if probs else ""))
+          + (f"; {len(unmatched)} slugs unmapped" if unmatched else ""))
+    allp = problems + probs
+    if allp:
+        by_kind: dict = {}
+        for x in allp:
+            by_kind.setdefault(x.get("kind", "other"), []).append(x.get("why", ""))
+        print(f"    problem breakdown ({len(allp)} total):")
+        for kind, whys in sorted(by_kind.items(), key=lambda kv: -len(kv[1])):
+            print(f"      {kind}: {len(whys)}  e.g. {whys[0][:110]}")
     return recs, problems + probs
 
 
@@ -166,8 +173,10 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
     for (wk, ), part in clean.groupby(["week"]):
         lines = _current_lines(league, season, int(wk))
         part = part.copy()
-        part["line_spread_home"] = part.game_id.map(lambda g: (lines.get(g) or {}).get("line_spread_home"))
-        part["line_total"] = part.game_id.map(lambda g: (lines.get(g) or {}).get("line_total"))
+        # the source's own line is the number the splits refer to; our snapshot only fills a gap
+        for col in ("line_spread_home", "line_total"):
+            fallback = part.game_id.map(lambda g: (lines.get(g) or {}).get(col))
+            part[col] = part[col].where(part[col].notna(), fallback) if col in part.columns else fallback
         part["split_id"] = part.game_id + "_" + part.period + "_" + part.book + "_" + part.retrieved_at.astype(str)
         cols = ["split_id", "game_id", "week", "retrieved_at", "book", "period"] + PCT_COLS + ["line_spread_home", "line_total", "source"]
         part = part.reindex(columns=cols)

@@ -64,14 +64,24 @@ def _cell_text(td) -> str:
     return re.sub(r"\s+", " ", td.get_text(" ", strip=True))
 
 
+_BLANK = {"", "-", "--", "n/a", "na", "off", "off the board", "pk", "even"}
+
+
 def _pct(s: str) -> float | None:
+    if s.strip().lower() in _BLANK:
+        return None
     m = _PCT.match(s)
     return float(m.group(1)) / 100.0 if m else None
 
 
 def _num(s: str) -> float | None:
-    s = s.replace("PK", "0").replace("pk", "0")
-    return float(s) if _NUMBER.match(s) else None
+    t = s.strip()
+    if t.lower() in ("pk", "even", "pick"):
+        return 0.0
+    if t.lower() in _BLANK:
+        return None
+    t = t.replace(",", "").replace("+", "")
+    return float(t) if _NUMBER.match(t.replace("-", "-", 1)) else None
 
 
 def parse(html: str) -> tuple[list[TeamRow], list[dict]]:
@@ -107,27 +117,23 @@ def parse(html: str) -> tuple[list[TeamRow], list[dict]]:
         if link is None:
             continue                                   # date header / control rows
         cells = [_cell_text(td) for td in tr.find_all(["td", "th"])]
-        vals = []
-        for c in cells:
-            p = _pct(c)
-            if p is not None:
-                vals.append(("pct", p)); continue
-            n = _num(c)
-            if n is not None:
-                vals.append(("num", n))
-        # expect num, pct, pct, num, pct, pct, num, pct, pct  (leading rotation numbers are tolerated)
-        pattern = [t for t, _ in vals]
-        start = None
-        for i in range(len(pattern) - 8):
-            if pattern[i:i + 9] == ["num", "pct", "pct", "num", "pct", "pct", "num", "pct", "pct"]:
-                start = i
-                break
-        if start is None:
-            problems.append({"slug": link[0], "team": link[1], "why": "row did not contain the expected 9 value cells", "cells": cells[:12]})
+        # The nine value columns are always the LAST nine cells of a team row:
+        #   spread, handle%, bets%, total, handle%, bets%, moneyline, handle%, bets%
+        # Reading by position (not by pattern) matters for college football, where a big favourite
+        # frequently has no moneyline posted; a blank cell means unavailable, not "skip this row".
+        if len(cells) < 10:
+            problems.append({"kind": "row_shape", "slug": link[0], "team": link[1],
+                             "why": f"row for {link[0]} had {len(cells)} cells, expected at least 10", "cells": cells[:12]})
             continue
-        v = [x for _, x in vals[start:start + 9]]
-        rows.append(TeamRow(slug=link[0], name=link[1], spread=v[0], spread_handle=v[1], spread_bets=v[2],
-                            total=v[3], total_handle=v[4], total_bets=v[5], moneyline=v[6], ml_handle=v[7], ml_bets=v[8]))
+        v = cells[-9:]
+        vals = [_num(v[0]), _pct(v[1]), _pct(v[2]), _num(v[3]), _pct(v[4]), _pct(v[5]), _num(v[6]), _pct(v[7]), _pct(v[8])]
+        if all(x is None for x in vals):
+            problems.append({"kind": "row_empty", "slug": link[0], "team": link[1],
+                             "why": f"row for {link[0]} had no readable values", "cells": cells[-9:]})
+            continue
+        rows.append(TeamRow(slug=link[0], name=link[1], spread=vals[0], spread_handle=vals[1], spread_bets=vals[2],
+                            total=vals[3], total_handle=vals[4], total_bets=vals[5],
+                            moneyline=vals[6], ml_handle=vals[7], ml_bets=vals[8]))
     if not rows:
         problems.append({"why": "no team rows found on the page"})
     return rows, problems
@@ -135,6 +141,34 @@ def parse(html: str) -> tuple[list[TeamRow], list[dict]]:
 
 def slug_key(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+# VSiN shortens school names; expand each token to its full form before matching.
+_TOKEN_EXPANSIONS = {
+    "st": ["state"], "e": ["eastern", "east"], "w": ["western", "west"], "n": ["northern", "north"],
+    "s": ["southern", "south"], "c": ["central"], "fl": ["florida"], "la": ["louisiana"], "miss": ["mississippi"],
+    "tenn": ["tennessee"], "conn": ["connecticut"], "caro": ["carolina"], "mich": ["michigan"], "ill": ["illinois"],
+    "ky": ["kentucky"], "col": ["colorado"], "wash": ["washington"], "intl": ["international"], "u": ["university"],
+    "ut": ["utah"], "az": ["arizona"], "ark": ["arkansas"], "ga": ["georgia"], "ala": ["alabama"],
+}
+
+
+def _slug_variants(slug: str) -> list[str]:
+    """Candidate normalized spellings for a VSiN slug, longest first (full name, then dropping mascot words)."""
+    parts = [p for p in slug.split("-") if p]
+    expanded: list[list[str]] = [[]]
+    for tok in parts:
+        opts = [tok] + _TOKEN_EXPANSIONS.get(tok, [])
+        expanded = [prev + [o] for prev in expanded for o in opts][:32]
+    out = []
+    for toks in expanded:
+        for cut in range(len(toks), 0, -1):
+            out.append(slug_key("".join(toks[:cut])))
+    seen, uniq = set(), []
+    for k in out:
+        if k and k not in seen:
+            seen.add(k); uniq.append(k)
+    return uniq
 
 
 def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, teams: pd.DataFrame) -> tuple[int, list[str]]:
@@ -158,10 +192,9 @@ def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, 
     for r in rows:
         if r.slug in known:
             continue
-        parts = r.slug.split("-")
         hit = None
-        for cut in range(len(parts), 0, -1):          # full slug first, then drop mascot words one at a time
-            cand = lookup.get(slug_key("".join(parts[:cut])))
+        for key in _slug_variants(r.slug):
+            cand = lookup.get(key)
             if cand and len(cand) == 1:
                 hit = cand
                 break
@@ -206,13 +239,13 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
         i += 2                     # ALWAYS advance a full pair: advancing by one desynchronizes every later game
         ta, tb = resolve(a.slug), resolve(b.slug)
         if ta is None or tb is None:
-            problems.append({"why": f"unmapped VSiN slug: {a.slug if ta is None else b.slug}"})
+            problems.append({"kind": "unmapped_slug", "why": f"unmapped VSiN slug: {a.slug if ta is None else b.slug}"})
             continue
         cands = by_pair.get(frozenset((ta, tb)), [])
         future = [c for c in cands if pd.notna(c._kick) and c._kick >= snap - pd.Timedelta(hours=6)]
         pool = sorted(future or cands, key=lambda c: (pd.Timestamp.max.tz_localize("UTC") if pd.isna(c._kick) else c._kick))
         if not pool:
-            problems.append({"why": f"no scheduled game for {ta} vs {tb}"})
+            problems.append({"kind": "no_scheduled_game", "why": f"no scheduled game for {ta} vs {tb}"})
             continue
         game = pool[0]
         home_is_b = (tb == game.home_team_id)
@@ -227,7 +260,7 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
                 if side is None or other is None:
                     continue
                 if not (0.95 <= side + other <= 1.05):
-                    problems.append({"why": f"{game.game_id} {market} {metric}: {side:.2f} + {other:.2f} does not sum to 1"})
+                    problems.append({"kind": "sum_not_100", "why": f"{game.game_id} {market} {metric}: {side:.2f} + {other:.2f} does not sum to 1"})
                     continue
                 rec[f"{market}_{metric}_pct_home"] = round(side, 4)
         rec["line_spread_home"] = home_row.spread
@@ -236,13 +269,13 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
         # A mis-paired row fails these, so partial junk can never reach a real game.
         n_pct = sum(1 for k in rec if k.endswith("_pct_home"))
         if home_row.spread is None or away_row.spread is None:
-            problems.append({"why": f"{game.game_id}: pair is missing a spread; treated as mis-paired"})
+            problems.append({"kind": "missing_spread", "why": f"{game.game_id}: pair is missing a spread"})
         elif home_row.spread != -away_row.spread and abs(home_row.spread + away_row.spread) > 0.01:
-            problems.append({"why": f"{game.game_id}: spreads {home_row.spread} / {away_row.spread} are not opposites; treated as mis-paired"})
+            problems.append({"kind": "spreads_not_opposite", "why": f"{game.game_id}: spreads {home_row.spread} / {away_row.spread} are not opposites (mis-paired)"})
         elif home_row.total != away_row.total:
-            problems.append({"why": f"{game.game_id}: totals {home_row.total} / {away_row.total} differ; treated as mis-paired"})
+            problems.append({"kind": "totals_differ", "why": f"{game.game_id}: totals {home_row.total} / {away_row.total} differ (mis-paired)"})
         elif n_pct < 4:
-            problems.append({"why": f"{game.game_id}: only {n_pct} of 6 percentages usable; dropped"})
+            problems.append({"kind": "too_few_percentages", "why": f"{game.game_id}: only {n_pct} of 6 percentages usable"})
         else:
             out.append(rec)
     return out, problems

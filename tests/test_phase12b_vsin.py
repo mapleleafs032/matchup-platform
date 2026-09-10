@@ -113,3 +113,25 @@ def test_mispaired_rows_are_rejected_by_structural_checks():
                              "week": 1, "status": "SCHEDULED", "kickoff_utc": "2026-09-13T17:00:00Z", "season_type": "REG"}
     recs, problems = vsin.to_records(scrambled, "NFL", games, r, "2026-09-09T18:00:00+00:00")
     assert not recs and any("mis-paired" in p["why"] for p in problems)
+
+
+def test_vsin_abbreviations_expand_to_real_school_names():
+    """VSiN writes 'boise-st-broncos' and 'e-michigan-eagles'; these must reach the CFBD school names."""
+    for slug, school in (("boise-st-broncos", "Boise State"), ("mississippi-st-bulldogs", "Mississippi State"),
+                         ("e-michigan-eagles", "Eastern Michigan"), ("fl-atlantic-owls", "Florida Atlantic"),
+                         ("la-monroe-warhawks", "Louisiana Monroe"), ("s-alabama-jaguars", "South Alabama"),
+                         ("middle-tenn-st-blue-raiders", "Middle Tennessee State"), ("connecticut-huskies", "Connecticut")):
+        assert vsin.slug_key(school) in set(vsin._slug_variants(slug)), slug
+
+
+def test_row_without_a_moneyline_is_still_read():
+    """College favourites often have no moneyline posted; the row must still yield spread and total."""
+    html = """<table>
+    <tr><th>CFB</th><th></th><th>SpreadSPR</th><th>HandleHND</th><th>BetsBET</th><th>TotalTOT</th><th>HandleHND</th><th>BetsBET</th><th>MoneyML</th><th>HandleHND</th><th>BetsBET</th></tr>
+    <tr><td>101</td><td><a href="https://data.vsin.com/college-football/teams/alabama-crimson-tide">Alabama</a></td>
+        <td>-24.5</td><td>61%</td><td>58%</td><td>52.5</td><td>44%</td><td>47%</td><td></td><td></td><td></td></tr>
+    </table>"""
+    rows, problems = vsin.parse(html)
+    assert len(rows) == 1 and not problems
+    r = rows[0]
+    assert r.spread == -24.5 and r.spread_handle == 0.61 and r.total == 52.5 and r.moneyline is None and r.ml_bets is None
