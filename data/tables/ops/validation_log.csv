@@ -3254,3 +3254,71 @@ c0a73bdb67134a32,SPLITS_20260910T144859_67e210,betting_splits,SPLITS_UNREADABLE,
 983ab3fdde2d41e2,SPLITS_20260910T144859_67e210,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_ILL vs CFB_NIU | ,team + percentages,2026-09-10T14:49:04+00:00
 43c6dae617f449d3,SPLITS_20260910T144859_67e210,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: towson | ,team + percentages,2026-09-10T14:49:04+00:00
 5f50a7c4d1914705,SPLITS_20260910T144859_67e210,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: lindenwood | ,team + percentages,2026-09-10T14:49:04+00:00
+4c7f029504894d32,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,c-conn-st,vsin_slug,c-conn-st,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+4a18337e144141aa,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,campbell-fighting,vsin_slug,campbell-fighting,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+446e73984a044493,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,colgate,vsin_slug,colgate,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+142b51eb786342ee,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,e-tennessee-st,vsin_slug,e-tennessee-st,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+69695fb41d1c4990,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,fordham,vsin_slug,fordham,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+22d1fd571aea4135,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,gardner-webb,vsin_slug,gardner-webb,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+e8157e71203c433c,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,holy-cross,vsin_slug,holy-cross,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+27a3e77e34a848d7,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,howard,vsin_slug,howard,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+0e1a29b2633c454c,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,lindenwood,vsin_slug,lindenwood,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+ac9dad037b8c472d,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,mercyhurst,vsin_slug,mercyhurst,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+e07245bee3e54e89,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,monmouth,vsin_slug,monmouth,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+3c5b883b9eb1467c,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,montana-st,vsin_slug,montana-st,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+e6dc8d49dbe44b12,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,n-colorado,vsin_slug,n-colorado,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+356ff41b6beb4dc6,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,norfolk-st,vsin_slug,norfolk-st,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+7fb3f4d6e285403f,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,richmond,vsin_slug,richmond,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+d3cb4def4d95458e,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,robert-morris,vsin_slug,robert-morris,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+f4489d3ad69b4388,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,s-utah,vsin_slug,s-utah,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+a6f8dd162cb54685,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,sacred-heart,vsin_slug,sacred-heart,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+706962c9cb4f4c0e,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,southern-u,vsin_slug,southern-u,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+02090f7d00fc4fad,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,stony-brook,vsin_slug,stony-brook,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+9817cf27ea90414d,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,towson,vsin_slug,towson,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+d48973557a564954,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,uc-davis,vsin_slug,uc-davis,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+bed818e93c3641d1,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,villanova,vsin_slug,villanova,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+83f4bd8c60024255,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,w-carolina,vsin_slug,w-carolina,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+b488516b40b141cc,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,w-illinois,vsin_slug,w-illinois,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+29b88f6a15334244,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,wagner,vsin_slug,wagner,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+084e76c30de64003,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,weber-st,vsin_slug,weber-st,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+33cd0241d5cd446c,SPLITS_20260910T154707_afbacc,betting_splits,ALIAS_UNMATCHED,WARN,wofford,vsin_slug,wofford,add to team_aliases.csv (provider=vsin),2026-09-10T15:47:12+00:00
+c3471cec8c63458c,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_FLA vs CFB_MIA | ,team + percentages,2026-09-10T15:47:12+00:00
+6d2c4ae713a94f2f,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: villanova | ,team + percentages,2026-09-10T15:47:12+00:00
+bec65ba3c0694b95,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: richmond | ,team + percentages,2026-09-10T15:47:12+00:00
+7bcfb8962cea4bfd,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: norfolk-st | ,team + percentages,2026-09-10T15:47:12+00:00
+f35bc4e7c449414f,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: howard | ,team + percentages,2026-09-10T15:47:12+00:00
+61a40d5400734e53,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_WASH vs CFB_KU | ,team + percentages,2026-09-10T15:47:12+00:00
+9cb0c1fcac1742ab,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: wofford | ,team + percentages,2026-09-10T15:47:12+00:00
+a800e9ae631546d7,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: e-tennessee-st | ,team + percentages,2026-09-10T15:47:12+00:00
+46e3820b85b24901,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_ORE vs CFB_OU | ,team + percentages,2026-09-10T15:47:12+00:00
+2b279418e5474aa4,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_ARIZ vs CFB_TEX | ,team + percentages,2026-09-10T15:47:12+00:00
+3174edc6bba34b55,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: 2026_CFB_W02_WKU_UGA moneyline ticket: 0.00 + 0.00 does not sum to 1 | ,team + percentages,2026-09-10T15:47:12+00:00
+825026e1882346ba,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: 2026_CFB_W02_WKU_UGA moneyline money: 0.00 + 0.00 does not sum to 1 | ,team + percentages,2026-09-10T15:47:12+00:00
+45f4c9474e194e01,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: colgate | ,team + percentages,2026-09-10T15:47:12+00:00
+5aab227a59f444cf,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: holy-cross | ,team + percentages,2026-09-10T15:47:12+00:00
+5feefeb72a0344f7,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_TENN vs CFB_WVU | ,team + percentages,2026-09-10T15:47:12+00:00
+a958b5ee66cb45fa,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: stony-brook | ,team + percentages,2026-09-10T15:47:12+00:00
+1371d6b5fd7f44f8,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: robert-morris | ,team + percentages,2026-09-10T15:47:12+00:00
+e7ba3bea4474492f,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: weber-st | ,team + percentages,2026-09-10T15:47:12+00:00
+1debfdfff14b47eb,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_EMU vs CFB_MICH | ,team + percentages,2026-09-10T15:47:12+00:00
+223a00b56c2943af,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: 2026_CFB_W02_RICE_ND moneyline ticket: 0.00 + 0.00 does not sum to 1 | ,team + percentages,2026-09-10T15:47:12+00:00
+3c7de1586433453b,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: 2026_CFB_W02_RICE_ND moneyline money: 0.00 + 0.00 does not sum to 1 | ,team + percentages,2026-09-10T15:47:12+00:00
+ffa90866bfa6434e,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: c-conn-st | ,team + percentages,2026-09-10T15:47:12+00:00
+5418b8ea92c44571,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_UTAH vs CFB_WASH | ,team + percentages,2026-09-10T15:47:12+00:00
+c4e2a85942434c09,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: wagner | ,team + percentages,2026-09-10T15:47:12+00:00
+851fd32b83e44f9b,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_TEX vs CFB_TEX | ,team + percentages,2026-09-10T15:47:12+00:00
+9e7451a4eb374a69,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: sacred-heart | ,team + percentages,2026-09-10T15:47:12+00:00
+327d6e5fa4604597,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: mercyhurst | ,team + percentages,2026-09-10T15:47:12+00:00
+79da51f5ab5442f4,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: uc-davis | ,team + percentages,2026-09-10T15:47:12+00:00
+b8536d305555442f,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_ALA vs CFB_TROY | ,team + percentages,2026-09-10T15:47:12+00:00
+8e4b9278db304caf,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: n-colorado | ,team + percentages,2026-09-10T15:47:12+00:00
+dd81ab1e39734192,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: campbell-fighting | ,team + percentages,2026-09-10T15:47:12+00:00
+1934e1fa30bc49c9,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_BUF vs CFB_FLA | ,team + percentages,2026-09-10T15:47:12+00:00
+38d7b682255d435f,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: gardner-webb | ,team + percentages,2026-09-10T15:47:12+00:00
+ec11ee1c4a764bba,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: monmouth | ,team + percentages,2026-09-10T15:47:12+00:00
+157cf53199ee418c,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: w-carolina | ,team + percentages,2026-09-10T15:47:12+00:00
+3ca8c4311bb54e5f,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: s-utah | ,team + percentages,2026-09-10T15:47:12+00:00
+ecafa2e99c864ed2,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: southern-u | ,team + percentages,2026-09-10T15:47:12+00:00
+5db3d7076e234388,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_ILL vs CFB_NIU | ,team + percentages,2026-09-10T15:47:12+00:00
+df76f94e8df044c9,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: towson | ,team + percentages,2026-09-10T15:47:12+00:00
+a382d274bf6542d2,SPLITS_20260910T154707_afbacc,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: lindenwood | ,team + percentages,2026-09-10T15:47:12+00:00
