@@ -291,14 +291,26 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
                  ("total", away_row.total_bets, home_row.total_bets, away_row.total_handle, home_row.total_handle))
         for market, t_side, t_other, m_side, m_other in pairs:
             for metric, side, other in (("ticket", t_side, t_other), ("money", m_side, m_other)):
-                if side is None or other is None:
-                    continue
+                if side is None and other is None:
+                    continue                      # neither cell published
                 if side == 0 and other == 0:
                     continue                      # market not posted (common on big college favourites)
-                if not (0.95 <= side + other <= 1.05):
-                    problems.append({"kind": "sum_not_100", "why": f"{game.game_id} {market} {metric}: {side:.2f} + {other:.2f} does not sum to 1"})
-                    continue
-                rec[f"{market}_{metric}_pct_home"] = round(side, 4)
+                if side is not None and other is not None:
+                    if not (0.95 <= side + other <= 1.05):
+                        problems.append({"kind": "sum_not_100", "why": f"{game.game_id} {market} {metric}: {side:.2f} + {other:.2f} does not sum to 1"})
+                        continue
+                    value = side
+                else:
+                    # The two sides of a market are complements, so one published cell determines both.
+                    # VSiN leaves a cell blank from time to time; recovering it beats showing nothing,
+                    # though it loses the sum-to-100 cross-check, which is recorded as a warning.
+                    value = side if side is not None else 1 - other
+                    if not (0.0 <= value <= 1.0):
+                        problems.append({"kind": "pct_out_of_range", "why": f"{game.game_id} {market} {metric}: derived {value:.2f}"})
+                        continue
+                    problems.append({"kind": "single_sided_pct",
+                                     "why": f"{game.game_id} {market} {metric}: only one side published; complement used, no cross-check"})
+                rec[f"{market}_{metric}_pct_home"] = round(value, 4)
         rec["line_spread_home"] = home_row.spread
         rec["line_total"] = home_row.total
         rec["line_ml_home"] = home_row.moneyline

@@ -186,3 +186,23 @@ def test_stored_alias_written_by_an_older_matcher_is_detected_and_corrected(tmp_
     added, unmatched, conflicts = vsin.seed_aliases(rows, "CFB", r, teams)
     assert conflicts and conflicts[0]["stored"] == "CFB_FLA" and conflicts[0]["expected"] == "CFB_FAU"
     assert r.resolve("vsin", alias="florida-atlantic-owls") == "CFB_FAU"      # corrected in place
+
+
+def test_single_published_side_is_recovered_as_its_complement():
+    """VSiN sometimes leaves one cell of a pair blank. Over% and Under% are complements, so one value
+    determines both -- discarding the metric (the '—' on the card) threw away real information."""
+    html = """<table>
+    <tr><th>NFL</th><th></th><th>SpreadSPR</th><th>HandleHND</th><th>BetsBET</th><th>TotalTOT</th><th>HandleHND</th><th>BetsBET</th><th>MoneyML</th><th>HandleHND</th><th>BetsBET</th></tr>
+    <tr><td></td><td><a href="https://data.vsin.com/nfl/teams/new-england-patriots">New England</a></td>
+        <td>+3</td><td>22%</td><td>35%</td><td>44.5</td><td></td><td>74%</td><td>+140</td><td>36%</td><td>29%</td></tr>
+    <tr><td>45</td><td><a href="https://data.vsin.com/nfl/teams/seattle-seahawks">Seattle</a></td>
+        <td>-3</td><td>78%</td><td>65%</td><td>44.5</td><td>41%</td><td></td><td>-166</td><td>64%</td><td>71%</td></tr>
+    </table>"""
+    r = ids.AliasResolver.load()
+    rows, _ = vsin.parse(html)
+    vsin.seed_aliases(rows, "NFL", r, _teams())
+    recs, problems = vsin.to_records(rows, "NFL", _games(), r, "2026-09-09T18:00:00+00:00")
+    rec = recs[0]
+    assert rec["total_ticket_pct_home"] == 0.74          # over bets published on the away row
+    assert rec["total_money_pct_home"] == 0.59           # under handle 41% published -> over handle is 59%
+    assert any(p["kind"] == "single_sided_pct" for p in problems)    # recovery is recorded, not silent

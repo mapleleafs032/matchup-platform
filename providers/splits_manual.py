@@ -136,13 +136,23 @@ def pair_rows(rows: list[ParsedRow], games: pd.DataFrame, period: str, book: str
                 continue
             got = False
             for k, metric in ((j, "ticket"), (j + 1, "money")):
-                h, aw = hp[k], ap[k]
-                if h is None or aw is None:
+                h = hp[k] if k < len(hp) else None
+                aw = ap[k] if k < len(ap) else None
+                if h is None and aw is None:
                     continue
-                if not (95 <= h + aw <= 105):
-                    problems.append({"line": home_row.line_no, "raw": home_row.raw, "why": f"{market} {metric}: {h} + {aw} does not sum to 100"})
-                    continue
-                rec[f"{market.lower()}_{metric}_pct_home"] = round(h / 100.0, 4)
+                if h is not None and aw is not None:
+                    if not (95 <= h + aw <= 105):
+                        problems.append({"line": home_row.line_no, "raw": home_row.raw, "why": f"{market} {metric}: {h} + {aw} does not sum to 100"})
+                        continue
+                    value = h
+                else:
+                    # the two sides are complements, so one published value determines both
+                    value = h if h is not None else 100 - aw
+                    if not (0 <= value <= 100):
+                        continue
+                    problems.append({"line": home_row.line_no, "raw": home_row.raw,
+                                     "why": f"{market} {metric}: only one side present; complement used, no cross-check"})
+                rec[f"{market.lower()}_{metric}_pct_home"] = round(value / 100.0, 4)
                 got = True
             if got:
                 markets_found.append(market)
