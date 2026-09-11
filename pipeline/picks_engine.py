@@ -12,7 +12,11 @@ Scoring is transparent and additive, in "points of edge equivalent":
 
     base        model-vs-market disagreement (points for spread/total; EV-converted for moneyline)
     quality     scaled by the prediction's data-quality score, so thin early-season games score lower
-    signals     small bonuses when independent market evidence agrees with the model's side:
+    THE RULE: a play needs a statistical edge AND market evidence supporting the same side. Neither
+    alone qualifies, and a market that fades our side vetoes the play however large the edge.
+
+    signals     market evidence agreeing with the model's side. At least one is REQUIRED (a favourable
+                key number is positional, so it adds score but does not by itself confirm a side):
                   line moved toward our side against the ticket majority (RLM)
                   the money share leans our way while tickets lean the other
                   the current number sits on the good side of a key number
@@ -146,6 +150,11 @@ def apply_gates(play: dict, ctx: dict) -> list[str]:
     mv = play.get("_move_against")
     if mv is not None and mv > G["max_line_move_against"]:
         reasons.append(f"the number has moved {mv:.1f} against this side since opening")
+    # A statistical edge is not a play on its own: something in the market must back the same side.
+    if G.get("require_confirmation"):
+        confirming = [x for x in str(play.get("signals", "")).split(",") if x in G["confirming_signals"]]
+        if len(confirming) < G.get("min_confirmations", 1):
+            reasons.append("no market evidence supports this side (edge only)")
     return reasons
 
 

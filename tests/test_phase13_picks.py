@@ -127,7 +127,9 @@ def test_lopsided_requires_both_tickets_and_money():
 
 def test_gates_veto_lopsided_rlm_and_adverse_movement():
     ctx = {"marquee_ok": True, "marquee_why": "NFL", "home": "SEA", "away": "NE"}
-    ok = {"market": "SPREAD", "tickets_pct_side": 0.45, "money_pct_side": 0.52, "_lopsided_side": None, "_rlm": None, "_move_against": 0.5}
+    # a qualifying play now needs market evidence backing it, not merely an absence of red flags
+    ok = {"market": "SPREAD", "tickets_pct_side": 0.45, "money_pct_side": 0.52, "_lopsided_side": None, "_rlm": None,
+          "_move_against": 0.5, "signals": "money_agrees"}
     assert pe.apply_gates(dict(ok), ctx) == []
     lop = {**ok, "_lopsided_side": "home"}
     assert any("lopsided" in r for r in pe.apply_gates(lop, ctx))
@@ -155,3 +157,28 @@ def test_marquee_keeps_nfl_and_filters_thin_college_games():
     assert ok is False and "low-rated" in why
     assert pe.marquee("CFB", g_big, teams, {}, {}, False)[0] is False                    # no moneyline posted
     assert pe.marquee("CFB", g_thin, teams, {"CFB_UTEP": 25}, {}, True)[0] is True       # ranked team involved
+
+
+def test_edge_alone_is_not_a_play():
+    """The rule: a statistical edge AND market support. An edge with nothing backing it is rejected."""
+    ctx = {"marquee_ok": True, "marquee_why": "NFL", "home": "SEA", "away": "NE"}
+    base = {"market": "SPREAD", "tickets_pct_side": 0.48, "money_pct_side": 0.50, "_lopsided_side": None,
+            "_rlm": None, "_move_against": 0.0}
+    edge_only = {**base, "signals": ""}
+    r = pe.apply_gates(edge_only, ctx)
+    assert any("no market evidence" in x for x in r)
+    # a favourable key number is positional, not market behaviour, so it does not confirm on its own
+    assert any("no market evidence" in x for x in pe.apply_gates({**base, "signals": "key_number"}, ctx))
+    # any one piece of market behaviour is enough
+    for sig in ("money_agrees", "rlm_agrees", "line_agrees"):
+        assert pe.apply_gates({**base, "signals": sig}, ctx) == [], sig
+
+
+def test_reverse_line_movement_toward_our_side_confirms_rather_than_vetoes():
+    """Money moving the number onto our side against the crowd is the strongest confirmation there is."""
+    ctx = {"marquee_ok": True, "marquee_why": "NFL", "home": "SEA", "away": "NE"}
+    ours = {"market": "SPREAD", "tickets_pct_side": 0.30, "money_pct_side": 0.55, "_lopsided_side": None,
+            "_rlm": "toward_home", "_rlm_against_us": False, "_move_against": 0.0, "signals": "rlm_agrees"}
+    assert pe.apply_gates(ours, ctx) == []
+    against = {**ours, "_rlm_against_us": True, "signals": ""}
+    assert any("reverse line movement" in x for x in pe.apply_gates(against, ctx))

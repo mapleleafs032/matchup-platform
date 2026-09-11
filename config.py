@@ -162,6 +162,15 @@ PICK_EDGE_CAP = {"SPREAD": 7.0, "TOTAL": 8.0, "MONEYLINE": 7.0}   # beyond this,
 PICK_EV_TO_POINTS = 20.0            # converts moneyline expected value into the same scale as point edges
 PICK_SIGNAL = {"money_divergence": 0.12}
 PICK_SIGNAL_BONUS = {"rlm_agrees": 0.8, "money_agrees": 0.5, "key_number": 0.4, "line_agrees": 0.3}
+# A play must have a statistical edge AND market evidence supporting that side.
+PICK_REQUIRE_MARKET_CONFIRMATION = True
+PICK_MIN_CONFIRMATIONS = 1
+# Only market BEHAVIOUR confirms a side. A favourable key number is a positional bonus, not confirmation.
+PICK_CONFIRMING_SIGNALS = ("rlm_agrees", "money_agrees", "line_agrees")
+# The market actively fading our side vetoes the play regardless of how large the model edge is.
+PICK_VETO_ON_OPPOSITION = True
+PICK_OPPOSE_MONEY_GAP = 0.15        # our side's money share trails its ticket share by this much
+PICK_OPPOSE_LINE_MOVE = 1.0         # the number moved this far away from our side
 PICK_TIERS = {"A+": 4.0, "A": 2.5, "B": 1.4}        # fallback floors, used only before anything has been measured
 # Bands used to MEASURE how disagreement relates to winning. Tiers are then named by measured performance,
 # so A+ means "the band that historically won most often", not "the biggest disagreement".
@@ -172,8 +181,13 @@ PICK_MAX_PER_WEEK = 150
 # ---- Gates: a statistical edge alone is NOT a play. Each gate can veto, and every veto is recorded. ----
 PICK_GATES = {
     "require_splits": True,          # no ticket/money data means the play cannot be confirmed
-    "veto_rlm": True,                # reverse line movement in this market kills the play
-    "rlm_only_against_us": False,    # True = only veto when the RLM runs against our side
+    # A statistical edge is not a play on its own: the market must actively support the same side.
+    "require_confirmation": True,
+    "min_confirmations": 1,
+    # Only market BEHAVIOUR confirms a side. A favourable key number is positional, not confirmation.
+    "confirming_signals": ("money_agrees", "rlm_agrees", "line_agrees"),
+    "veto_rlm": True,                # reverse line movement kills the play...
+    "rlm_only_against_us": True,     # ...but only when it runs AGAINST us; toward us it is confirmation
     "lopsided_threshold": 0.70,      # a side holding >= this share of BOTH tickets and money is lopsided
     "veto_lopsided": True,           # avoid markets with lopsided support, either direction
     "max_line_move_against": 1.0,    # points the number may move against our side before we pass
