@@ -3,75 +3,50 @@
  *
  * TRIGGER: time-driven, MINUTES timer, every 15 minutes.
  *
- * Two workflows on two different cadences, because they cost different things:
+ * VSiN (DraftKings) is the single market source: the line and the ticket/money splits arrive in the
+ * same request, so they share a timestamp exactly. The pull is free, so cadence is limited only by
+ * politeness:
  *
- *   splits.yml  VSiN splits + the line they carry. Free, so it runs on the full cadence:
- *               daily during the week, hourly the day before, every 15 minutes on game day.
+ *     game day (Thu / Sat / Sun, 8am-11pm CT)  every 15 minutes
+ *     day before (Wed / Fri)                   hourly
+ *     otherwise                                once daily at 7am CT
  *
- *   odds.yml    The Odds API. The free plan allows 500 credits a month and each call costs 3,
- *               so this stays on narrow windows. Firing it every 15 minutes would exhaust the
- *               month in about two days.
+ * GitHub's own cron is best-effort and often runs late, which is why this timer exists.
  *
  * SETUP (once):
  *   Project Settings -> Script Properties:
  *     GH_TOKEN = fine-grained GitHub token with "Actions: Read and write" on the repo
- *     GH_REPO  = "yourname/matchup-platform"
+ *     GH_REPO  = "mapleleafs032/matchup-platform"
  *   Triggers -> Add trigger -> function: tick, time-driven, Minutes timer, Every 15 minutes.
  */
 
 var TZ = "America/Chicago";
-
-/* Odds API windows: day 0=Sun .. 6=Sat, hours are CT, [start, end). */
-var ODDS_WINDOWS = {
-  NFL: [{ day: 4, start: 14, end: 20 },                      // Thursday night
-        { day: 0, start: 8,  end: 20, everyMinutes: 90 },    // Sunday
-        { day: 1, start: 14, end: 20 }],                     // Monday night
-  CFB: [{ day: 6, start: 7,  end: 19 }]                      // Saturday
-};
+var SPLITS_WORKFLOW = "splits.yml";
 
 function tick() {
-  var now = new Date();
+  var now    = new Date();
   var day    = parseInt(Utilities.formatDate(now, TZ, "u")) % 7;   // u: 1=Mon..7=Sun -> 0=Sun
   var hour   = parseInt(Utilities.formatDate(now, TZ, "H"));
   var minute = parseInt(Utilities.formatDate(now, TZ, "m"));
-  dispatchSplits_(day, hour, minute);
-  dispatchOdds_(day, hour, minute);
-}
 
-/* Splits: free source, so resolution is limited only by politeness. */
-function dispatchSplits_(day, hour, minute) {
-  var gameDay   = (day === 0 || day === 4 || day === 6);   // Sun, Thu, Sat
-  var dayBefore = (day === 3 || day === 5);                // Wed, Fri
-  var fire = false;
-  var why  = "";
-  if (gameDay && hour >= 8 && hour <= 23)      { fire = true; why = "game day, 15 min"; }
-  else if (dayBefore && minute < 15)           { fire = true; why = "day before, hourly"; }
-  else if (hour === 7 && minute < 15)          { fire = true; why = "daily baseline"; }
-  if (!fire) return;
-  dispatchWorkflow_("splits.yml", { league: "BOTH", dry_run: "false", explain: "" }, why);
-}
+  var gameDay   = (day === 0 || day === 4 || day === 6);   // Sunday, Thursday, Saturday
+  var dayBefore = (day === 3 || day === 5);                // Wednesday, Friday
 
-/* Odds API: budget-limited, so only inside the narrow windows above. */
-function dispatchOdds_(day, hour, minute) {
-  var leagues = [];
-  Object.keys(ODDS_WINDOWS).forEach(function (lg) {
-    ODDS_WINDOWS[lg].forEach(function (w) {
-      if (w.day !== day || hour < w.start || hour >= w.end) return;
-      var mins = (hour - w.start) * 60 + minute;
-      var step = w.everyMinutes || 60;
-      if (mins % step >= 15) return;            // one fire per step, not every 15 minutes
-      leagues.push(lg);
-    });
-  });
-  if (!leagues.length) return;
-  var league = leagues.length === 2 ? "BOTH" : leagues[0];
-  dispatchWorkflow_("odds.yml", { league: league, force: "false" }, "odds window");
+  var why = null;
+  if (gameDay && hour >= 8 && hour <= 23)   why = "game day, every 15 minutes";
+  else if (dayBefore && minute < 15)        why = "day before, hourly";
+  else if (hour === 7 && minute < 15)       why = "daily baseline";
+
+  if (!why) { Logger.log("no pull due"); return; }
+  dispatchWorkflow_(SPLITS_WORKFLOW, { league: "BOTH", dry_run: "false", explain: "" }, why);
 }
 
 function dispatchWorkflow_(workflow, inputs, why) {
   var props = PropertiesService.getScriptProperties();
-  var token = props.getProperty("GH_TOKEN"), repo = props.getProperty("GH_REPO");
+  var token = props.getProperty("GH_TOKEN");
+  var repo  = props.getProperty("GH_REPO");
   if (!token || !repo) throw new Error("Set GH_TOKEN and GH_REPO in Script Properties");
+
   var res = UrlFetchApp.fetch(
     "https://api.github.com/repos/" + repo + "/actions/workflows/" + workflow + "/dispatches", {
       method: "post",
@@ -80,9 +55,12 @@ function dispatchWorkflow_(workflow, inputs, why) {
       payload: JSON.stringify({ ref: "main", inputs: inputs }),
       muteHttpExceptions: true
     });
+
   Logger.log(workflow + " (" + why + ") -> HTTP " + res.getResponseCode());
   if (res.getResponseCode() >= 300) Logger.log(res.getContentText());
 }
 
-/** Run by hand to confirm the token works. Costs one splits pull, which is free. */
-function testSplits() { dispatchWorkflow_("splits.yml", { league: "NFL", dry_run: "true", explain: "" }, "manual test"); }
+/** Run this by hand once to confirm the token works. Costs nothing: it triggers a dry run. */
+function testSplits() {
+  dispatchWorkflow_(SPLITS_WORKFLOW, { league: "NFL", dry_run: "true", explain: "" }, "manual test");
+}
