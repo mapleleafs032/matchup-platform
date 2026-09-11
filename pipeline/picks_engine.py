@@ -399,7 +399,10 @@ def score(df: pd.DataFrame) -> pd.DataFrame:
     d["score_quality"] = d.data_quality.clip(0.3, 1.0)
     bonus = d.signals.fillna("").map(lambda s: sum(config.PICK_SIGNAL_BONUS.get(x, 0.0) for x in s.split(",") if x))
     d["score_signals"] = bonus
-    d["score"] = (d.score_base * d.score_quality + d.score_signals).round(3)
+    # edge-only score: the historical bands were measured without splits, so this is the like-for-like
+    # value used to look a play up against that history. The full score adds the live signal bonuses.
+    d["score_edge_only"] = (d.score_base * d.score_quality).round(3)
+    d["score"] = (d.score_edge_only + d.score_signals).round(3)
     return d
 
 
@@ -461,7 +464,8 @@ def calibrate(league: str) -> dict:
         lo_ci, hi_ci = wilson(wins, n)
         bands.append({"lo": lo, "hi": None if hi == float("inf") else hi, "n": n, "hit_rate": round(wins / n, 4),
                       "ci_low": round(lo_ci, 4), "ci_high": round(hi_ci, 4),
-                      "beats_break_even": (wins / n) > BREAK_EVEN, "significant": lo_ci > BREAK_EVEN})
+                      "beats_break_even": (wins / n) > BREAK_EVEN, "significant": lo_ci > BREAK_EVEN,
+                      "measurably_losing": hi_ci < BREAK_EVEN})
     merged = []
     for b in bands:                                   # bands too small to say anything join their neighbour
         if merged and b["n"] < config.PICK_MIN_CALIBRATION_N:
@@ -471,23 +475,36 @@ def calibrate(league: str) -> dict:
             lo_ci, hi_ci = wilson(int(round(rate * tot)), tot)
             merged[-1] = {"lo": m["lo"], "hi": b["hi"], "n": tot, "hit_rate": round(rate, 4),
                           "ci_low": round(lo_ci, 4), "ci_high": round(hi_ci, 4),
-                          "beats_break_even": rate > BREAK_EVEN, "significant": lo_ci > BREAK_EVEN}
+                          "beats_break_even": rate > BREAK_EVEN, "significant": lo_ci > BREAK_EVEN,
+                          "measurably_losing": hi_ci < BREAK_EVEN}
         else:
             merged.append(b)
     out["bands"] = merged
     out["any_band_beats_break_even"] = any(b["significant"] for b in merged)
-    ranked = sorted([b for b in merged if b["n"] >= config.PICK_MIN_CALIBRATION_N], key=lambda b: -b["hit_rate"])
-    for tier, b in zip(("A+", "A", "B"), ranked):
-        out["tiers"][tier] = {"n": b["n"], "hit_rate": b["hit_rate"], "ci_low": b["ci_low"], "ci_high": b["ci_high"],
-                              "beats_break_even": b["beats_break_even"], "significant": b["significant"],
-                              "range": [b["lo"], b["hi"]]}
-    for tier in ("A+", "A", "B"):
-        out["tiers"].setdefault(tier, {"n": 0, "hit_rate": None, "beats_break_even": None, "range": None})
-    best = ranked[0]["hit_rate"] if ranked else None
-    out["note"] = ("Tiers are named by measured performance: A+ is the score band that historically won most often, "
-                   "not the band with the biggest disagreement. Measured on out-of-sample spread plays from the "
-                   "walk-forward backtest. Split-based bonuses are not reflected, because betting splits do not exist "
-                   "for past seasons." + ("" if best is None else f" Best band: {best * 100:.1f}%."))
+    out["losing_bands"] = [[b["lo"], b["hi"]] for b in merged if b.get("measurably_losing")]
+    # Tiers order by SCORE. Ranking bands by observed hit rate would fit noise: with ~100 plays a band's
+    # interval spans roughly 20 points, so the "best" band is usually just the luckiest one.
+    for tier, lo in config.PICK_TIERS.items():
+        hi = None
+        higher = [v for k, v in config.PICK_TIERS.items() if v > lo]
+        if higher:
+            hi = min(higher)
+        band = band_for(merged, lo)
+        out["tiers"][tier] = {"range": [lo, hi],
+                              "n": band["n"] if band else 0,
+                              "hit_rate": band["hit_rate"] if band else None,
+                              "ci_low": band["ci_low"] if band else None, "ci_high": band["ci_high"] if band else None,
+                              "beats_break_even": band["beats_break_even"] if band else None,
+                              "significant": band["significant"] if band else None,
+                              "measurably_losing": band.get("measurably_losing") if band else None}
+    losing = len(out["losing_bands"])
+    out["note"] = ("Tiers order by score: A+ is the largest qualifying disagreement. Band hit rates come from "
+                   "out-of-sample spread plays in the walk-forward backtest and describe edge alone, since betting "
+                   "splits do not exist for past seasons. "
+                   + ("No band is statistically better than break-even, so no tier is a confidence claim. "
+                      if not out["any_band_beats_break_even"] else "")
+                   + (f"{losing} band(s) measure as losing outright and are excluded from plays."
+                      if losing and config.PICK_EXCLUDE_MEASURABLY_LOSING else ""))
     live = MODEL / "picks_evaluation" / league / f"{config.SEASON}.csv"
     if live.exists():
         lv = pd.read_csv(live)
@@ -498,24 +515,38 @@ def calibrate(league: str) -> dict:
     return out
 
 
+def band_for(bands: list[dict], score_value: float) -> dict | None:
+    """The measured band a score falls into."""
+    for b in bands or []:
+        if score_value >= b["lo"] and (b["hi"] is None or score_value < b["hi"]):
+            return b
+    return None
+
+
 def assign_tiers(df: pd.DataFrame, calib: dict | None = None) -> pd.DataFrame:
-    """Map each play's score into the band that measured best, so a tier label reflects evidence."""
+    """
+    Tier by score, so A+ always means the largest qualifying disagreement. Each play also carries the
+    measured record of its own band, which is the honest per-play context -- and plays landing in a band
+    that measures as losing outright are dropped rather than graded.
+    """
     if df.empty:
         return df
     d = df.copy()
-    ranges = [(t, v["range"]) for t, v in ((calib or {}).get("tiers") or {}).items() if v.get("range")]
-    if ranges:
-        def tier_of(sc):
-            for t, (lo, hi) in ranges:
-                if sc >= lo and (hi is None or sc < hi):
-                    return t
-            return None
-    else:
-        def tier_of(sc):
-            for t, lo in sorted(config.PICK_TIERS.items(), key=lambda kv: -kv[1]):
-                if sc >= lo:
-                    return t
-            return None
+    bands = (calib or {}).get("bands") or []
+
+    def tier_of(sc):
+        for t, lo in sorted(config.PICK_TIERS.items(), key=lambda kv: -kv[1]):
+            if sc >= lo:
+                return t
+        return None
+
+    d["band_hit_rate"] = d.score_edge_only.map(lambda sc: (band_for(bands, sc) or {}).get("hit_rate"))
+    d["band_n"] = d.score_edge_only.map(lambda sc: (band_for(bands, sc) or {}).get("n"))
+    d["band_ci_low"] = d.score_edge_only.map(lambda sc: (band_for(bands, sc) or {}).get("ci_low"))
+    d["band_ci_high"] = d.score_edge_only.map(lambda sc: (band_for(bands, sc) or {}).get("ci_high"))
+    d["band_measurably_losing"] = d.score_edge_only.map(lambda sc: bool((band_for(bands, sc) or {}).get("measurably_losing")))
+    if config.PICK_EXCLUDE_MEASURABLY_LOSING:
+        d = d[~d.band_measurably_losing]
     d["tier"] = d.score.map(tier_of)
     return d[d.tier.notna()].sort_values("score", ascending=False)
 

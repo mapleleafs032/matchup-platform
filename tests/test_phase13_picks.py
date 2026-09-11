@@ -75,35 +75,41 @@ def test_calibration_marks_tiers_below_break_even(tmp_path, monkeypatch):
     assert ap["ci_high"] < pe.BREAK_EVEN          # 40% on 300 plays is decisively below break-even
 
 
-def test_tiers_are_named_by_measured_performance_not_by_edge_size(tmp_path, monkeypatch):
-    """The finding that motivated this: in CFB the biggest disagreements performed WORST.
-    A+ must therefore attach to the band that won most, not the band that disagreed most."""
+def test_losing_bands_are_excluded_and_tiers_order_by_score(tmp_path, monkeypatch):
+    """The real CFB finding: the largest edges measured as losing outright. Those plays are dropped,
+    and tiers stay ordered by score so A+ always means the largest qualifying disagreement."""
     monkeypatch.setattr(config, "TABLES", tmp_path / "tables")
     monkeypatch.setattr(pe, "MODEL", tmp_path / "tables" / "model")
     d = tmp_path / "tables" / "model" / "backtest" / "CFB"; d.mkdir(parents=True)
     rows = []
-    # moderate disagreement (score ~2.0) wins often; large disagreement (score ~6.0) loses often
-    for _ in range(200):
-        rows.append({"season": 2024, "edge_vs_market": 3.0, "data_quality": 1.0, "model_ats_result": "WIN", "in_sample_warning": False})
-    for _ in range(100):
-        rows.append({"season": 2024, "edge_vs_market": 3.0, "data_quality": 1.0, "model_ats_result": "LOSS", "in_sample_warning": False})
-    for _ in range(80):
-        rows.append({"season": 2024, "edge_vs_market": 6.0, "data_quality": 1.0, "model_ats_result": "WIN", "in_sample_warning": False})
-    for _ in range(220):
-        rows.append({"season": 2024, "edge_vs_market": 6.0, "data_quality": 1.0, "model_ats_result": "LOSS", "in_sample_warning": False})
+    for _ in range(120):     # moderate band, roughly break-even
+        rows.append({"season": 2024, "edge_vs_market": 3.5, "data_quality": 1.0, "model_ats_result": "WIN", "in_sample_warning": False})
+    for _ in range(110):
+        rows.append({"season": 2024, "edge_vs_market": 3.5, "data_quality": 1.0, "model_ats_result": "LOSS", "in_sample_warning": False})
+    for _ in range(200):     # large band, decisively losing on a big sample
+        rows.append({"season": 2024, "edge_vs_market": 6.5, "data_quality": 1.0, "model_ats_result": "WIN", "in_sample_warning": False})
+    for _ in range(400):
+        rows.append({"season": 2024, "edge_vs_market": 6.5, "data_quality": 1.0, "model_ats_result": "LOSS", "in_sample_warning": False})
     pd.DataFrame(rows).to_csv(d / "evaluation_CFB_v1.0.csv", index=False)
     cal = pe.calibrate("CFB")
-    ap, worst = cal["tiers"]["A+"], cal["tiers"]["A"]
-    assert ap["hit_rate"] > worst["hit_rate"]
-    assert ap["range"][0] <= 3.0 < (ap["range"][1] or 99)      # A+ is the MODERATE band
-    assert cal["any_band_beats_break_even"] is True            # the moderate band genuinely clears it here
-    # a play with a huge score must now be tiered into the poorly performing band, not celebrated
-    plays = pd.DataFrame([{"market": "SPREAD", "edge_points": 6.0, "data_quality": 1.0, "signals": ""}])
+    big = [b for b in cal["bands"] if b["lo"] >= 5.0][0]
+    assert big["measurably_losing"] is True and cal["losing_bands"]
+    plays = pd.DataFrame([{"market": "SPREAD", "edge_points": 6.5, "data_quality": 1.0, "signals": "money_agrees"},
+                          {"market": "SPREAD", "edge_points": 3.5, "data_quality": 1.0, "signals": "money_agrees"}])
     t = pe.assign_tiers(pe.score(plays), cal)
-    assert t.tier.iloc[0] == "A"
+    assert len(t) == 1 and t.score.iloc[0] < 5.0          # the measurably losing play is dropped
+    assert t.band_hit_rate.iloc[0] is not None and t.band_n.iloc[0] > 0
 
 
-# ---- gates: a statistical edge alone is not a play ------------------------------------------------
+def test_tier_labels_follow_score_not_lucky_bands(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "TABLES", tmp_path / "tables")
+    monkeypatch.setattr(pe, "MODEL", tmp_path / "tables" / "model")
+    cal = pe.calibrate("NFL")                                   # nothing measured
+    plays = pd.DataFrame([{"market": "SPREAD", "edge_points": e, "data_quality": 1.0, "signals": "money_agrees"}
+                          for e in (6.0, 3.0, 1.5)])
+    t = pe.assign_tiers(pe.score(plays), cal)
+    assert list(t.tier) == ["A+", "A", "B"] and t.score.is_monotonic_decreasing
+
 def test_rlm_detected_only_when_the_line_moves_against_the_ticket_majority():
     # 72% of tickets on home, yet the home number moved from -3.5 to -2.5 (toward the away side)
     assert pe.rlm_state(+1.0, 0.72) == "toward_away"

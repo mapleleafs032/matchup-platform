@@ -175,7 +175,11 @@ PICK_TIERS = {"A+": 4.0, "A": 2.5, "B": 1.4}        # fallback floors, used only
 # Bands used to MEASURE how disagreement relates to winning. Tiers are then named by measured performance,
 # so A+ means "the band that historically won most often", not "the biggest disagreement".
 PICK_SCORE_BANDS = [1.0, 1.8, 2.5, 3.2, 4.0, 5.0, float("inf")]
-PICK_MIN_CALIBRATION_N = 40         # below this many graded historical plays, a tier reports "unmeasured"
+PICK_MIN_CALIBRATION_N = 40         # below this many graded historical plays, a band reports "unmeasured"
+# Ranking bands by observed hit rate fits noise: with ~100 plays a band's interval spans 20 points.
+# Tiers therefore order by SCORE (intuitive and stable) and each play carries the measured record of the
+# band it falls in. The only band-level action taken is on bands that are measurably LOSING.
+PICK_EXCLUDE_MEASURABLY_LOSING = True   # drop plays whose band's whole 95% interval sits below break-even
 PICK_MAX_PER_WEEK = 150
 
 # ---- Gates: a statistical edge alone is NOT a play. Each gate can veto, and every veto is recorded. ----
