@@ -51,6 +51,17 @@ def load(league: str, season: int, week: int) -> pd.DataFrame:
     return d.dropna(subset=["retrieved_at"]).sort_values("retrieved_at")
 
 
+def _last_known(h: pd.DataFrame, col: str) -> tuple[float | None, str | None]:
+    """Most recent published value for a column, with the timestamp it came from."""
+    if col not in h.columns:
+        return None, None
+    vals = h[h[col].notna()]
+    if vals.empty:
+        return None, None
+    r = vals.iloc[-1]
+    return float(r[col]), r.retrieved_at.isoformat()
+
+
 def _num(row, col):
     """Numeric cell or None. Never raises on a stray string from a shifted column."""
     if col not in row:
@@ -93,9 +104,15 @@ def analyze_game(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: str
     latest, divergence, notes = {}, {}, []
     for m in MARKETS:
         tc, mc = f"{m}_ticket_pct_home", f"{m}_money_pct_home"
-        t = None if tc not in last or pd.isna(last[tc]) else float(last[tc])
-        mo = None if mc not in last or pd.isna(last[mc]) else float(last[mc])
+        # The source leaves a cell blank from time to time. Reading only the newest row would erase a
+        # figure earlier pulls captured, so each metric carries forward its most recent published value
+        # and records when that was, rather than showing a dash for data we already hold.
+        t, t_at = _last_known(h, tc)
+        mo, m_at = _last_known(h, mc)
         latest[m] = {"ticket_pct_home": t, "money_pct_home": mo,
+                     "ticket_as_of": t_at, "money_as_of": m_at,
+                     "ticket_is_stale": bool(t is not None and t_at != last.retrieved_at.isoformat()),
+                     "money_is_stale": bool(mo is not None and m_at != last.retrieved_at.isoformat()),
                      "ticket_side": _side_label(m, t, home_abbr, away_abbr), "money_side": _side_label(m, mo, home_abbr, away_abbr)}
         if t is not None and mo is not None:
             gap = round((t - mo) * 100, 1)
@@ -117,7 +134,7 @@ def analyze_game(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: str
         if len(lines) < 2 or tickets.empty:
             continue
         move = float(lines[line_col].iloc[-1] - lines[line_col].iloc[0])
-        t_now = float(tickets[tc].iloc[-1])
+        t_now = float(tickets[tc].iloc[-1])   # already filtered to published values
         if abs(move) < config.RLM_MIN_MOVE or abs(t_now - 0.5) < (config.RLM_MIN_TICKET_PCT - 0.5):
             continue
         majority_home = t_now >= 0.5

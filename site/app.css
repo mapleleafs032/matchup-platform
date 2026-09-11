@@ -257,3 +257,8 @@ table.plain th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
 .og .splits-pair { margin: 8px 0 2px; }
 .og .splits-pair .sp-val { font-size: 15px; }
 .og .splits-pair .sp-line .k { min-width: 50px; font-size: 12.5px; }
+
+/* larger, easier chart targets */
+.mchart .pt { cursor: pointer; }
+.mchart .pt:hover circle:nth-child(3), .mchart .pt:focus circle:nth-child(3) { r: 8; }
+.mchart svg { width: 100%; height: auto; }

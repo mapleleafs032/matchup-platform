@@ -233,7 +233,7 @@ App.marketChart = function (opts) {
     return `Bet ${v(tk)} · Money ${v(mn)}`;
   };
 
-  const W = 860, H = 260, L = 54, R = 18, T = 34, B = 34;
+  const W = 880, H = 320, L = 56, R = 20, T = 64, B = 40;   // T leaves a clear band for event labels
   const ts = pts.map(p => new Date(p.t).getTime());
   const t0 = Math.min(...ts), t1 = Math.max(...ts), span = Math.max(t1 - t0, 1);
   const x = t => L + ((t - t0) / span) * (W - L - R);
@@ -257,17 +257,24 @@ App.marketChart = function (opts) {
   const EV = { line_move: { c: "var(--mute)", lab: "" }, steam: { c: "var(--steam)", lab: "STEAM" },
                rlm: { c: "var(--rlm)", lab: "RLM" }, divergence: { c: "var(--split)", lab: "$" },
                key_number: { c: "var(--mute)", lab: "KEY" }, lopsided: { c: "var(--split)", lab: "LOP" } };
-  const placed = [];
+  const placed = [];               // [x, row] so clustered labels stack instead of overprinting
   for (const e of events) {
     const t = new Date(e.t).getTime();
     if (t < t0 || t > t1) continue;
     const cfg = EV[e.kind] || EV.line_move;
     const xx = x(t);
-    out.push(`<line x1="${xx.toFixed(1)}" y1="${T - 8}" x2="${xx.toFixed(1)}" y2="${H - B}" stroke="${cfg.c}" stroke-width="1.2" stroke-dasharray="4 4" opacity=".9"><title>${new Date(e.t).toLocaleString()} — ${e.kind.replace("_", " ")}: ${e.detail}</title></line>`);
-    if (cfg.lab && !placed.some(px => Math.abs(px - xx) < 26)) {
-      placed.push(xx);
-      out.push(`<text x="${xx.toFixed(1)}" y="${T - 14}" text-anchor="middle" font-size="10" font-weight="700" fill="${cfg.c}">${cfg.lab}<title>${e.detail}</title></text>`);
-    }
+    const tip = `${new Date(e.t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} — ${e.kind.replace("_", " ")}: ${e.detail}`;
+    out.push(`<line x1="${xx.toFixed(1)}" y1="${T - 6}" x2="${xx.toFixed(1)}" y2="${H - B}" stroke="${cfg.c}" stroke-width="${cfg.lab ? 1.6 : 1}" stroke-dasharray="4 4" opacity="${cfg.lab ? .95 : .55}"><title>${tip}</title></line>`);
+    if (!cfg.lab) continue;
+    let row = 0;
+    while (placed.some(q => q[1] === row && Math.abs(q[0] - xx) < 44)) row++;
+    row = Math.min(row, 2);
+    placed.push([xx, row]);
+    const ly = 16 + row * 15;
+    const w = cfg.lab.length * 7 + 12;
+    out.push(`<g><rect x="${(xx - w / 2).toFixed(1)}" y="${ly - 11}" width="${w}" height="15" rx="3" fill="${cfg.c}" opacity=".14"/>`
+           + `<text x="${xx.toFixed(1)}" y="${ly}" text-anchor="middle" font-size="10.5" font-weight="700" fill="${cfg.c}">${cfg.lab}</text>`
+           + `<title>${tip}</title></g>`);
   }
 
   // the two series
@@ -275,19 +282,29 @@ App.marketChart = function (opts) {
     const seg = pts.filter(p => getter(p) != null);
     if (!seg.length) return;
     out.push(`<path d="${seg.map((p, i) => `${i ? "L" : "M"}${x(new Date(p.t).getTime()).toFixed(1)},${y(getter(p)).toFixed(1)}`).join(" ")}" fill="none" stroke="${colour}" stroke-width="2"/>`);
+    let prev = null;
     for (const p of seg) {
       const t = new Date(p.t).getTime();
       const sp = splitAt(p.t);
-      const tip = `${label} ${spec.fmt(getter(p))} · ${new Date(p.t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${pctTxt(sp, sideKey)}${p.book ? " · " + p.book : ""}`;
-      out.push(`<circle cx="${x(t).toFixed(1)}" cy="${y(getter(p)).toFixed(1)}" r="3.4" fill="${colour}"><title>${tip}</title></circle>`);
+      const v = getter(p);
+      const changed = prev != null && Math.abs(v - prev) > 1e-9;
+      prev = v;
+      const when = new Date(p.t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      const tip = `${label} ${spec.fmt(v)}\n${when}\n${pctTxt(sp, sideKey)}${p.book ? "\nbook: " + p.book : ""}${changed ? "\n(number changed here)" : ""}`;
+      const cx = x(t).toFixed(1), cy = y(v).toFixed(1);
+      // generous transparent target first, so the dot is easy to hit on a phone
+      out.push(`<g class="pt"><circle cx="${cx}" cy="${cy}" r="13" fill="transparent"/>`
+             + (changed ? `<circle cx="${cx}" cy="${cy}" r="9" fill="${colour}" opacity=".18"/>` : "")
+             + `<circle cx="${cx}" cy="${cy}" r="${changed ? 6 : 4.6}" fill="${colour}" stroke="var(--paper)" stroke-width="1.5"/>`
+             + `<title>${tip}</title></g>`);
     }
   };
   draw(spec.a, "var(--away)", "away", spec.aLab);
   if (spec.b) draw(spec.b, "var(--home)", "home", spec.bLab);
 
   // team labels, top left
-  out.push(`<text x="${L}" y="${T - 14}" font-size="12" font-weight="700" fill="var(--away)">${spec.aLab}</text>`);
-  if (spec.bLab) out.push(`<text x="${L + 46}" y="${T - 14}" font-size="12" font-weight="700" fill="var(--home)">${spec.bLab}</text>`);
+  out.push(`<text x="${L}" y="${T - 12}" font-size="12.5" font-weight="700" fill="var(--away)">${spec.aLab}</text>`);
+  if (spec.bLab) out.push(`<text x="${L + 8 + spec.aLab.length * 8}" y="${T - 12}" font-size="12.5" font-weight="700" fill="var(--home)">${spec.bLab}</text>`);
   const fmtT = t => new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   out.push(`<text x="${L}" y="${H - 10}" font-size="11" fill="var(--mute)">${fmtT(t0)}</text>`);
   out.push(`<text x="${W - R}" y="${H - 10}" text-anchor="end" font-size="11" fill="var(--mute)">${fmtT(t1)}</text>`);
@@ -295,7 +312,7 @@ App.marketChart = function (opts) {
   const wrap = el("div", { class: "mchart" });
   wrap.append(el("div", { html: `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Line movement with market events">${out.join("")}</svg>` }));
   wrap.append(el("p", { class: "mchart-key" },
-    "Hover a dot for the number, time and the ticket/money split. Dashed marks: ",
+    "Hover or tap a dot for the number, time and the ticket/money split; larger dots are snapshots where the number changed. Dashed marks: ",
     el("b", { style: "color:var(--mute)" }, "grey"), " line move, ",
     el("b", { style: "color:var(--steam)" }, "STEAM"), " fast move, ",
     el("b", { style: "color:var(--rlm)" }, "RLM"), " moved against the crowd, ",

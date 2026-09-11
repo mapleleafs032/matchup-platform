@@ -32,6 +32,12 @@ async function matchupMain() {
   const sec = (title, note, ...kids) => { const s = el("section", { class: "block" }, el("h2", {}, title)); if (note) s.append(el("p", { class: "sub-note" }, note)); s.append(...kids); root.append(s); return s; };
   const avail = d.edges.filter(e => !e.unavailable && e.points_home != null);
   const maxPts = Math.max(1.5, ...avail.map(e => Math.abs(e.points_home)));
+  const tabs = el("div", { class: "tabs" });
+  for (const w of d.metrics.windows) { const b = el("button", { "aria-pressed": String(w === state.window) }, ({ SEASON: "Season", LAST5: "Last 5", LAST3: "Last 3", HOME: "Home", AWAY: "Away", CONF: "Conference" })[w] || w); b.addEventListener("click", () => { state.window = w; paintGrid(); }); tabs.append(b); }
+  const adjTabs = el("div", { class: "tabs" });
+  for (const [k, lab] of [["OPP_ADJ", "Opponent-adjusted"], ["RAW", "Raw"]]) { const b = el("button", { "aria-pressed": String(k === state.adj) }, lab); b.addEventListener("click", () => { state.adj = k; paintGrid(); }); adjTabs.append(b); }
+  const gridWrap = el("div", {});
+  sec("Team comparison", "Value, national rank, and percentile for each team. Opponent-adjusted values account for who each team has played; early in the season they blend in last year's adjusted numbers (shown by the data-quality flags above). Tap a metric name for its definition.", tabs, adjTabs, gridWrap);
   const edgesEl = el("div", { class: "edges" });
   for (const e of d.edges.sort((x, y) => Math.abs(y.points_home || 0) - Math.abs(x.points_home || 0))) {
     if (e.unavailable) { edgesEl.append(el("div", { class: "edge" }, el("div", { class: "lab na" }, e.label), el("div", { class: "bar" }), el("div", { class: "pts" }, el("span", { class: "badge warn" }, "n/a")))); continue; }
@@ -50,12 +56,6 @@ async function matchupMain() {
 
   // ---- comparison grid
   const state = { window: d.metrics.default_window, adj: "OPP_ADJ" };
-  const tabs = el("div", { class: "tabs" });
-  for (const w of d.metrics.windows) { const b = el("button", { "aria-pressed": String(w === state.window) }, ({ SEASON: "Season", LAST5: "Last 5", LAST3: "Last 3", HOME: "Home", AWAY: "Away", CONF: "Conference" })[w] || w); b.addEventListener("click", () => { state.window = w; paintGrid(); }); tabs.append(b); }
-  const adjTabs = el("div", { class: "tabs" });
-  for (const [k, lab] of [["OPP_ADJ", "Opponent-adjusted"], ["RAW", "Raw"]]) { const b = el("button", { "aria-pressed": String(k === state.adj) }, lab); b.addEventListener("click", () => { state.adj = k; paintGrid(); }); adjTabs.append(b); }
-  const gridWrap = el("div", {});
-  sec("Team comparison", "Value, national rank, and percentile for each team. Opponent-adjusted values account for who each team has played; early in the season they blend in last year's adjusted numbers (shown by the data-quality flags above). Tap a metric name for its definition.", tabs, adjTabs, gridWrap);
   function paintGrid() {
     [...tabs.children].forEach(b => b.setAttribute("aria-pressed", String(b.textContent === ({ SEASON: "Season", LAST5: "Last 5", LAST3: "Last 3", HOME: "Home", AWAY: "Away", CONF: "Conference" })[state.window])));
     [...adjTabs.children].forEach(b => b.setAttribute("aria-pressed", String((b.textContent === "Raw") === (state.adj === "RAW"))));

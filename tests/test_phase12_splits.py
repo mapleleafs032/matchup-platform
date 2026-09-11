@@ -215,3 +215,20 @@ def test_shifted_columns_never_become_wrong_numbers(tmp_path, monkeypatch):
     assert pd.isna(d2.line_ml_home.iloc[1]) and d2.line_ml_home.iloc[0] == -150     # shifted value -> unavailable
     a = se.analyze_game(d2, "FULL", "SEA", "NE", pd.Timestamp("2026-09-14T00:20:00Z"))
     assert a["available"] and a["series"][1]["line_ml_home"] is None                 # and no crash
+
+
+def test_a_blank_cell_in_the_newest_pull_does_not_erase_an_earlier_value():
+    """The cause of the dashes on the cards: reading only the latest row dropped metrics that earlier
+    snapshots had already captured."""
+    from pipeline import splits_engine as se
+    h = _hist([
+        {"game_id": "G", "period": "FULL", "book": "dk", "retrieved_at": "2026-09-11T12:00:00Z",
+         "spread_ticket_pct_home": 0.72, "spread_money_pct_home": 0.31, "line_spread_home": -3.0, "line_total": 51.5},
+        {"game_id": "G", "period": "FULL", "book": "dk", "retrieved_at": "2026-09-11T18:00:00Z",
+         "spread_ticket_pct_home": None, "spread_money_pct_home": 0.29, "line_spread_home": -3.0, "line_total": 51.5},
+    ])
+    a = se.analyze_game(h, "FULL", "BC", "RUTG", pd.Timestamp("2026-09-12T22:30:00Z"))
+    lat = a["latest"]["spread"]
+    assert lat["ticket_pct_home"] == 0.72 and lat["ticket_is_stale"] is True        # carried forward, and labelled
+    assert lat["money_pct_home"] == 0.29 and lat["money_is_stale"] is False         # fresh value wins
+    assert lat["ticket_as_of"].startswith("2026-09-11T12:00")
