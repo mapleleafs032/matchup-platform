@@ -237,14 +237,56 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
           f"games covered: {clean.game_id.nunique()}; periods: {sorted(clean.period.unique())}")
 
 
+def explain(league: str, season: int, needle: str) -> None:
+    """
+    Print exactly what the source published for the games matching `needle`, and what we stored.
+    Answers "why is this cell blank" without guessing from the rendered card.
+    """
+    from providers.base import RequestManager
+    rm = RequestManager("vsin", "explain")
+    games = storage.read_table(storage.games_path(league, season))
+    resolver = ids.AliasResolver.load()
+    html, ts = vsin.fetch(rm, league)
+    rows, problems = vsin.parse(html)
+    print(f"VSiN {league}: {len(rows)} team rows parsed at {ts.isoformat()}")
+    n = needle.lower()
+    hits = [i for i, r in enumerate(rows) if n in r.slug.lower() or n in (r.name or "").lower()]
+    if not hits:
+        print(f"  no team row matches {needle!r}. Slugs available: " + ", ".join(sorted(r.slug for r in rows)[:25]) + " ...")
+        return
+    for i in hits:
+        pair = [rows[i - 1], rows[i]] if i % 2 else [rows[i], rows[i + 1] if i + 1 < len(rows) else None]
+        print(f"\n  --- pair around {rows[i].slug}")
+        for r in pair:
+            if r is None:
+                continue
+            print(f"    {r.slug:34s} spread={r.spread} handle={r.spread_handle} bets={r.spread_bets} | "
+                  f"total={r.total} handle={r.total_handle} bets={r.total_bets} | "
+                  f"ml={r.moneyline} handle={r.ml_handle} bets={r.ml_bets}")
+        recs, probs = vsin.to_records([x for x in pair if x is not None], league, games, resolver, ts)
+        for rec in recs:
+            stored = {k: v for k, v in rec.items() if k.endswith("_pct_home")}
+            print(f"    stored for {rec['game_id']}: {stored or 'nothing'}")
+        for pr in probs:
+            print(f"    note: {pr.get('kind')}: {pr.get('why')}")
+    for pr in problems[:5]:
+        if n in str(pr).lower():
+            print(f"  parse problem: {pr}")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--league", default="BOTH", choices=["NFL", "CFB", "BOTH"])
     p.add_argument("--season", type=int, default=config.SEASON)
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--explain", help="print what the source published for games matching this team name/slug")
     p.add_argument("--trigger", default="manual")
     a = p.parse_args(argv)
     leagues = ["NFL", "CFB"] if a.league == "BOTH" else [a.league]
+    if a.explain:
+        for lg in leagues:
+            explain(lg, a.season, a.explain)
+        return
     with JobRun("SPLITS", a.league, a.trigger) as job:
         for lg in leagues:
             run(lg, a.season, a.dry_run, job)
