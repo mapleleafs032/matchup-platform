@@ -250,6 +250,19 @@ def explain(league: str, season: int, needle: str) -> None:
     rows, problems = vsin.parse(html)
     print(f"VSiN {league}: {len(rows)} team rows parsed at {ts.isoformat()}")
     n = needle.lower()
+    # raw cell text for the matching rows: shows whether a blank value is the source's or our parser's
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
+        for tr in soup.find_all("tr"):
+            links = [a.get("href", "") for a in tr.find_all("a", href=True)]
+            if not any(n in h.lower() for h in links):
+                continue
+            cells = [re.sub(r"\s+", " ", td.get_text(" ", strip=True)) for td in tr.find_all(["td", "th"])]
+            print(f"  RAW CELLS ({len(cells)}): {cells}")
+            print(f"  last 9 (the value columns): {cells[-9:]}")
+    except Exception as e:
+        print(f"  (raw cell dump unavailable: {e})")
     hits = [i for i, r in enumerate(rows) if n in r.slug.lower() or n in (r.name or "").lower()]
     if not hits:
         print(f"  no team row matches {needle!r}. Slugs available: " + ", ".join(sorted(r.slug for r in rows)[:25]) + " ...")
