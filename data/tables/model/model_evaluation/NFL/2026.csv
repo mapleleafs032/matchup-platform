@@ -1,2 +1,3 @@
 prediction_id,game_id,model_version,league,season,week,is_backtest,actual_margin_home,actual_total,margin_error,abs_margin_error,total_error,abs_total_error,away_pts_abs_err,home_pts_abs_err,winner_correct,favorite_side,favorite_correct,model_ats_result,model_ou_result,clv_spread,win_prob_bin,evaluated_at
 2026_NFL_W01_NE_SEA_NFL_v1.0_2026-09-09T12:31:08.630815+00:00,2026_NFL_W01_NE_SEA,NFL_v1.0,NFL,2026,1,False,3,23,1.06,1.06,24.09,24.09,11.51,12.58,True,HOME,True,PUSH,LOSS,,6,2026-09-10T10:44:10.665515+00:00
+2026_NFL_W01_SF_LAR_NFL_v1.0_2026-09-09T12:31:08.630815+00:00,2026_NFL_W01_SF_LAR,NFL_v1.0,NFL,2026,1,False,-20,34,27.05,27.05,16.41,16.41,5.32,21.73,False,HOME,False,LOSS,LOSS,,7,2026-09-11T10:43:54.943081+00:00
