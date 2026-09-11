@@ -197,3 +197,21 @@ def test_repair_csv_realigns_a_file_corrupted_by_the_old_writer(tmp_path):
     assert len(df) == 2 and df.loc[df.split_id == "b", "line_ml_home"].iloc[0] == -166
     assert pd.isna(df.loc[df.split_id == "a", "line_ml_home"].iloc[0])
     assert storage.repair_csv(f, ["split_id", "game_id", "line_spread_home", "line_ml_home", "line_ml_away"]) == 0
+
+
+def test_shifted_columns_never_become_wrong_numbers(tmp_path, monkeypatch):
+    """A ragged file shifts a source name into a numeric column. That must read as unavailable, not crash
+    and not become a number."""
+    from pipeline import splits_engine as se
+    monkeypatch.setattr(se, "SPLITS", tmp_path / "splits")
+    d = tmp_path / "splits" / "NFL" / "2026"; d.mkdir(parents=True)
+    (d / "W01.csv").write_text(
+        "split_id,game_id,week,retrieved_at,book,period,spread_ticket_pct_home,spread_money_pct_home,"
+        "line_spread_home,line_total,line_ml_home,source\n"
+        "a,G1,1,2026-09-10T12:00:00+00:00,draftkings,FULL,0.65,0.70,-3.0,44.5,-150,vsin_dk\n"
+        "b,G1,1,2026-09-10T18:00:00+00:00,draftkings,FULL,0.66,0.72,-3.5,44.5,vsin_dk,vsin_dk\n")
+    d2 = se.load("NFL", 2026, 1)
+    assert len(d2) == 2
+    assert pd.isna(d2.line_ml_home.iloc[1]) and d2.line_ml_home.iloc[0] == -150     # shifted value -> unavailable
+    a = se.analyze_game(d2, "FULL", "SEA", "NE", pd.Timestamp("2026-09-14T00:20:00Z"))
+    assert a["available"] and a["series"][1]["line_ml_home"] is None                 # and no crash

@@ -24,13 +24,44 @@ MARKETS = ("spread", "total", "moneyline")
 SPLITS = config.TABLES / "market" / "splits"
 
 
+NUMERIC_COLS = ([f"{m}_{k}_pct_home" for m in ("spread", "total", "moneyline") for k in ("ticket", "money")]
+                + ["line_spread_home", "line_total", "line_ml_home", "line_ml_away"])
+
+
 def load(league: str, season: int, week: int) -> pd.DataFrame:
+    """
+    Read a splits file defensively. Files written before the schema-growth fix in storage.append_csv can
+    contain rows with more fields than the header, which shifts columns when read back (a source name
+    landing in a numeric column, for example). Numeric columns are coerced, so a shifted value becomes
+    unavailable rather than a wrong number or a crash.
+    """
     p = SPLITS / league / str(season) / f"W{week:02d}.csv"
     if not p.exists():
         return pd.DataFrame()
-    d = pd.read_csv(p)
-    d["retrieved_at"] = pd.to_datetime(d.retrieved_at, utc=True, errors="coerce")
+    try:
+        d = pd.read_csv(p, on_bad_lines="skip")
+    except Exception:
+        return pd.DataFrame()
+    if d.empty:
+        return d
+    for c in NUMERIC_COLS:
+        if c in d.columns:
+            d[c] = pd.to_numeric(d[c], errors="coerce")
+    d["retrieved_at"] = pd.to_datetime(d.get("retrieved_at"), utc=True, errors="coerce")
     return d.dropna(subset=["retrieved_at"]).sort_values("retrieved_at")
+
+
+def _num(row, col):
+    """Numeric cell or None. Never raises on a stray string from a shifted column."""
+    if col not in row:
+        return None
+    v = row[col]
+    try:
+        if pd.isna(v):
+            return None
+        return float(v)
+    except (TypeError, ValueError):
+        return None
 
 
 def _side_label(market: str, pct_home: float | None, home_abbr: str, away_abbr: str) -> str | None:
@@ -50,10 +81,8 @@ def analyze_game(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: str
     series = []
     for _, r in h.iterrows():
         row = {"t": r.retrieved_at.isoformat(), "book": r.book,
-               "line_spread_home": None if pd.isna(r.get("line_spread_home")) else float(r.line_spread_home),
-               "line_total": None if pd.isna(r.get("line_total")) else float(r.line_total),
-               "line_ml_home": None if pd.isna(r.get("line_ml_home")) else float(r.line_ml_home),
-               "line_ml_away": None if pd.isna(r.get("line_ml_away")) else float(r.line_ml_away)}
+               "line_spread_home": _num(r, "line_spread_home"), "line_total": _num(r, "line_total"),
+               "line_ml_home": _num(r, "line_ml_home"), "line_ml_away": _num(r, "line_ml_away")}
         for m in MARKETS:
             for k in ("ticket", "money"):
                 c = f"{m}_{k}_pct_home"

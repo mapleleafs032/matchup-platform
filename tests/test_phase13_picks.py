@@ -97,8 +97,25 @@ def test_losing_bands_are_excluded_and_tiers_order_by_score(tmp_path, monkeypatc
     plays = pd.DataFrame([{"market": "SPREAD", "edge_points": 6.5, "data_quality": 1.0, "signals": "money_agrees"},
                           {"market": "SPREAD", "edge_points": 3.5, "data_quality": 1.0, "signals": "money_agrees"}])
     t = pe.assign_tiers(pe.score(plays), cal)
-    assert len(t) == 1 and t.score.iloc[0] < 5.0          # the measurably losing play is dropped
-    assert t.band_hit_rate.iloc[0] is not None and t.band_n.iloc[0] > 0
+    # assign_tiers flags the losing band; build_week is what drops and reports it
+    assert bool(t[t.score_edge_only >= 5.0].band_measurably_losing.iloc[0]) is True
+    assert bool(t[t.score_edge_only < 5.0].band_measurably_losing.iloc[0]) is False
+    ok = t[~t.band_measurably_losing]
+    assert len(ok) == 1 and pd.notna(ok.band_hit_rate.iloc[0]) and ok.band_n.iloc[0] > 0
+
+
+def test_tier_record_pools_every_band_it_spans():
+    """A tier spanning two bands must report the pooled result, not just the band at its floor."""
+    bands = [{"lo": 4.0, "hi": 5.0, "n": 81, "hit_rate": 0.518, "ci_low": 0.41, "ci_high": 0.62,
+              "beats_break_even": False, "significant": False, "measurably_losing": False},
+             {"lo": 5.0, "hi": None, "n": 105, "hit_rate": 0.533, "ci_low": 0.44, "ci_high": 0.63,
+              "beats_break_even": True, "significant": False, "measurably_losing": False}]
+    t = pe.combine_bands(bands, 4.0, None)
+    assert t["n"] == 186 and t["bands"] == 2
+    assert abs(t["hit_rate"] - (0.518 * 81 + 0.533 * 105) / 186) < 1e-4
+    thin = pe.combine_bands([{"lo": 1.4, "hi": 2.5, "n": 2, "hit_rate": 0.0, "ci_low": 0.0, "ci_high": 0.66,
+                              "beats_break_even": False, "significant": False, "measurably_losing": True}], 1.4, 2.5)
+    assert thin["n"] == 2 and thin["hit_rate"] is None      # two plays is not a measurement
 
 
 def test_tier_labels_follow_score_not_lucky_bands(tmp_path, monkeypatch):

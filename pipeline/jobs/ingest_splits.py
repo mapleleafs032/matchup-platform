@@ -148,12 +148,49 @@ def validate(recs: list[dict], games: pd.DataFrame, vlog: ValidationLog) -> pd.D
     return df.loc[keep].copy()
 
 
+def repair_splits_files(league: str, season: int, vlog: ValidationLog) -> int:
+    """
+    Rewrite splits files whose rows do not match their header. Files written before the schema-growth fix
+    in storage.append_csv can hold rows with extra trailing fields, which shifts columns when read back.
+    Rows that cannot be read cleanly are dropped -- a missing snapshot costs a chart point, a shifted one
+    would poison the divergence and reverse-line-movement flags.
+    """
+    from pipeline.splits_engine import NUMERIC_COLS
+    fixed = 0
+    d = OUT / league / str(season)
+    if not d.exists():
+        return 0
+    for path in sorted(d.glob("W*.csv")):
+        raw = path.read_text().splitlines()
+        if len(raw) < 2:
+            continue
+        n_head = raw[0].count(",")
+        bad = [i for i, ln in enumerate(raw[1:], start=1) if ln.count(",") != n_head]
+        if not bad:
+            continue
+        good = pd.read_csv(path, on_bad_lines="skip")
+        for c in NUMERIC_COLS:
+            if c in good.columns:
+                good[c] = pd.to_numeric(good[c], errors="coerce")
+        # a row whose source column is not a known source is a shifted row; drop it
+        if "source" in good.columns:
+            good = good[good.source.astype(str).isin(["vsin_dk", "manual_paste", "manual_csv", "splits_feed"])]
+        good.to_csv(path, index=False)
+        vlog.warn("SPLITS_REPAIRED", path.name, "rows", f"{len(bad)} ragged row(s) removed", "header field count")
+        print(f"  repaired {path.name}: dropped {len(bad)} ragged row(s), {len(good)} kept")
+        fixed += len(bad)
+    return fixed
+
+
 def run(league: str, season: int, dry: bool, job: JobRun) -> None:
     games = storage.read_table(storage.games_path(league, season))
     if games.empty:
         job.status = "SKIPPED"; job.message = f"no games table for {league} {season}"; return
     resolver = ids.AliasResolver.load()
     vlog = ValidationLog(job.job_run_id, "betting_splits")
+    repaired = repair_splits_files(league, season, vlog)
+    if repaired:
+        job.message += f" repaired {repaired} ragged splits rows;"
     recs, problems = [], []
     if config.VSIN.get("enabled"):
         r, p = read_vsin(league, season, resolver, games, vlog)

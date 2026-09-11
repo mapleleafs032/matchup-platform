@@ -489,14 +489,7 @@ def calibrate(league: str) -> dict:
         higher = [v for k, v in config.PICK_TIERS.items() if v > lo]
         if higher:
             hi = min(higher)
-        band = band_for(merged, lo)
-        out["tiers"][tier] = {"range": [lo, hi],
-                              "n": band["n"] if band else 0,
-                              "hit_rate": band["hit_rate"] if band else None,
-                              "ci_low": band["ci_low"] if band else None, "ci_high": band["ci_high"] if band else None,
-                              "beats_break_even": band["beats_break_even"] if band else None,
-                              "significant": band["significant"] if band else None,
-                              "measurably_losing": band.get("measurably_losing") if band else None}
+        out["tiers"][tier] = combine_bands(merged, lo, hi)
     losing = len(out["losing_bands"])
     out["note"] = ("Tiers order by score: A+ is the largest qualifying disagreement. Band hit rates come from "
                    "out-of-sample spread plays in the walk-forward backtest and describe edge alone, since betting "
@@ -512,6 +505,27 @@ def calibrate(league: str) -> dict:
         if not lv.empty:
             out["live"] = {t: {"n": int(len(g)), "hit_rate": round(float((g.result == "WIN").mean()), 4)} for t, g in lv.groupby("tier")}
             out["live_total"] = {"n": int(len(lv)), "hit_rate": round(float((lv.result == "WIN").mean()), 4)}
+    return out
+
+
+def combine_bands(bands: list[dict], lo: float, hi: float | None) -> dict:
+    """
+    A tier usually spans several measured bands. Its record is the pooled result of all of them, so the
+    number shown describes the actual population of plays that tier contains. A pooled sample below
+    PICK_MIN_CALIBRATION_N reports as unmeasured rather than quoting a rate off a handful of games.
+    """
+    inside = [b for b in (bands or []) if b["lo"] >= lo and (hi is None or b["lo"] < hi)]
+    n = sum(b["n"] for b in inside)
+    out = {"range": [lo, hi], "n": n, "bands": len(inside), "hit_rate": None, "ci_low": None, "ci_high": None,
+           "beats_break_even": None, "significant": None, "measurably_losing": None}
+    if n < config.PICK_MIN_CALIBRATION_N:
+        return out
+    wins = sum(b["hit_rate"] * b["n"] for b in inside)
+    rate = wins / n
+    lo_ci, hi_ci = wilson(int(round(wins)), n)
+    out.update({"hit_rate": round(rate, 4), "ci_low": round(lo_ci, 4), "ci_high": round(hi_ci, 4),
+                "beats_break_even": rate > BREAK_EVEN, "significant": lo_ci > BREAK_EVEN,
+                "measurably_losing": hi_ci < BREAK_EVEN})
     return out
 
 
@@ -545,8 +559,7 @@ def assign_tiers(df: pd.DataFrame, calib: dict | None = None) -> pd.DataFrame:
     d["band_ci_low"] = d.score_edge_only.map(lambda sc: (band_for(bands, sc) or {}).get("ci_low"))
     d["band_ci_high"] = d.score_edge_only.map(lambda sc: (band_for(bands, sc) or {}).get("ci_high"))
     d["band_measurably_losing"] = d.score_edge_only.map(lambda sc: bool((band_for(bands, sc) or {}).get("measurably_losing")))
-    if config.PICK_EXCLUDE_MEASURABLY_LOSING:
-        d = d[~d.band_measurably_losing]
+    # the caller drops these and reports the count, so an exclusion is never invisible
     d["tier"] = d.score.map(tier_of)
     return d[d.tier.notna()].sort_values("score", ascending=False)
 
@@ -560,6 +573,15 @@ def build_week(league: str, season: int, week: int) -> tuple[pd.DataFrame, pd.Da
     scored = score(c)
     rejected = scored[~scored.qualified].copy()
     picks = assign_tiers(scored[scored.qualified], calib)
+    if config.PICK_EXCLUDE_MEASURABLY_LOSING and not picks.empty and "band_measurably_losing" in picks.columns:
+        losing = picks[picks.band_measurably_losing].copy()
+        if not losing.empty:
+            losing["gate_reasons"] = losing.apply(
+                lambda r: f"score band {r.band_ci_low*100:.0f}-{r.band_ci_high*100:.0f}% measures as losing "
+                          f"({r.band_hit_rate*100:.1f}% on {int(r.band_n)} graded plays)", axis=1)
+            losing["qualified"] = False
+            rejected = pd.concat([rejected, losing], ignore_index=True)
+            picks = picks[~picks.band_measurably_losing]
     stamp = datetime.now(timezone.utc).isoformat()
     for df in (picks, rejected):
         if not df.empty:
