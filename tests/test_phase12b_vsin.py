@@ -271,7 +271,7 @@ def test_espn_parallel_array_categories():
                                           "remainingstrengthofschedule", "gamecontrol"],
              "values": [0.41, 3.2, 0.55, 0.62, 0.58, 0.5], "ranks": [70, 55, 61, 96, 88, 64]}]}]}
     df, notes = espn_fpi.normalize(payload, 2026, r, pd.Timestamp("2026-09-12T03:00:00Z"), set())
-    assert not notes and len(df) == 1
+    assert len(df) == 1          # labelled fields resolve by name, independent of the positional check
     row = df.iloc[0]
     assert int(row.sos_rank_espn) == 96                 # the RANK, not the 0.62 value
     assert int(row.remaining_sos_rank_espn) == 88 and int(row.strength_of_record_rank) == 70
@@ -280,21 +280,54 @@ def test_espn_parallel_array_categories():
     assert row.sos_rank_espn != 500
 
 
-def test_unlabelled_resume_is_left_blank_until_the_column_is_pinned(monkeypatch):
-    """The live core endpoint returns six bare numbers with no labels. Guessing which one is strength
-    of schedule would put a confidently wrong rank on the page, so nothing is stored until it is pinned."""
+def test_unlabelled_resume_needs_both_a_pin_and_a_passing_check(monkeypatch):
+    """Unlabelled numbers are only trusted when the pinned column is confirmed against the sort order.
+    A single team cannot confirm anything, so nothing is stored -- a blank beats a wrong rank."""
     import config
     from providers import espn_fpi
     r = ids.AliasResolver.load()
-    r.add([{"provider": "espn", "alias": "Texas State Bobcats", "provider_id": None, "team_id": "CFB_TXST", "season_from": None, "season_to": None}])
+    r.add([{"provider": "espn", "alias": "Texas State Bobcats", "provider_id": None, "team_id": "CFB_TXST",
+            "season_from": None, "season_to": None}])
     payload = {"items": [{"team": {"displayName": "Texas State Bobcats"}, "categories": [
-        {"name": "resume", "ranks": ["-"] * 6, "values": [103.0, 94.0, 1.0, 93.0, 68.0, 132.0],
-         "totals": ["103rd", "94th", "1st", "93rd", "68th", "132nd"]}]}]}
+        {"name": "resume", "ranks": ["-"] * 6, "values": [103.0, 97.0, 1.0, 93.0, 68.0, 132.0],
+         "totals": ["103rd", "97th", "1st", "93rd", "68th", "132nd"]}]}]}
     ts = pd.Timestamp("2026-09-12T04:00:00Z")
-    monkeypatch.setattr(config, "ESPN_SOS_RESUME_INDEX", None)
+    monkeypatch.setattr(config, "ESPN_SOS_RESUME_INDEX", 2)
     df, notes = espn_fpi.normalize(payload, 2026, r, ts, set())
-    assert pd.isna(df.sos_rank_espn.iloc[0]) and any("no field labels" in n for n in notes)
-    monkeypatch.setattr(config, "ESPN_SOS_RESUME_INDEX", 3)          # pinned after confirmation
-    df2, _ = espn_fpi.normalize(payload, 2026, r, ts, set())
-    assert int(df2.sos_rank_espn.iloc[0]) == 93
-    assert espn_fpi.resume_values(payload)[0][1] == [103.0, 94.0, 1.0, 93.0, 68.0, 132.0]
+    assert pd.isna(df.sos_rank_espn.iloc[0]) and any("NOT verified" in n for n in notes)
+    monkeypatch.setattr(config, "ESPN_SOS_RESUME_INDEX", None)
+    df2, notes2 = espn_fpi.normalize(payload, 2026, r, ts, set())
+    assert pd.isna(df2.sos_rank_espn.iloc[0])
+    assert espn_fpi.resume_values(payload)[0][1] == [103.0, 97.0, 1.0, 93.0, 68.0, 132.0]
+
+
+def _espn_payload(rows):
+    return {"items": [{"team": {"displayName": n}, "categories": [
+        {"name": "resume", "ranks": ["-"] * 6, "values": [float(x) for x in v]}]} for n, v in rows]}
+
+
+def _espn_resolver(rows):
+    r = ids.AliasResolver.load()
+    r.add([{"provider": "espn", "alias": n, "provider_id": None, "team_id": "CFB_T%d" % i,
+            "season_from": None, "season_to": None} for i, (n, _) in enumerate(rows)])
+    return r
+
+
+def test_espn_sos_column_is_verified_against_the_sort_order():
+    """Requested sorted by average SOS rank, so each team's position must equal the pinned column.
+    That proves the column on every pull instead of trusting a position that could move."""
+    from providers import espn_fpi
+    rows = [("Texas State Bobcats", [103, 97, 1, 93, 68, 132]), ("Ball State Cardinals", [135, 97, 2, 127, 69, 133]),
+            ("Wisconsin Badgers", [52, 97, 3, 60, 22, 109]), ("Clemson Tigers", [42, 97, 4, 45, 63, 123])]
+    rows += [("Team %d" % i, [i, 97, i, i, i, i]) for i in range(5, 20)]
+    r = _espn_resolver(rows)
+    ts = pd.Timestamp("2026-09-12T15:00:00Z")
+    df, notes = espn_fpi.normalize(_espn_payload(rows), 2026, r, ts, set())
+    assert any("column verified" in n for n in notes)
+    assert int(df.sos_rank_espn.iloc[0]) == 1 and int(df.sos_rank_espn.iloc[3]) == 4
+    # column 1 is a constant 97 for every team, so it is not a rank and must never be chosen
+    assert not (df.sos_rank_espn == 97).any()
+    shifted = [(n, v[1:] + v[:1]) for n, v in rows]
+    df2, notes2 = espn_fpi.normalize(_espn_payload(shifted), 2026, r, ts, set())
+    assert any("NOT verified" in n for n in notes2)
+    assert int(df2.sos_rank_espn.notna().sum()) == 0        # a moved column stores nothing

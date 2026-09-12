@@ -184,6 +184,36 @@ def resume_values(payload) -> list[tuple[str, list]]:
     return out
 
 
+def verify_sos_column(payload) -> tuple[bool, str]:
+    """
+    The response is requested sorted by average strength-of-schedule rank, so each team's position in
+    the list must equal its rank. Checking that against the pinned column proves the column is the one
+    we think it is, on every pull, rather than trusting a position that could silently move.
+    """
+    import config
+    idx = config.ESPN_SOS_RESUME_INDEX
+    if idx is None or not config.ESPN_SOS_SORTED_REQUEST:
+        return False, "column not pinned"
+    vals = resume_values(payload)
+    checked = mismatched = 0
+    for pos, (_, v) in enumerate(vals, start=1):
+        if not isinstance(v, list) or idx >= len(v):
+            continue
+        try:
+            got = int(float(v[idx]))
+        except (TypeError, ValueError):
+            continue
+        checked += 1
+        if got != pos:
+            mismatched += 1
+    if checked < 10:
+        return False, f"only {checked} teams had a readable value at position {idx}"
+    if mismatched > max(2, checked * 0.05):
+        return False, (f"position {idx} disagreed with sort order on {mismatched} of {checked} teams; "
+                       f"ESPN may have changed the column layout, so nothing was stored")
+    return True, f"position {idx} matched the sorted order on {checked - mismatched} of {checked} teams"
+
+
 def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: set[str]) -> tuple[pd.DataFrame, list[str]]:
     """Returns (rows, notes). Notes describe anything that could not be read, for the job log."""
     entries = _entries(payload)
@@ -191,6 +221,8 @@ def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: 
     if not entries:
         top = list(payload.keys())[:12] if isinstance(payload, dict) else type(payload).__name__
         return pd.DataFrame(), [f"no team entries found; top-level keys were {top}"]
+    ok, why = verify_sos_column(payload)
+    notes.append(("strength-of-schedule column verified: " if ok else "strength-of-schedule column NOT verified: ") + why)
     rows, no_sos = [], 0
     for e in entries:
         name = _team_name(e)
@@ -203,7 +235,7 @@ def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: 
         nums: dict = {}
         _collect(e, nums)
         sos = _pick(nums, _SOS_NORM, "rank")
-        if sos is None:
+        if sos is None and ok:
             sos = _resume_by_index(e, __import__("config").ESPN_SOS_RESUME_INDEX)
         if sos is None:
             no_sos += 1

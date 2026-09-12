@@ -149,7 +149,12 @@ SPLITS_BOOK_DEFAULT = "draftkings"
 # ESPN's core power-index endpoint returns the resume category as six UNLABELLED numbers. Once the
 # position of strength of schedule is confirmed against a team whose rank is known, pin it here.
 # Left as None, no strength-of-schedule value is stored at all -- a blank beats a wrong number.
-ESPN_SOS_RESUME_INDEX = None
+# Confirmed 2026-09-12: requesting sort=resume.avgsosrank:asc returns the teams in SOS order, and
+# resume[2] counts 1,2,3... in that order -- so resume[2] IS the average strength-of-schedule rank
+# (the "SOS" column on ESPN's FPI resume page). Row position and resume[2] are cross-checked on every
+# pull; if they ever disagree, nothing is stored and the job says so.
+ESPN_SOS_RESUME_INDEX = 2
+ESPN_SOS_SORTED_REQUEST = True      # the sort above is load-bearing for the cross-check
 
 MARKET_FROM_VSIN = True    # VSiN carries the DraftKings line with the splits: one source, one timestamp
 VSIN = {"enabled": True, "attribution": "Betting splits: DraftKings action via VSiN (data.vsin.com)"}
