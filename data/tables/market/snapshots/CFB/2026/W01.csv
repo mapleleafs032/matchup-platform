@@ -1535,3 +1535,4 @@ snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_hom
 2026_CFB_W01_SMU_FSU_draftkings_20260907T230513Z,2026_CFB_W01_SMU_FSU,2026-09-07T23:05:13.038256+00:00,,draftkings,3.0,,,124.0,-148.0,54.5,,,,,,,,,False,,,cfbd,free
 2026_CFB_W01_SMU_FSU_bovada_20260907T230513Z,2026_CFB_W01_SMU_FSU,2026-09-07T23:05:13.038256+00:00,,bovada,3.0,,,145.0,-170.0,55.0,,,,,,,,,False,2.5,52.5,cfbd,free
 2026_CFB_W01_TXST_TEX_draftkings_20260912T001225Z,2026_CFB_W01_TXST_TEX,2026-09-12T00:12:25.771550+00:00,,draftkings,1.5,,,102.0,-122.0,66.5,,,0.43,0.09,0.3,0.27,0.37,0.08,False,,,vsin_dk,free
+2026_CFB_W01_TXST_TEX_draftkings_20260912T002639Z,2026_CFB_W01_TXST_TEX,2026-09-12T00:26:39.672727+00:00,,draftkings,1.5,,,102.0,-122.0,66.5,,,0.43,0.09,0.3,0.27,0.37,0.08,False,,,vsin_dk,free
