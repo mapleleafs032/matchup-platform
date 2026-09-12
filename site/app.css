@@ -264,27 +264,40 @@ table.plain th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
 .mchart svg { width: 100%; height: auto; }
 
 /* ---------- quick look scorecard ---------- */
-.ql-wrap { overflow-x: auto; }
-table.ql { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
-table.ql th, table.ql td { padding: 5px 10px; border-bottom: 1px solid var(--rule); text-align: left; white-space: nowrap; }
-table.ql tr.ql-head th { font-family: var(--cond); font-size: 14px; text-transform: none; color: var(--ink);
-  background: var(--rule); border-bottom: 2px solid var(--ink); text-align: center; }
-table.ql tr.ql-head th:first-child { text-align: left; }
-table.ql th[scope="row"] { font-family: var(--cond); font-weight: 600; font-size: 14px; }
-table.ql td.num { text-align: right; font-variant-numeric: tabular-nums; }
-table.ql td.rk { color: var(--mute); font-size: 12.5px; text-align: left; padding-left: 4px; width: 34px; }
-table.ql td.ql-edge { font-weight: 600; }
+.ql-wrap { overflow-x: auto; margin-top: 2px; }
+table.ql { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 620px;
+  font-size: 14px; border: 1px solid var(--ink); background: var(--paper); }
+table.ql caption { caption-side: top; text-align: left; font-family: var(--cond); font-weight: 700;
+  font-size: 15px; letter-spacing: .01em; padding: 7px 10px; background: var(--ink); color: var(--chalk); }
+table.ql th, table.ql td { padding: 6px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+table.ql thead th { font-family: var(--cond); font-weight: 700; font-size: 14px; background: var(--chalk);
+  border-bottom: 1px solid var(--ink); text-align: center; }
+table.ql thead th.ql-metric { text-align: left; width: 170px; border-right: 1px solid var(--rule); }
+table.ql thead th.ql-team.away { color: var(--away); border-left: 1px solid var(--rule); }
+table.ql thead th.ql-team.home { color: var(--home); border-left: 1px solid var(--rule); }
+table.ql thead tr.ql-sub th { font-size: 11.5px; font-weight: 600; color: var(--mute); text-transform: uppercase;
+  letter-spacing: .04em; padding: 3px 10px; }
+table.ql thead th.ql-edgehead { border-left: 1px solid var(--rule); width: 110px; }
+table.ql tbody th[scope="row"] { font-family: var(--cond); font-weight: 600; font-size: 14px; text-align: left;
+  border-right: 1px solid var(--rule); cursor: help; }
+table.ql td.num { text-align: right; font-variant-numeric: tabular-nums; font-size: 15px; }
+table.ql td.num.win { font-weight: 700; }
+table.ql td.rk { text-align: left; width: 40px; padding-left: 5px; color: var(--mute); font-size: 12px;
+  font-variant-numeric: tabular-nums; border-right: 1px solid var(--rule); }
+table.ql td.ql-edge { font-weight: 600; font-size: 13.5px; border-left: 1px solid var(--rule); }
 table.ql td.ql-edge.home { color: var(--home); } table.ql td.ql-edge.away { color: var(--away); }
-table.ql tr.ql-total th, table.ql tr.ql-total td { border-top: 2px solid var(--ink); border-bottom: none;
-  font-weight: 700; font-size: 15px; padding-top: 8px; }
-table.ql tr.ql-total td.num { text-align: center; }
-/* group tinting keeps related pairs reading together */
-table.ql tr.g-scoring td, table.ql tr.g-scoring th[scope="row"] { background: rgba(214, 158, 46, .10); }
-table.ql tr.g-eff td,     table.ql tr.g-eff th[scope="row"]     { background: rgba(43, 108, 176, .10); }
-table.ql tr.g-rush td,    table.ql tr.g-rush th[scope="row"]    { background: rgba(192, 86, 33, .10); }
-table.ql tr.g-pass td,    table.ql tr.g-pass th[scope="row"]    { background: rgba(151, 38, 109, .09); }
-table.ql tr.g-qb td,      table.ql tr.g-qb th[scope="row"]      { background: rgba(47, 133, 90, .12); }
-table.ql tr.g-trench td,  table.ql tr.g-trench th[scope="row"]  { background: rgba(214, 158, 46, .10); }
-table.ql tr.g-sit td,     table.ql tr.g-sit th[scope="row"]     { background: rgba(102, 75, 173, .10); }
-table.ql tr.g-rz td,      table.ql tr.g-rz th[scope="row"]      { background: rgba(197, 48, 48, .10); }
-table.ql tr.g-other td,   table.ql tr.g-other th[scope="row"]   { background: rgba(74, 85, 104, .09); }
+table.ql tfoot th, table.ql tfoot td { border-top: 2px solid var(--ink); border-bottom: none;
+  font-weight: 700; font-size: 15px; padding-top: 9px; padding-bottom: 9px; background: var(--chalk); }
+table.ql tfoot td.num { text-align: center; }
+/* group tinting, drawn from the site palette so related pairs read together */
+table.ql tbody tr.g-scoring td, table.ql tbody tr.g-scoring th { background: rgba(228, 194, 77, .13); }
+table.ql tbody tr.g-eff     td, table.ql tbody tr.g-eff     th { background: rgba(31, 78, 154, .08); }
+table.ql tbody tr.g-rush    td, table.ql tbody tr.g-rush    th { background: rgba(184, 84, 30, .09); }
+table.ql tbody tr.g-pass    td, table.ql tbody tr.g-pass    th { background: rgba(31, 78, 154, .13); }
+table.ql tbody tr.g-qb      td, table.ql tbody tr.g-qb      th { background: rgba(47, 125, 79, .13); }
+table.ql tbody tr.g-trench  td, table.ql tbody tr.g-trench  th { background: rgba(228, 194, 77, .13); }
+table.ql tbody tr.g-sit     td, table.ql tbody tr.g-sit     th { background: rgba(138, 143, 134, .16); }
+table.ql tbody tr.g-rz      td, table.ql tbody tr.g-rz      th { background: rgba(163, 58, 42, .10); }
+table.ql tbody tr.g-other   td, table.ql tbody tr.g-other   th { background: rgba(69, 74, 68, .08); }
+table.ql tbody tr:hover td, table.ql tbody tr:hover th { background: var(--chalk); }
+@media (max-width: 640px) { table.ql { font-size: 13px; min-width: 560px; } table.ql thead th.ql-metric { width: 140px; } }

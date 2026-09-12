@@ -205,3 +205,13 @@ def test_reverse_line_movement_toward_our_side_confirms_rather_than_vetoes():
     assert pe.apply_gates(ours, ctx) == []
     against = {**ours, "_rlm_against_us": True, "signals": ""}
     assert any("reverse line movement" in x for x in pe.apply_gates(against, ctx))
+
+
+def test_ncaa_passing_efficiency_formula():
+    """The number ncaa.com ranks QBs by: (8.4*yds + 330*td + 100*cmp - 200*int) / att."""
+    from pipeline.jobs.build_site import _passer_rating
+    # a 300-yard, 3-TD, 0-INT, 20/30 game
+    assert _passer_rating(20, 30, 300, 3, 0) == 183.7 == round((8.4 * 300 + 330 * 3 + 100 * 20) / 30, 1)
+    # interceptions subtract
+    assert _passer_rating(20, 30, 300, 3, 2) == round((8.4 * 300 + 330 * 3 + 100 * 20 - 200 * 2) / 30, 1)
+    assert _passer_rating(0, 0, 0, 0, 0) is None          # no attempts -> unavailable, not a divide by zero

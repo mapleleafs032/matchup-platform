@@ -171,6 +171,16 @@ def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
             n = storage.append_csv(ROSTER / "coaches.csv", co, ["coach_row_id"], on_duplicate="skip")
             job.rows_written += n
             print(f"CFB head coaches {season}: {n} new rows; {int(co.needs_manual_dates.sum())} teams with mid-season change need manual dates")
+    if "fpi" in what:
+        res = cfbd_context.fetch_fpi(rm, season)
+        f = cfbd_context.normalize_fpi(res.payload, season, resolver, res.retrieved_at, unmatched)
+        if not f.empty:
+            _merge_by_key(CONTEXT / "fpi" / f"{season}.parquet", f, ["team_id", "season"])
+            job.rows_written += len(f)
+            have = int(f.sos_rank_fpi.notna().sum())
+            print(f"CFB FPI {season}: {len(f)} teams, {have} with an FPI strength-of-schedule rank")
+        else:
+            print(f"CFB FPI {season}: no rows returned")
     if "venues" in what:
         res = cfbd_context.fetch_venues(rm)
         v = cfbd_context.normalize_venues(res.payload, res.retrieved_at)
@@ -347,7 +357,7 @@ def main(argv=None):
     a = p.parse_args(argv)
     what = set(a.what)
     if "all" in what:
-        what = {"players", "rosters", "injuries", "qbr", "rankings", "coaches", "venues", "manual", "weather"}
+        what = {"players", "rosters", "injuries", "qbr", "rankings", "coaches", "venues", "fpi", "manual", "weather"}
     leagues = ["NFL", "CFB"] if a.league == "BOTH" else [a.league]
     with JobRun("CONTEXT", a.league, a.trigger) as job:
         vlog = ValidationLog(job.job_run_id, "context")
@@ -355,7 +365,7 @@ def main(argv=None):
             load_manual(job, vlog)
         if "NFL" in leagues and what & {"players", "rosters", "injuries", "qbr", "coaches"}:
             nfl(what, a.season, job)
-        if "CFB" in leagues and what & {"rosters", "rankings", "coaches", "venues"}:
+        if "CFB" in leagues and what & {"rosters", "rankings", "coaches", "venues", "fpi"}:
             cfb(what, a.season, job, vlog)
         if "weather" in what:
             weather(leagues, a.season, job, vlog)

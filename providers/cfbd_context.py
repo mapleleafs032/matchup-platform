@@ -38,6 +38,31 @@ def fetch_coaches(rm: RequestManager, season: int):
     return rm.get(f"{BASE}/coaches", params={"year": season}, headers=_headers())
 
 
+def fetch_fpi(rm: RequestManager, season: int):
+    """ESPN FPI and its resume components, served by CFBD. resumeRanks.strengthOfSchedule is the same
+    strength-of-schedule rank ESPN publishes on its FPI resume page."""
+    return rm.get(f"{BASE}/ratings/fpi", params={"year": season}, headers=_headers())
+
+
+def normalize_fpi(payload, season: int, resolver: ids.AliasResolver, ts: datetime, unmatched: set[str]) -> pd.DataFrame:
+    rows = []
+    for r in payload:
+        tid = _tid(resolver, _g(r, "team"), unmatched)
+        if not tid:
+            continue
+        res = _g(r, "resumeRanks") or {}
+        eff = _g(r, "efficiencies") or {}
+        rows.append({"team_id": tid, "season": season, "fpi": _num(_g(r, "fpi")),
+                     "sos_rank_fpi": _g(res, "strengthOfSchedule"),
+                     "remaining_sos_rank_fpi": _g(res, "remainingStrengthOfSchedule"),
+                     "strength_of_record_rank": _g(res, "strengthOfRecord"),
+                     "game_control_rank": _g(res, "gameControl"),
+                     "eff_overall": _num(_g(eff, "overall")), "eff_offense": _num(_g(eff, "offense")),
+                     "eff_defense": _num(_g(eff, "defense")), "eff_special_teams": _num(_g(eff, "specialTeams")),
+                     "source": "cfbd_fpi", "retrieved_at": ts.isoformat()})
+    return pd.DataFrame(rows)
+
+
 def fetch_venues(rm: RequestManager):
     return rm.get(f"{BASE}/venues", headers=_headers())
 

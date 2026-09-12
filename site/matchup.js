@@ -43,6 +43,7 @@ async function matchupMain() {
     b.addEventListener("click", () => { qlAdj.v = k; paintQuick(); });
     qlToggle.append(b);
   }
+  const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function fmtQL(v, unit) {
     if (v == null) return "—";
     if (unit === "pct") return (v * 100).toFixed(2) + "%";
@@ -50,36 +51,47 @@ async function matchupMain() {
     if (unit === "qbr") return v.toFixed(1);
     return Math.abs(v) >= 50 ? v.toFixed(0) : v.toFixed(1);
   }
+  function quickTableHTML(q) {
+    const away = d.game.away, home = d.game.home;
+    const aName = esc(away.short || away.name), hName = esc(home.short || home.name);
+    const title = `${d.game.league === "CFB" ? "College" : "NFL"} analysis — season to date, ${qlAdj.v === "RAW" ? "raw" : "opponent-adjusted"}`;
+    const tip = r => r.metric_key === "__qbr"
+      ? "ESPN QBR when both teams have it, otherwise NCAA passing efficiency. Both teams are always on the same scale."
+      : r.metric_key === "__sos"
+        ? "Strength of schedule rank. College uses the ESPN FPI resume rank; the NFL uses our own opponent-rating SOS. Lower means a tougher schedule."
+        : (r.description || r.label);
+    let h = `<table class="ql"><caption>${esc(title)}</caption><thead>`;
+    h += `<tr class="ql-teams"><th class="ql-metric" rowspan="2" scope="col">Metric</th>`
+       + `<th class="ql-team away" colspan="2" scope="colgroup">${aName}</th>`
+       + `<th class="ql-team home" colspan="2" scope="colgroup">${hName}</th>`
+       + `<th class="ql-edgehead" rowspan="2" scope="col">Edge</th></tr>`;
+    h += `<tr class="ql-sub"><th scope="col">Value</th><th scope="col">Rk</th>`
+       + `<th scope="col">Value</th><th scope="col">Rk</th></tr></thead><tbody>`;
+    for (const r of q.rows) {
+      const side = r.edge === "home" ? hName : r.edge === "away" ? aName : "";
+      h += `<tr class="g-${esc(r.group.toLowerCase())}">`
+         + `<th scope="row" title="${esc(tip(r))}">${esc(r.label)}</th>`
+         + `<td class="num${r.edge === "away" ? " win" : ""}">${esc(fmtQL(r.away.v, r.unit))}</td>`
+         + `<td class="rk">${r.away.rank == null ? "" : esc(r.away.rank)}</td>`
+         + `<td class="num${r.edge === "home" ? " win" : ""}">${esc(fmtQL(r.home.v, r.unit))}</td>`
+         + `<td class="rk">${r.home.rank == null ? "" : esc(r.home.rank)}</td>`
+         + `<td class="ql-edge ${esc(r.edge || "")}">${esc(side)}</td></tr>`;
+    }
+    const w = q.winner;
+    h += `</tbody><tfoot><tr class="ql-total"><th scope="row">Edge count</th>`
+       + `<td class="num" colspan="2">${q.edge_count.away}</td>`
+       + `<td class="num" colspan="2">${q.edge_count.home}</td>`
+       + `<td class="ql-edge ${esc(w || "")}">${w === "home" ? hName : w === "away" ? aName : "even"}</td>`
+       + `</tr></tfoot></table>`;
+    return h;
+  }
   function paintQuick() {
     [...qlToggle.children].forEach(b => b.setAttribute("aria-pressed", String((b.textContent === "Raw") === (qlAdj.v === "RAW"))));
     const q = (d.quick_look || {})[qlAdj.v];
     qlWrap.replaceChildren();
     if (!q || !q.rows || !q.rows.length) { qlWrap.append(el("p", { class: "note" }, "Quick look is unavailable for this game.")); return; }
-    const aAbbr = d.game.away.abbr, hAbbr = d.game.home.abbr;
-    const tbl = el("table", { class: "ql" });
-    tbl.append(el("tr", { class: "ql-head" },
-      el("th", {}, "Metric"),
-      el("th", { colspan: "2" }, d.game.away.short || d.game.away.name),
-      el("th", { colspan: "2" }, d.game.home.short || d.game.home.name),
-      el("th", {}, "Edge")));
-    for (const r of q.rows) {
-      const side = r.edge === "home" ? (d.game.home.short || hAbbr) : r.edge === "away" ? (d.game.away.short || aAbbr) : "";
-      tbl.append(el("tr", { class: "g-" + r.group.toLowerCase() },
-        el("th", { scope: "row" }, r.label),
-        el("td", { class: "num" }, fmtQL(r.away.v, r.unit)),
-        el("td", { class: "num rk" }, r.away.rank == null ? "" : String(r.away.rank)),
-        el("td", { class: "num" }, fmtQL(r.home.v, r.unit)),
-        el("td", { class: "num rk" }, r.home.rank == null ? "" : String(r.home.rank)),
-        el("td", { class: "ql-edge " + (r.edge || "") }, side)));
-    }
-    const w = q.winner;
-    tbl.append(el("tr", { class: "ql-total" },
-      el("th", { scope: "row" }, "Edge Count"),
-      el("td", { class: "num", colspan: "2" }, String(q.edge_count.away)),
-      el("td", { class: "num", colspan: "2" }, String(q.edge_count.home)),
-      el("td", { class: "ql-edge " + (w || "") }, w === "home" ? (d.game.home.short || hAbbr) : w === "away" ? (d.game.away.short || aAbbr) : "even")));
-    qlWrap.append(tbl);
-    qlWrap.append(el("p", { class: "note" }, q.edge_rule + " Ranks are among all teams in the league this week; blank means the metric has no rank."));
+    qlWrap.append(el("div", { html: quickTableHTML(q) }));
+    qlWrap.append(el("p", { class: "note" }, q.edge_rule + " Ranks are among all teams in the league as of this week; a blank rank means the metric is not ranked."));
   }
   paintQuick();
   sec("Quick look", el("div", {}, el("div", { class: "toolbar" }, el("label", {}, "Basis ", qlToggle)), qlWrap));

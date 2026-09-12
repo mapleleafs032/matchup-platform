@@ -187,21 +187,70 @@ QUICK_ROWS = [
 QUICK_EDGE_PCT_GAP = 0.12       # percentile gap at which one side is credited with the edge
 
 
-def _team_qbr(S: "Season", team_id: str, week: int) -> float | None:
-    """Season QBR for the team's primary passer, weighted by attempts. NFL uses ESPN QBR merged by the
-    context job; CFB uses whatever the provider box supplies. None when unavailable."""
+def _passer_rating(cmp_, att, yds, td, intc) -> float | None:
+    """NCAA passing efficiency, the number ncaa.com ranks QBs by. Published formula, so it is computed
+    here from our own per-player box rather than taken from anyone's page."""
+    if not att:
+        return None
+    return round((8.4 * float(yds) + 330.0 * float(td) + 100.0 * float(cmp_) - 200.0 * float(intc)) / float(att), 1)
+
+
+def _team_qb_metric(S: "Season", team_id: str, week: int) -> tuple[float | None, str | None]:
+    """
+    The starting quarterback's season efficiency, with the metric named so two teams are never compared
+    on different scales. ESPN QBR when both sides have it (NFL), otherwise NCAA passing efficiency,
+    which we can always compute.
+    """
     path = config.TABLES / "stats" / "player_game_stats" / S.league / f"{S.season}.parquet"
     pgs = storage.read_table(path)
-    if pgs.empty or "qbr" not in pgs.columns:
+    if pgs.empty:
+        return None, None
+    ids = set(S.games[S.games.week < week].game_id)
+    sub = pgs[(pgs.team_id == team_id) & pgs.game_id.isin(ids) & pgs.pass_att.notna() & (pgs.pass_att > 0)]
+    if sub.empty:
+        return None, None
+    starters = sub.sort_values("pass_att").groupby("game_id").tail(1)
+    att = float(starters.pass_att.sum())
+    if not att:
+        return None, None
+    if "qbr" in starters.columns and starters.qbr.notna().any():
+        q = starters[starters.qbr.notna()]
+        w = float(q.pass_att.sum())
+        if w:
+            return round(float((q.qbr * q.pass_att).sum() / w), 1), "QBR"
+    need = ("pass_cmp", "pass_yds", "pass_td", "pass_int")
+    if all(c in starters.columns for c in need) and starters[list(need)].notna().all().all():
+        return _passer_rating(starters.pass_cmp.sum(), att, starters.pass_yds.sum(),
+                              starters.pass_td.sum(), starters.pass_int.sum()), "PASSER_RTG"
+    return None, None
+
+
+def _team_qb_metric_passer(S: "Season", team_id: str, week: int) -> float | None:
+    """Force the passing-efficiency form, used when the two teams do not both have QBR."""
+    path = config.TABLES / "stats" / "player_game_stats" / S.league / f"{S.season}.parquet"
+    pgs = storage.read_table(path)
+    if pgs.empty:
         return None
-    g = S.games[(S.games.week < week)]
-    ids = set(g.game_id)
-    sub = pgs[(pgs.team_id == team_id) & pgs.game_id.isin(ids) & pgs.qbr.notna() & pgs.pass_att.notna()]
+    ids = set(S.games[S.games.week < week].game_id)
+    sub = pgs[(pgs.team_id == team_id) & pgs.game_id.isin(ids) & pgs.pass_att.notna() & (pgs.pass_att > 0)]
     if sub.empty:
         return None
-    starters = sub.sort_values("pass_att").groupby("game_id").tail(1)
-    att = starters.pass_att.sum()
-    return round(float((starters.qbr * starters.pass_att).sum() / att), 1) if att else None
+    st = sub.sort_values("pass_att").groupby("game_id").tail(1)
+    need = ("pass_cmp", "pass_yds", "pass_td", "pass_int")
+    if not all(c in st.columns for c in need) or st[list(need)].isna().any().any():
+        return None
+    return _passer_rating(st.pass_cmp.sum(), st.pass_att.sum(), st.pass_yds.sum(), st.pass_td.sum(), st.pass_int.sum())
+
+
+def _fpi_sos(S: "Season", team_id: str) -> int | None:
+    """ESPN FPI strength-of-schedule rank, served by CFBD. CFB only."""
+    f = storage.read_table(config.TABLES / "context" / "fpi" / f"{S.season}.parquet")
+    if f.empty or "sos_rank_fpi" not in f.columns:
+        return None
+    r = f[f.team_id == team_id]
+    if r.empty or pd.isna(r.sos_rank_fpi.iloc[0]):
+        return None
+    return int(r.sos_rank_fpi.iloc[0])
 
 
 def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, metrics_rows: list, adj: str = "OPP_ADJ") -> dict:
@@ -209,16 +258,24 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
     reg = S.reg.set_index("metric_key") if not S.reg.empty else pd.DataFrame()
     rat = storage.read_table(AN / "team_ratings" / S.league / f"{S.season}.parquet")
     rat = rat[rat.as_of_week == week].set_index("team_id") if not rat.empty and (rat.as_of_week == week).any() else pd.DataFrame()
-    qbr = {t: _team_qbr(S, t, week) for t in (home, away)}
+    qb = {t: _team_qb_metric(S, t, week) for t in (home, away)}
+    qb_kind = next((k for _, k in qb.values() if k), None)
+    if len({k for _, k in qb.values() if k}) > 1:
+        qb_kind = "PASSER_RTG"          # never compare two teams on different scales
+        qb = {t: (_team_qb_metric_passer(S, t, week), "PASSER_RTG") for t in (home, away)}
     rows, tally = [], {"home": 0, "away": 0}
     for group, label, key in QUICK_ROWS:
         hib, unit = True, None
         if key == "__qbr":
-            a = {"v": qbr[away], "rank": None, "pct": None}
-            h = {"v": qbr[home], "rank": None, "pct": None}
+            a = {"v": qb[away][0], "rank": None, "pct": None}
+            h = {"v": qb[home][0], "rank": None, "pct": None}
             unit = "qbr"
+            label = "QBR" if qb_kind == "QBR" else "Pass Efficiency"
         elif key == "__sos":
             def sos(t):
+                fpi = _fpi_sos(S, t) if S.league == "CFB" else None       # ESPN FPI rank when we have it
+                if fpi is not None:
+                    return {"v": fpi, "rank": None, "pct": None}
                 if rat.empty or t not in rat.index:
                     return {"v": None, "rank": None, "pct": None}
                 return {"v": int(rat.loc[t].sos_rank), "rank": None, "pct": None}
