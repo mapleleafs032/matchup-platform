@@ -256,3 +256,25 @@ def test_espn_fpi_parses_either_response_shape():
     assert unmatched == {"Nowhere State"}                                    # unknown teams reported, never guessed
     df3, notes3 = espn_fpi.normalize({"nothing": 1}, 2026, r, ts, set())
     assert df3.empty and "no team entries found" in notes3[0]
+
+
+def test_espn_parallel_array_categories():
+    """ESPN stores power-index numbers as parallel names/values/ranks arrays inside each category,
+    with no inline labels. This is the shape the live endpoint actually returns."""
+    from providers import espn_fpi
+    r = ids.AliasResolver.load()
+    r.add([{"provider": "espn", "alias": "Texas State Bobcats", "provider_id": None, "team_id": "CFB_TXST", "season_from": None, "season_to": None}])
+    payload = {"items": [{"team": {"displayName": "Texas State Bobcats", "logos": [{"height": 500, "width": 500}]},
+        "categories": [
+            {"name": "general", "names": ["fpi"], "values": [3.2], "ranks": [55]},
+            {"name": "resume", "names": ["strengthofrecord", "fpi", "avgwinprobability", "strengthofschedule",
+                                          "remainingstrengthofschedule", "gamecontrol"],
+             "values": [0.41, 3.2, 0.55, 0.62, 0.58, 0.5], "ranks": [70, 55, 61, 96, 88, 64]}]}]}
+    df, notes = espn_fpi.normalize(payload, 2026, r, pd.Timestamp("2026-09-12T03:00:00Z"), set())
+    assert not notes and len(df) == 1
+    row = df.iloc[0]
+    assert int(row.sos_rank_espn) == 96                 # the RANK, not the 0.62 value
+    assert int(row.remaining_sos_rank_espn) == 88 and int(row.strength_of_record_rank) == 70
+    assert abs(row.fpi - 3.2) < 1e-9                    # fpi takes the value, not its rank
+    # logo width/height must never be mistaken for a stat
+    assert row.sos_rank_espn != 500

@@ -63,26 +63,56 @@ def fetch(rm: RequestManager, season: int) -> tuple[object, str]:
         raise ProviderError(f"ESPN FPI unavailable. {last} | core: {str(e)[:140]}")
 
 
-def _walk_numbers(obj, out: dict, depth: int = 0):
-    """Collect {normalized_name: numeric_value} from any nesting ESPN happens to use."""
-    if depth > 6:
+def _collect(obj, out: dict, depth: int = 0):
+    """
+    Collect {normalized_name::kind: value} where kind is "rank" or "value".
+
+    ESPN stores power-index numbers as PARALLEL ARRAYS inside each category:
+        {"name": "resume", "names": ["sor","fpi","avgwp","sos", ...],
+         "values": [...], "ranks": [...]}
+    so the numbers carry no inline labels. Named-object and flat-scalar forms are handled too, since
+    these endpoints are unofficial and have used all three.
+    """
+    if depth > 7:
         return
     if isinstance(obj, dict):
-        name = obj.get("name") or obj.get("shortDisplayName") or obj.get("abbreviation")
-        for vkey in ("rank", "value", "displayValue"):
-            if name and vkey in obj:
-                try:
-                    out.setdefault(_norm(name), float(str(obj[vkey]).replace(",", "")))
-                except (TypeError, ValueError):
-                    pass
+        names = obj.get("names") or obj.get("labels") or obj.get("displayNames")
+        if isinstance(names, list) and names:
+            for arr_key, kind in (("ranks", "rank"), ("values", "value"), ("totals", "value")):
+                arr = obj.get(arr_key)
+                if isinstance(arr, list) and len(arr) == len(names):
+                    for n, v in zip(names, arr):
+                        try:
+                            out.setdefault(f"{_norm(n)}::{kind}", float(str(v).replace(",", "")))
+                        except (TypeError, ValueError):
+                            pass
+        nm = obj.get("name") or obj.get("shortDisplayName") or obj.get("abbreviation")
+        if nm:
+            for vkey, kind in (("rank", "rank"), ("value", "value"), ("displayValue", "value")):
+                if vkey in obj:
+                    try:
+                        out.setdefault(f"{_norm(nm)}::{kind}", float(str(obj[vkey]).replace(",", "")))
+                    except (TypeError, ValueError):
+                        pass
         for k, v in obj.items():
             if isinstance(v, (int, float)) and not isinstance(v, bool):
-                out.setdefault(_norm(k), float(v))
+                out.setdefault(f"{_norm(k)}::value", float(v))
+                out.setdefault(f"{_norm(k)}::rank", float(v))
             else:
-                _walk_numbers(v, out, depth + 1)
+                _collect(v, out, depth + 1)
     elif isinstance(obj, list):
         for v in obj:
-            _walk_numbers(v, out, depth + 1)
+            _collect(v, out, depth + 1)
+
+
+def _pick(nums: dict, keys: set[str], prefer: str = "rank") -> float | None:
+    """A rank if one exists for any spelling of the field, otherwise the raw value."""
+    for kind in (prefer, "value" if prefer == "rank" else "rank"):
+        for k in keys:
+            v = nums.get(f"{k}::{kind}")
+            if v is not None:
+                return v
+    return None
 
 
 def _team_name(entry: dict) -> str | None:
@@ -131,22 +161,17 @@ def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: 
         except ids.UnmatchedAlias:
             resolver.unmatched.pop(); unmatched.add(name); continue
         nums: dict = {}
-        _walk_numbers(e, nums)
-        def pick(keys):
-            for k in keys:
-                if k in nums:
-                    return nums[k]
-            return None
-        sos = pick(_SOS_NORM)
+        _collect(e, nums)
+        sos = _pick(nums, _SOS_NORM, "rank")
         if sos is None:
             no_sos += 1
         rows.append({"team_id": tid, "season": season, "espn_team": name,
                      "sos_rank_espn": None if sos is None else int(sos),
-                     "remaining_sos_rank_espn": (lambda v: None if v is None else int(v))(pick(_REM_NORM)),
-                     "strength_of_record_rank": (lambda v: None if v is None else int(v))(pick(_SOR_NORM)),
-                     "fpi": nums.get("fpi"), "source": "espn_fpi", "retrieved_at": ts.isoformat()})
+                     "remaining_sos_rank_espn": (lambda v: None if v is None else int(v))(_pick(nums, _REM_NORM, "rank")),
+                     "strength_of_record_rank": (lambda v: None if v is None else int(v))(_pick(nums, _SOR_NORM, "rank")),
+                     "fpi": _pick(nums, {"fpi"}, "value"), "source": "espn_fpi", "retrieved_at": ts.isoformat()})
     if rows and no_sos == len(rows):
-        sample = sorted(set(list(nums.keys())))[:25] if nums else []
+        sample = sorted(set(list(nums.keys())))[:40] if nums else []
         notes.append(f"no strength-of-schedule field recognised on any of {len(rows)} teams; "
                      f"fields seen on the last team were {sample}")
     elif no_sos:
@@ -162,9 +187,22 @@ def describe(payload) -> str:
         e = entries[0]
         out.append(f"first entry keys: {sorted(e.keys())[:20]}")
         nums: dict = {}
-        _walk_numbers(e, nums)
-        out.append(f"numeric fields on first entry: {sorted(nums.keys())[:40]}")
+        _collect(e, nums)
+        out.append(f"numeric fields on first entry: {sorted(nums.keys())[:60]}")
         out.append(f"team name resolved to: {_team_name(e)!r}")
+        cats = e.get("categories")
+        if isinstance(cats, list):
+            out.append(f"categories: {len(cats)}")
+            for c in cats[:6]:
+                if not isinstance(c, dict):
+                    continue
+                nm = c.get("name") or c.get("displayName")
+                keys = sorted(c.keys())
+                names = c.get("names") or c.get("labels") or c.get("displayNames")
+                out.append(f"  category {nm!r} keys={keys} names={str(names)[:220]}")
+                for a in ("ranks", "values", "totals"):
+                    if isinstance(c.get(a), list):
+                        out.append(f"    {a}[:12] = {c[a][:12]}")
     elif isinstance(payload, dict):
         out.append(f"top-level keys: {sorted(payload.keys())[:20]}")
     return "\n    ".join(out)
