@@ -6546,3 +6546,142 @@ fa3ae3b55c084160,SPLITS_20260912T040057_b6530f,betting_splits,SPLITS_UNREADABLE,
 9a8945a38ea0473f,SPLITS_20260912T040057_b6530f,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: grambling-st | ,team + percentages,2026-09-12T04:01:01+00:00
 ddf6791c198d411f,SPLITS_20260912T040057_b6530f,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: cal-poly | ,team + percentages,2026-09-12T04:01:01+00:00
 6023d051da7b4c4f,SPLITS_20260912T040057_b6530f,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: texas-southern | ,team + percentages,2026-09-12T04:01:01+00:00
+07508461cc634b57,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,abilene-christian,vsin_slug,abilene-christian,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+7c121e1936034205,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,albany,vsin_slug,albany,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+e30088350f294c2d,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,alcorn-st,vsin_slug,alcorn-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+9a1e00c8e7804277,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,austin-peay,vsin_slug,austin-peay,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+4a06977f4ae7451a,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,bethune-cookman,vsin_slug,bethune-cookman,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+8c83cea1751c4cd5,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,bryant,vsin_slug,bryant,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+de387116324d4ef6,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,bucknell,vsin_slug,bucknell,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+53618182f3014a79,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,c-conn-st,vsin_slug,c-conn-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+0e02faa48f604620,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,cal-poly,vsin_slug,cal-poly,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+52294271d6ab4c81,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,campbell-fighting,vsin_slug,campbell-fighting,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+b0611773a87a4243,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,charleston-southern,vsin_slug,charleston-southern,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+1eb0f4adea844075,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,chattanooga,vsin_slug,chattanooga,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+d256cf69cc7740b8,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,citadel,vsin_slug,citadel,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+bbc9602bf3fd44aa,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,colgate,vsin_slug,colgate,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+5693be43ed6d4db8,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,drake,vsin_slug,drake,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+e59e9506cbe74497,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,duquesne,vsin_slug,duquesne,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+de30b9b9772648d3,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,e-illinois,vsin_slug,e-illinois,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+3230548a30cb46aa,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,e-kentucky,vsin_slug,e-kentucky,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+6d116722551147db,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,e-tennessee-st,vsin_slug,e-tennessee-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+d6ac3415b3f04cd9,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,e-washington,vsin_slug,e-washington,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+bcb945e0213b4452,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,east-texas-a-and-m,vsin_slug,east-texas-a-and-m,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+c0b59a115dbb4d1b,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,elon,vsin_slug,elon,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+d9327df6ca054575,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,fordham,vsin_slug,fordham,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+002b077b829d474b,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,furman,vsin_slug,furman,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+afae3b94e28e4933,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,gardner-webb,vsin_slug,gardner-webb,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+fb0fef0157ae4270,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,grambling-st,vsin_slug,grambling-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+2661cf32f3c349f9,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,hampton,vsin_slug,hampton,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+a44148777cbb4985,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,holy-cross,vsin_slug,holy-cross,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+712c93a14d054bc2,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,howard,vsin_slug,howard,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+cf412c23b5994c86,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,idaho,vsin_slug,idaho,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+ab1cedb7ea174ed3,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,idaho-st,vsin_slug,idaho-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+1d7fdd058d59443b,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,incarnate-word,vsin_slug,incarnate-word,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+75ddbd57dc2445c8,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,indiana-st,vsin_slug,indiana-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+9cc258c636ea4186,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,lafayette,vsin_slug,lafayette,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+37995b8d001647db,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,lamar,vsin_slug,lamar,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+bf81cb6148e54cf4,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,lehigh,vsin_slug,lehigh,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+5a8b6bfdc96340ad,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,lindenwood,vsin_slug,lindenwood,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+283beb973d2f4ed4,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,liu-post,vsin_slug,liu-post,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+d58f713d7145495e,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,maine,vsin_slug,maine,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+14d622a741c1458b,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,marist,vsin_slug,marist,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+d8626be804154be6,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,mcneese-st,vsin_slug,mcneese-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+57b210825dd04b35,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,mercer,vsin_slug,mercer,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+61143eda842a41d5,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,mercyhurst,vsin_slug,mercyhurst,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+70a5227ffb1b420f,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,merrimack,vsin_slug,merrimack,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+43d825fa3ecb42fb,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,monmouth,vsin_slug,monmouth,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+6e813df1a13944da,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,montana,vsin_slug,montana,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+1d0a6aae76224ae0,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,montana-st,vsin_slug,montana-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+d0aac1a231074b83,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,morehead-st,vsin_slug,morehead-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+ca8b167859c94d6e,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,murray-st,vsin_slug,murray-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+ee93816feba74b9f,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,n-alabama,vsin_slug,n-alabama,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+4b16b5c89f9b4393,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,n-arizona,vsin_slug,n-arizona,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+871963ebb3234271,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,n-colorado,vsin_slug,n-colorado,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+4ce00ba0ed624fea,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,n-dakota,vsin_slug,n-dakota,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+341170111686447d,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,n-iowa,vsin_slug,n-iowa,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+e938d89777464755,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,nc-central,vsin_slug,nc-central,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+9a231bc41ac74471,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,new-hampshire,vsin_slug,new-hampshire,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+dd45708e789042c2,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,new-haven,vsin_slug,new-haven,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+2cba114657224a7f,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,norfolk-st,vsin_slug,norfolk-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+d7acccafffb243dd,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,northwestern-st,vsin_slug,northwestern-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+e2673962c6ff4996,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,portland-st,vsin_slug,portland-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+a1246893766341e6,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,prairie-view-a-and-m,vsin_slug,prairie-view-a-and-m,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+96dc82f7249c4f2b,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,rhode-island,vsin_slug,rhode-island,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+c6f57da42cdd431e,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,richmond,vsin_slug,richmond,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+6e8c5a73ac604308,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,robert-morris,vsin_slug,robert-morris,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+f188bdb6c523471b,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,s-dakota,vsin_slug,s-dakota,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+368a76e93cea4be3,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,s-dakota-st,vsin_slug,s-dakota-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+c3544a38ca4d4c3f,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,s-illinois,vsin_slug,s-illinois,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+f961ed2f72fd4255,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,s-utah,vsin_slug,s-utah,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+f90a925af2f54134,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,sacred-heart,vsin_slug,sacred-heart,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+31fd98a8e8944454,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,samford,vsin_slug,samford,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+fe33d703a72a4065,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,san-diego,vsin_slug,san-diego,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+25ab5dfa52b941ad,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,san-jose-st-spartans,vsin_slug,san-jose-st-spartans,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+097374d83621425b,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,se-louisiana,vsin_slug,se-louisiana,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+ed45a213e7874658,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,se-missouri-st,vsin_slug,se-missouri-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+da99d1d2556e44ee,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,southern-u,vsin_slug,southern-u,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+61250c9093fd454e,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,stephen-f-austin,vsin_slug,stephen-f-austin,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+ccf9818a4e6f4419,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,stetson,vsin_slug,stetson,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+9841f2fdf97249dd,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,stonehill-college,vsin_slug,stonehill-college,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+3e9c1214ebbf4076,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,stony-brook,vsin_slug,stony-brook,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+5af959b82c304edb,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,tarleton-st,vsin_slug,tarleton-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+d1495d91f1444e3f,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,tennessee-tech,vsin_slug,tennessee-tech,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+d5bbc9df13f145a9,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,texas-southern,vsin_slug,texas-southern,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+3cf560425f254257,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,towson,vsin_slug,towson,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+ccee22e67e984ac4,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,uc-davis,vsin_slug,uc-davis,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+34f2743d32db451c,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,utah-tech,vsin_slug,utah-tech,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+79ab3dd781ab4072,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,valparaiso,vsin_slug,valparaiso,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+239b51bca81243c9,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,villanova,vsin_slug,villanova,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+c6a15c3f6b1a4d4b,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,vmi,vsin_slug,vmi,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+647946e07b1b4723,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,w-carolina,vsin_slug,w-carolina,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+49aeee85a40544eb,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,w-georgia,vsin_slug,w-georgia,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+29f21549c84645e7,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,w-illinois,vsin_slug,w-illinois,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+15745a61e41a4522,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,wagner,vsin_slug,wagner,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+5b1eea72eb614776,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,weber-st,vsin_slug,weber-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+a841403d398e4ade,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,william-and-mary,vsin_slug,william-and-mary,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+84b9f9a101bf4286,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,wofford,vsin_slug,wofford,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+5068dd752dcc47e4,SPLITS_20260912T042004_b75313,betting_splits,ALIAS_UNMATCHED,WARN,youngstown-st,vsin_slug,youngstown-st,add to team_aliases.csv (provider=vsin),2026-09-12T04:20:07+00:00
+6055d81652004d81,SPLITS_20260912T042004_b75313,betting_splits,GAME_LOCKED,WARN,2026_CFB_W02_RUTG_BC_FULL_2026-09-12T04:20:07.064170+00:00,game_id,2026_CFB_W02_RUTG_BC,splits after kickoff are ignored,2026-09-12T04:20:08+00:00
+50ea05b1ca3f43ae,SPLITS_20260912T042004_b75313,betting_splits,GAME_LOCKED,WARN,2026_CFB_W02_MIZ_KU_FULL_2026-09-12T04:20:07.064170+00:00,game_id,2026_CFB_W02_MIZ_KU,splits after kickoff are ignored,2026-09-12T04:20:08+00:00
+a7aa8bb003c94826,SPLITS_20260912T042004_b75313,betting_splits,GAME_LOCKED,WARN,2026_CFB_W01_TXST_TEX_FULL_2026-09-12T04:20:07.064170+00:00,game_id,2026_CFB_W01_TXST_TEX,splits after kickoff are ignored,2026-09-12T04:20:08+00:00
+da7882cd8c4d4e3d,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: villanova | ,team + percentages,2026-09-12T04:20:08+00:00
+de243bd0a01a4657,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: richmond | ,team + percentages,2026-09-12T04:20:08+00:00
+e52c537b33c943e9,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: norfolk-st | ,team + percentages,2026-09-12T04:20:08+00:00
+52e42a7b3e10471d,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: howard | ,team + percentages,2026-09-12T04:20:08+00:00
+a27b0c44223846d9,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: wofford | ,team + percentages,2026-09-12T04:20:08+00:00
+946c6cfec8e244cd,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: e-tennessee-st | ,team + percentages,2026-09-12T04:20:08+00:00
+fe0a4ce3d56d433e,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_ASU vs CFB_TEX (VSiN slugs: arizona-st-sun-devils / texas-a-and-m-aggies) | ,team + percentages,2026-09-12T04:20:08+00:00
+5062c9d40c254046,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: colgate | ,team + percentages,2026-09-12T04:20:08+00:00
+531768e5256349c8,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: holy-cross | ,team + percentages,2026-09-12T04:20:08+00:00
+275ef29f60074126,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_TENN vs CFB_WVU (VSiN slugs: tennessee-martin / west-virginia-mountaineers) | ,team + percentages,2026-09-12T04:20:08+00:00
+b0535a1e5018492a,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: stony-brook | ,team + percentages,2026-09-12T04:20:08+00:00
+3090d88ee59440a8,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: robert-morris | ,team + percentages,2026-09-12T04:20:08+00:00
+2dd15b59d94a40bf,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: weber-st | ,team + percentages,2026-09-12T04:20:08+00:00
+507cdc2b4a394a16,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: c-conn-st | ,team + percentages,2026-09-12T04:20:08+00:00
+82e91910a4ca45b8,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: wagner | ,team + percentages,2026-09-12T04:20:08+00:00
+84c9be25a07b41ca,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: sacred-heart | ,team + percentages,2026-09-12T04:20:08+00:00
+8eb9c93b4500473c,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: mercyhurst | ,team + percentages,2026-09-12T04:20:08+00:00
+a5eacfced14d44b4,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: uc-davis | ,team + percentages,2026-09-12T04:20:08+00:00
+325690bd0c8949d6,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_ALA vs CFB_TROY (VSiN slugs: alabama-st / troy-trojans) | ,team + percentages,2026-09-12T04:20:08+00:00
+7c468d8791044cba,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: n-colorado | ,team + percentages,2026-09-12T04:20:08+00:00
+2b755ba81ad44072,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: campbell-fighting | ,team + percentages,2026-09-12T04:20:08+00:00
+20df6be3a3ec40d0,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: gardner-webb | ,team + percentages,2026-09-12T04:20:08+00:00
+962a26cf8abe446f,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: monmouth | ,team + percentages,2026-09-12T04:20:08+00:00
+b6dba2e08f254201,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: w-georgia | ,team + percentages,2026-09-12T04:20:08+00:00
+b95005cde6354c35,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: w-carolina | ,team + percentages,2026-09-12T04:20:08+00:00
+f5f6a54761134834,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: s-utah | ,team + percentages,2026-09-12T04:20:08+00:00
+a5090c7ca2814802,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: southern-u | ,team + percentages,2026-09-12T04:20:08+00:00
+13ce76ff6fa649b6,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_ILL vs CFB_NIU (VSiN slugs: illinois-st / n-illinois-huskies) | ,team + percentages,2026-09-12T04:20:08+00:00
+f7da07ca7b914699,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: towson | ,team + percentages,2026-09-12T04:20:08+00:00
+5e88d98b230242a9,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: lindenwood | ,team + percentages,2026-09-12T04:20:08+00:00
+86c4cf88a1ae4239,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: w-illinois | ,team + percentages,2026-09-12T04:20:08+00:00
+d5601a58181f4bef,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: fordham | ,team + percentages,2026-09-12T04:20:08+00:00
+668eef16704a4e32,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: prairie-view-a-and-m | ,team + percentages,2026-09-12T04:20:08+00:00
+9d0491d769d44ffa,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: grambling-st | ,team + percentages,2026-09-12T04:20:08+00:00
+b336330335b646e5,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: cal-poly | ,team + percentages,2026-09-12T04:20:08+00:00
+04f75da3ca424e3a,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: texas-southern | ,team + percentages,2026-09-12T04:20:08+00:00
+075e745a902941ad,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,"None: 2026_CFB_W02_ARK_UTAH spread ticket: only one side published; complement used, no cross-check | ",team + percentages,2026-09-12T04:20:08+00:00
+64b865fee6a24603,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: montana-st | ,team + percentages,2026-09-12T04:20:08+00:00
+d56832e984784201,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: elon | ,team + percentages,2026-09-12T04:20:08+00:00
+23ef8447407f4057,SPLITS_20260912T042004_b75313,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: albany | ,team + percentages,2026-09-12T04:20:08+00:00
