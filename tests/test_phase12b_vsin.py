@@ -278,3 +278,23 @@ def test_espn_parallel_array_categories():
     assert abs(row.fpi - 3.2) < 1e-9                    # fpi takes the value, not its rank
     # logo width/height must never be mistaken for a stat
     assert row.sos_rank_espn != 500
+
+
+def test_unlabelled_resume_is_left_blank_until_the_column_is_pinned(monkeypatch):
+    """The live core endpoint returns six bare numbers with no labels. Guessing which one is strength
+    of schedule would put a confidently wrong rank on the page, so nothing is stored until it is pinned."""
+    import config
+    from providers import espn_fpi
+    r = ids.AliasResolver.load()
+    r.add([{"provider": "espn", "alias": "Texas State Bobcats", "provider_id": None, "team_id": "CFB_TXST", "season_from": None, "season_to": None}])
+    payload = {"items": [{"team": {"displayName": "Texas State Bobcats"}, "categories": [
+        {"name": "resume", "ranks": ["-"] * 6, "values": [103.0, 94.0, 1.0, 93.0, 68.0, 132.0],
+         "totals": ["103rd", "94th", "1st", "93rd", "68th", "132nd"]}]}]}
+    ts = pd.Timestamp("2026-09-12T04:00:00Z")
+    monkeypatch.setattr(config, "ESPN_SOS_RESUME_INDEX", None)
+    df, notes = espn_fpi.normalize(payload, 2026, r, ts, set())
+    assert pd.isna(df.sos_rank_espn.iloc[0]) and any("no field labels" in n for n in notes)
+    monkeypatch.setattr(config, "ESPN_SOS_RESUME_INDEX", 3)          # pinned after confirmation
+    df2, _ = espn_fpi.normalize(payload, 2026, r, ts, set())
+    assert int(df2.sos_rank_espn.iloc[0]) == 93
+    assert espn_fpi.resume_values(payload)[0][1] == [103.0, 94.0, 1.0, 93.0, 68.0, 132.0]

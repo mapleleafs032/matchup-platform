@@ -146,6 +146,11 @@ SPLITS_API_KEY = os.environ.get("SPLITS_API_KEY", "").strip()
 SPLITS_BOOK_DEFAULT = "draftkings"
 # VSiN publishes DraftKings ticket/handle splits on a public page. Polite cadence, identifying User-Agent,
 # attribution shown in the app. Set enabled=False to stop collecting immediately.
+# ESPN's core power-index endpoint returns the resume category as six UNLABELLED numbers. Once the
+# position of strength of schedule is confirmed against a team whose rank is known, pin it here.
+# Left as None, no strength-of-schedule value is stored at all -- a blank beats a wrong number.
+ESPN_SOS_RESUME_INDEX = None
+
 MARKET_FROM_VSIN = True    # VSiN carries the DraftKings line with the splits: one source, one timestamp
 VSIN = {"enabled": True, "attribution": "Betting splits: DraftKings action via VSiN (data.vsin.com)"}
 SPLITS_PERIODS = ("FULL", "1H")

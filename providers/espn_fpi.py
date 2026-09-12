@@ -45,22 +45,30 @@ _REM_NORM = {_norm(k) for k in REM_SOS_KEYS}
 _SOR_NORM = {_norm(k) for k in SOR_KEYS}
 
 
-def fetch(rm: RequestManager, season: int) -> tuple[object, str]:
-    """Returns (payload, which endpoint answered). Raises only when both fail."""
-    last = None
-    try:
-        res = rm.get(FITT, params={"region": "us", "lang": "en", "contentorigin": "espn",
-                                   "limit": 400, "season": season, "sort": "resume.avgsosrank:asc"},
-                     headers={"User-Agent": UA, "Accept": "application/json"}, timeout=45)
-        return res.payload, "fitt"
-    except ProviderError as e:
-        last = f"fitt: {str(e)[:140]}"
+def fetch(rm: RequestManager, season: int) -> tuple[object, str, list[str]]:
+    """Returns (payload, which endpoint answered, notes). Raises only when every endpoint fails."""
+    notes = []
+    # 1) the endpoint behind the web page: returns LABELLED columns, which is what we want
+    for params in (
+        {"region": "us", "lang": "en", "contentorigin": "espn", "limit": 400, "page": 1,
+         "sort": "resume.avgsosrank:asc", "season": season},
+        {"region": "us", "lang": "en", "contentorigin": "espn", "limit": 400, "season": season},
+    ):
+        try:
+            res = rm.get(FITT, params=params, headers={"User-Agent": UA, "Accept": "application/json",
+                                                       "Referer": "https://www.espn.com/college-football/fpi/"},
+                         timeout=45)
+            return res.payload, "fitt", notes
+        except ProviderError as e:
+            notes.append(f"fitt ({'sorted' if 'sort' in params else 'plain'}): {str(e)[:150]}")
+    # 2) the documented core endpoint: UNLABELLED parallel arrays, usable only once the column is pinned
     try:
         res = rm.get(CORE.format(season=season), params={"limit": 400},
                      headers={"User-Agent": UA, "Accept": "application/json"}, timeout=45)
-        return res.payload, "core"
+        return res.payload, "core", notes
     except ProviderError as e:
-        raise ProviderError(f"ESPN FPI unavailable. {last} | core: {str(e)[:140]}")
+        notes.append(f"core: {str(e)[:150]}")
+        raise ProviderError("ESPN FPI unavailable. " + " | ".join(notes))
 
 
 def _collect(obj, out: dict, depth: int = 0):
@@ -144,6 +152,38 @@ def _entries(payload) -> list[dict]:
     return []
 
 
+def _resume_by_index(entry: dict, idx: int | None) -> float | None:
+    """
+    Read the resume category by position. The core endpoint returns six bare numbers with no labels,
+    so the position of strength of schedule must be PINNED (config.ESPN_SOS_RESUME_INDEX) after being
+    checked against a team whose rank is known. Unpinned, this returns nothing rather than a guess.
+    """
+    if idx is None:
+        return None
+    for c in (entry.get("categories") or []):
+        if not isinstance(c, dict) or _norm(c.get("name") or "") != "resume":
+            continue
+        vals = c.get("values")
+        if isinstance(vals, list) and 0 <= idx < len(vals):
+            try:
+                return float(vals[idx])
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def resume_values(payload) -> list[tuple[str, list]]:
+    """(team name, resume values) for every team — used to pin the column against a known rank."""
+    out = []
+    for e in _entries(payload):
+        nm = _team_name(e)
+        for c in (e.get("categories") or []):
+            if isinstance(c, dict) and _norm(c.get("name") or "") == "resume":
+                out.append((nm, c.get("values") or []))
+                break
+    return out
+
+
 def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: set[str]) -> tuple[pd.DataFrame, list[str]]:
     """Returns (rows, notes). Notes describe anything that could not be read, for the job log."""
     entries = _entries(payload)
@@ -164,12 +204,17 @@ def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: 
         _collect(e, nums)
         sos = _pick(nums, _SOS_NORM, "rank")
         if sos is None:
+            sos = _resume_by_index(e, __import__("config").ESPN_SOS_RESUME_INDEX)
+        if sos is None:
             no_sos += 1
         rows.append({"team_id": tid, "season": season, "espn_team": name,
                      "sos_rank_espn": None if sos is None else int(sos),
                      "remaining_sos_rank_espn": (lambda v: None if v is None else int(v))(_pick(nums, _REM_NORM, "rank")),
                      "strength_of_record_rank": (lambda v: None if v is None else int(v))(_pick(nums, _SOR_NORM, "rank")),
                      "fpi": _pick(nums, {"fpi"}, "value"), "source": "espn_fpi", "retrieved_at": ts.isoformat()})
+    if rows and no_sos == len(rows) and __import__("config").ESPN_SOS_RESUME_INDEX is None:
+        notes.append("the response carries no field labels; set config.ESPN_SOS_RESUME_INDEX once the "
+                     "strength-of-schedule position is confirmed against a team whose rank you can read")
     if rows and no_sos == len(rows):
         sample = sorted(set(list(nums.keys())))[:40] if nums else []
         notes.append(f"no strength-of-schedule field recognised on any of {len(rows)} teams; "

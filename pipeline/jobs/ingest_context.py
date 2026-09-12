@@ -176,7 +176,9 @@ def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
         from providers.base import RequestManager as _RM, ProviderError as _PE
         erm = _RM("espn", job.job_run_id)
         try:
-            payload, which = espn_fpi.fetch(erm, season)
+            payload, which, fnotes = espn_fpi.fetch(erm, season)
+            for fn in fnotes:
+                print(f'    endpoint note: {fn}')
         except _PE as e:
             vlog.warn("PROVIDER_FAIL", "espn_fpi", "", str(e)[:160], "200")
             print(f"ESPN FPI {season}: unavailable ({str(e)[:120]})")
@@ -189,6 +191,11 @@ def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
             if f.empty or f.sos_rank_espn.isna().all():
                 print(f"ESPN FPI {season}: no usable strength-of-schedule values. Response shape:")
                 print("    " + espn_fpi.describe(payload))
+                rv = espn_fpi.resume_values(payload)[:6]
+                if rv:
+                    print("    resume values per team (to pin the column):")
+                    for nm, vals in rv:
+                        print(f"      {nm}: {vals}")
             else:
                 _merge_by_key(CONTEXT / "espn_fpi" / f"{season}.parquet", f, ["team_id", "season"])
                 job.rows_written += len(f)
