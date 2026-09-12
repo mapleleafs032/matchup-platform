@@ -11,7 +11,7 @@ async function oddsMain() {
     period: localStorage.getItem("odds.period") || "FULL",
     metric: localStorage.getItem("odds.metric") || "both",
     onlyWithSplits: false,
-    window: localStorage.getItem("odds.window") || "all",   // how far back the chart shows
+    window: localStorage.getItem("odds.window") || "today",   // how far back the chart shows
   };
   const toolbar = document.getElementById("toolbar"), mt = document.getElementById("market-toolbar");
 
@@ -56,6 +56,14 @@ async function oddsMain() {
     for (const [k, lab] of [["FULL", "Full game"], ["1H", "First half"]]) per.append(el("button", { "aria-pressed": String(k === S.period) }, lab));
     [...per.children].forEach((b, i) => b.addEventListener("click", () => { S.period = ["FULL", "1H"][i]; localStorage.setItem("odds.period", S.period); paint(window.__odds); }));
     mt.append(el("label", {}, "Period ", per));
+    const win = el("select", { "aria-label": "Time window" },
+      el("option", { value: "all" }, "All"),
+      el("option", { value: "week" }, "This week"),
+      el("option", { value: "today" }, "Today"),
+      el("option", { value: "12" }, "Last 12 hours"));
+    win.value = S.window;
+    win.addEventListener("change", () => { S.window = win.value; localStorage.setItem("odds.window", S.window); paint(window.__odds); });
+    mt.append(el("label", {}, "Window ", win));
 
   }
 
@@ -76,8 +84,7 @@ async function oddsMain() {
     const shown = games.filter(g => (S.date === "all" || g.filters.date === S.date) && (S.conf === "all" || g.filters.conf_home === S.conf || g.filters.conf_away === S.conf)
       && (!S.ranked || g.filters.ranked) && (S.fav === "all" || g.filters.favorite === S.fav) && (S.status === "all" || g.status === S.status)
       && (!S.onlyWithSplits || (g.splits?.[S.period]?.available)));
-    const winLabel = S.window === "all" ? "full history"
-      : S.window === "gameday" ? "game day only" : `last ${S.window} hours`;
+    const winLabel = { all: "the full history", week: "this week", today: "today", "12": "the last 12 hours" }[S.window] || "the full history";
     document.getElementById("coverage").textContent =
       `${data.coverage.with_splits} of ${data.coverage.total} games have splits this week. Charts show ${winLabel}. ${data.source_note}`;
     root.replaceChildren();
@@ -127,14 +134,16 @@ async function oddsMain() {
   function windowStart(g, series) {
     if (S.window === "all" || !series.length) return null;
     const last = new Date(series[series.length - 1].t).getTime();
-    if (S.window === "gameday") {
-      const kick = g.kickoff_utc ? new Date(g.kickoff_utc) : null;
-      if (!kick) return last - 24 * 3600e3;
-      const d0 = new Date(kick); d0.setHours(0, 0, 0, 0);
-      return d0.getTime();
-    }
-    return last - Number(S.window) * 3600e3;
+    if (S.window === "12") return last - 12 * 3600e3;
+    // "Today" and "This week" anchor to the local calendar, so they mean the same thing all day rather
+    // than sliding with whenever the most recent pull happened to land.
+    const midnight = new Date(Math.min(Date.now(), last));
+    midnight.setHours(0, 0, 0, 0);
+    if (S.window === "today") return midnight.getTime();
+    if (S.window === "week") return midnight.getTime() - 6 * 86400e3;
+    return null;
   }
+
   function chart(sp, g) {
     const splits = sp.series || [];
     const from = windowStart(g, splits);

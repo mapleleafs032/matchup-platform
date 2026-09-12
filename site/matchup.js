@@ -177,12 +177,21 @@ async function matchupMain() {
     spFull.available ? `${spFull.n_snapshots} snapshot${spFull.n_snapshots === 1 ? "" : "s"} of DraftKings ticket and money shares, last ${fmt.ago(spFull.last_snapshot)}.`
                      : "No betting splits recorded for this game yet.");
   if (spFull.available) {
-    const SP = { market: "spread", perspective: "home", metric: "both" };
+    const SP = { market: "spread", perspective: "home", metric: "both",
+                 window: localStorage.getItem("odds.window") || "today" };
     const bar = el("div", { class: "toolbar sp-toolbar" });
     const segM = el("div", { class: "seg", role: "group", "aria-label": "Market" });
     for (const [k, lab] of [["spread", "Spread"], ["total", "Total"], ["moneyline", "Moneyline"]]) segM.append(el("button", { "aria-pressed": String(k === SP.market) }, lab));
+    const segW = el("select", { "aria-label": "Time window" },
+      el("option", { value: "all" }, "All"),
+      el("option", { value: "week" }, "This week"),
+      el("option", { value: "today" }, "Today"),
+      el("option", { value: "12" }, "Last 12 hours"));
+    segW.value = SP.window;
+    segW.addEventListener("change", () => { SP.window = segW.value; localStorage.setItem("odds.window", SP.window); redraw(); });
     [...segM.children].forEach((b, i) => b.addEventListener("click", () => { SP.market = ["spread", "total", "moneyline"][i]; redraw(); }));
     bar.append(el("label", {}, "Market ", segM));
+    bar.append(el("label", {}, "Window ", segW));
 
     spSec.append(bar);
     const chips = el("div", { class: "og-chips" });
@@ -211,11 +220,29 @@ async function matchupMain() {
     redraw();
   }
 
+  /* Snapshots bunch up near kickoff: the week before is hourly, game day is every 15 minutes, so on a
+     full-history axis today's pulls collapse into the right-hand edge. Narrowing the window spreads
+     them out. Matches the Odds page so both read the same way. */
+  function chartWindowStart(series, wsel) {
+    if (wsel === "all" || !series.length) return null;
+    const last = new Date(series[series.length - 1].t).getTime();
+    if (wsel === "12") return last - 12 * 3600e3;
+    const midnight = new Date(Math.min(Date.now(), last));
+    midnight.setHours(0, 0, 0, 0);
+    if (wsel === "today") return midnight.getTime();
+    if (wsel === "week") return midnight.getTime() - 6 * 86400e3;
+    return null;
+  }
   function splitsChart(sp, mstate, SP) {
+    const splits = sp.series || [];
+    const from = chartWindowStart(splits.length ? splits : ((d.market && d.market.series) || []), SP.window || "today");
+    const clip = arr => (from == null ? arr : (arr || []).filter(x => new Date(x.t).getTime() >= from));
+    const cs = clip(splits);
+    const cl = clip((d.market && d.market.series) || []);
     return App.marketChart({
-      lineSeries: (d.market && d.market.series) || [],
-      splitsSeries: sp.series || [],
-      events: mstate.events || [],
+      lineSeries: cl.length ? cl : (from == null ? ((d.market && d.market.series) || []) : []),
+      splitsSeries: cs,
+      events: clip(mstate.events || []),
       market: SP.market,
       homeAbbr: H.identity.abbr, awayAbbr: A.identity.abbr,
       book: sp.book || (d.market && d.market.primary_book) || null,

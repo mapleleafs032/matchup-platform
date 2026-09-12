@@ -99,6 +99,22 @@ def analyze_game(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: str
                 c = f"{m}_{k}_pct_home"
                 row[f"{m}_{k}"] = None if c not in r or pd.isna(r[c]) else round(float(r[c]), 4)
         series.append(row)
+    # The source leaves a cell blank at times. Carrying the last published figure forward through the
+    # series means a chart point shows the split that was in force at that moment instead of "?",
+    # while `_carried` records that it was not freshly published, so nothing is silently invented.
+    carried: dict = {}
+    for row in series:
+        for m in MARKETS:
+            for k in ("ticket", "money"):
+                key = f"{m}_{k}"
+                if row[key] is not None:
+                    carried[key] = row[key]
+                    row[f"{key}_carried"] = False
+                elif key in carried:
+                    row[key] = carried[key]
+                    row[f"{key}_carried"] = True
+                else:
+                    row[f"{key}_carried"] = False
     last = h.iloc[-1]
     first = h.iloc[0]
     latest, divergence, notes = {}, {}, []

@@ -232,3 +232,28 @@ def test_a_blank_cell_in_the_newest_pull_does_not_erase_an_earlier_value():
     assert lat["ticket_pct_home"] == 0.72 and lat["ticket_is_stale"] is True        # carried forward, and labelled
     assert lat["money_pct_home"] == 0.29 and lat["money_is_stale"] is False         # fresh value wins
     assert lat["ticket_as_of"].startswith("2026-09-11T12:00")
+
+
+def test_series_carries_splits_forward_so_points_never_read_unknown():
+    """A blank cell in one pull used to render as '?' on that chart point. Each point now shows the
+    split in force at that moment, flagged when it was carried rather than freshly published."""
+    from pipeline import splits_engine as se
+    h = _hist([
+        {"game_id": "G", "period": "FULL", "book": "dk", "retrieved_at": "2026-09-12T12:00:00Z",
+         "spread_ticket_pct_home": 0.61, "spread_money_pct_home": 0.27, "line_spread_home": -3.0, "line_total": 51.5},
+        {"game_id": "G", "period": "FULL", "book": "dk", "retrieved_at": "2026-09-12T12:15:00Z",
+         "spread_ticket_pct_home": None, "spread_money_pct_home": 0.29, "line_spread_home": -3.0, "line_total": 51.5},
+        {"game_id": "G", "period": "FULL", "book": "dk", "retrieved_at": "2026-09-12T12:30:00Z",
+         "spread_ticket_pct_home": 0.63, "spread_money_pct_home": None, "line_spread_home": -3.5, "line_total": 51.5},
+    ])
+    a = se.analyze_game(h, "FULL", "ILL", "DUKE", pd.Timestamp("2026-09-13T18:00:00Z"))
+    pts = a["series"]
+    assert pts[1]["spread_ticket"] == 0.61 and pts[1]["spread_ticket_carried"] is True
+    assert pts[1]["spread_money"] == 0.29 and pts[1]["spread_money_carried"] is False
+    assert pts[2]["spread_money"] == 0.29 and pts[2]["spread_money_carried"] is True
+    assert pts[0]["spread_ticket_carried"] is False
+    # nothing is invented before the first published value
+    h2 = _hist([{"game_id": "G", "period": "FULL", "book": "dk", "retrieved_at": "2026-09-12T12:00:00Z",
+                 "spread_ticket_pct_home": None, "spread_money_pct_home": 0.5, "line_spread_home": -3.0, "line_total": 51.5}])
+    b = se.analyze_game(h2, "FULL", "ILL", "DUKE", None)
+    assert b["series"][0]["spread_ticket"] is None and b["series"][0]["spread_ticket_carried"] is False

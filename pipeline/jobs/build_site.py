@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -547,6 +548,22 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
             "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
+def stamp_assets(version: str) -> None:
+    """
+    Put a version query on every script and stylesheet reference.
+
+    Without it a browser keeps serving the JavaScript it cached the first time, so a front-end change
+    appears to have done nothing however many times the site is rebuilt. The HTML changes on each
+    build, which is what forces the new assets to be fetched.
+    """
+    pat = re.compile(r'(<(?:script src|link rel="stylesheet" href)=")([\w./-]+\.(?:js|css))(\?v=[^"]*)?(")')
+    for path in sorted(config.SITE_DIR.glob("*.html")):
+        html = path.read_text()
+        new = pat.sub(lambda m: f"{m.group(1)}{m.group(2)}?v={version}{m.group(4)}", html)
+        if new != html:
+            path.write_text(new)
+
+
 def build_status(leagues: list[str], season: int) -> dict:
     jl = storage.read_table(config.TABLES / "ops" / "job_log.csv")
     vl = storage.read_table(config.TABLES / "ops" / "validation_log.csv")
@@ -625,6 +642,7 @@ def run(leagues: list[str], season: int, weeks: list[int] | None, job: JobRun) -
                     print(f"  matchup page failed for {entry['game_id']}: {e}")
             job.rows_written += n
             print(f"{league} {season} W{wk}: slate {len(slate['games'])} games, {n} matchup pages")
+    stamp_assets(manifest["version"])
     (OUT / "status.json").write_text(json.dumps(build_status(leagues, season), default=str))
     (OUT / "manifest.json").write_text(json.dumps(manifest))
     print(f"manifest: {manifest['current_week']} version {manifest['version']}")

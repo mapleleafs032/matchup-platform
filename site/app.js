@@ -229,8 +229,9 @@ App.marketChart = function (opts) {
     if (!s) return "no splits recorded";
     const tk = s[`${spec.splitKey}_ticket`], mn = s[`${spec.splitKey}_money`];
     if (tk == null && mn == null) return "no splits recorded";
-    const v = x => (x == null ? "?" : Math.round((side === "home" ? x : 1 - x) * 100) + "%");
-    return `Bet ${v(tk)} · Money ${v(mn)}`;
+    const v = (x, carried) => x == null ? "not published"
+      : Math.round((side === "home" ? x : 1 - x) * 100) + "%" + (carried ? " (last published)" : "");
+    return `Bets ${v(tk, s[`${spec.splitKey}_ticket_carried`])} · Money ${v(mn, s[`${spec.splitKey}_money_carried`])}`;
   };
 
   const W = 880, H = 320, L = 56, R = 20, T = 64, B = 40;   // T leaves a clear band for event labels
