@@ -63,7 +63,14 @@ def _store_all(league, season, plays, drives, box, adv, qb, job):
     n += _merge_replace(STATS / "drives" / league / f"{season}.parquet", drives, ["drive_id"])
     n += _merge_replace(STATS / "team_game_stats" / league / f"{season}.parquet", box, ["game_id", "team_id"])
     n += _merge_replace(STATS / "team_game_advanced" / league / f"{season}.parquet", adv, ["game_id", "team_id", "is_garbage_filtered"])
-    n += _merge_replace(STATS / "player_game_stats" / league / f"{season}.parquet", qb, ["game_id", "team_id", "player_id"])
+    # QBR is merged in by the context job from a separate source. Rebuilding this table would wipe it,
+    # so any values already stored are carried across the rebuild.
+    pgs_path = STATS / "player_game_stats" / league / f"{season}.parquet"
+    prior = storage.read_table(pgs_path)
+    if not qb.empty and not prior.empty and "qbr" in prior.columns and prior.qbr.notna().any():
+        keep = prior.loc[prior.qbr.notna(), ["game_id", "team_id", "player_id", "qbr"]]
+        qb = qb.drop(columns=["qbr"], errors="ignore").merge(keep, on=["game_id", "team_id", "player_id"], how="left")
+    n += _merge_replace(pgs_path, qb, ["game_id", "team_id", "player_id"])
     job.rows_written += n
 
 

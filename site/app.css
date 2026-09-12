@@ -262,3 +262,29 @@ table.plain th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
 .mchart .pt { cursor: pointer; }
 .mchart .pt:hover circle:nth-child(3), .mchart .pt:focus circle:nth-child(3) { r: 8; }
 .mchart svg { width: 100%; height: auto; }
+
+/* ---------- quick look scorecard ---------- */
+.ql-wrap { overflow-x: auto; }
+table.ql { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+table.ql th, table.ql td { padding: 5px 10px; border-bottom: 1px solid var(--rule); text-align: left; white-space: nowrap; }
+table.ql tr.ql-head th { font-family: var(--cond); font-size: 14px; text-transform: none; color: var(--ink);
+  background: var(--rule); border-bottom: 2px solid var(--ink); text-align: center; }
+table.ql tr.ql-head th:first-child { text-align: left; }
+table.ql th[scope="row"] { font-family: var(--cond); font-weight: 600; font-size: 14px; }
+table.ql td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.ql td.rk { color: var(--mute); font-size: 12.5px; text-align: left; padding-left: 4px; width: 34px; }
+table.ql td.ql-edge { font-weight: 600; }
+table.ql td.ql-edge.home { color: var(--home); } table.ql td.ql-edge.away { color: var(--away); }
+table.ql tr.ql-total th, table.ql tr.ql-total td { border-top: 2px solid var(--ink); border-bottom: none;
+  font-weight: 700; font-size: 15px; padding-top: 8px; }
+table.ql tr.ql-total td.num { text-align: center; }
+/* group tinting keeps related pairs reading together */
+table.ql tr.g-scoring td, table.ql tr.g-scoring th[scope="row"] { background: rgba(214, 158, 46, .10); }
+table.ql tr.g-eff td,     table.ql tr.g-eff th[scope="row"]     { background: rgba(43, 108, 176, .10); }
+table.ql tr.g-rush td,    table.ql tr.g-rush th[scope="row"]    { background: rgba(192, 86, 33, .10); }
+table.ql tr.g-pass td,    table.ql tr.g-pass th[scope="row"]    { background: rgba(151, 38, 109, .09); }
+table.ql tr.g-qb td,      table.ql tr.g-qb th[scope="row"]      { background: rgba(47, 133, 90, .12); }
+table.ql tr.g-trench td,  table.ql tr.g-trench th[scope="row"]  { background: rgba(214, 158, 46, .10); }
+table.ql tr.g-sit td,     table.ql tr.g-sit th[scope="row"]     { background: rgba(102, 75, 173, .10); }
+table.ql tr.g-rz td,      table.ql tr.g-rz th[scope="row"]      { background: rgba(197, 48, 48, .10); }
+table.ql tr.g-other td,   table.ql tr.g-other th[scope="row"]   { background: rgba(74, 85, 104, .09); }

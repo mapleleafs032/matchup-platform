@@ -33,6 +33,56 @@ async function matchupMain() {
   const avail = d.edges.filter(e => !e.unavailable && e.points_home != null);
   const maxPts = Math.max(1.5, ...avail.map(e => Math.abs(e.points_home)));
   const state = { window: d.metrics.default_window, adj: "OPP_ADJ" };
+
+  /* ---- quick look: the stats worth seeing first, value + national rank, with an edge tally ---- */
+  const qlAdj = { v: "OPP_ADJ" };
+  const qlWrap = el("div", { class: "ql-wrap" });
+  const qlToggle = el("div", { class: "seg", role: "group", "aria-label": "Quick look basis" });
+  for (const [k, lab] of [["OPP_ADJ", "Opponent-adjusted"], ["RAW", "Raw"]]) {
+    const b = el("button", { "aria-pressed": String(k === qlAdj.v) }, lab);
+    b.addEventListener("click", () => { qlAdj.v = k; paintQuick(); });
+    qlToggle.append(b);
+  }
+  function fmtQL(v, unit) {
+    if (v == null) return "—";
+    if (unit === "pct") return (v * 100).toFixed(2) + "%";
+    if (unit === "rank") return "#" + v;
+    if (unit === "qbr") return v.toFixed(1);
+    return Math.abs(v) >= 50 ? v.toFixed(0) : v.toFixed(1);
+  }
+  function paintQuick() {
+    [...qlToggle.children].forEach(b => b.setAttribute("aria-pressed", String((b.textContent === "Raw") === (qlAdj.v === "RAW"))));
+    const q = (d.quick_look || {})[qlAdj.v];
+    qlWrap.replaceChildren();
+    if (!q || !q.rows || !q.rows.length) { qlWrap.append(el("p", { class: "note" }, "Quick look is unavailable for this game.")); return; }
+    const aAbbr = d.game.away.abbr, hAbbr = d.game.home.abbr;
+    const tbl = el("table", { class: "ql" });
+    tbl.append(el("tr", { class: "ql-head" },
+      el("th", {}, "Metric"),
+      el("th", { colspan: "2" }, d.game.away.short || d.game.away.name),
+      el("th", { colspan: "2" }, d.game.home.short || d.game.home.name),
+      el("th", {}, "Edge")));
+    for (const r of q.rows) {
+      const side = r.edge === "home" ? (d.game.home.short || hAbbr) : r.edge === "away" ? (d.game.away.short || aAbbr) : "";
+      tbl.append(el("tr", { class: "g-" + r.group.toLowerCase() },
+        el("th", { scope: "row" }, r.label),
+        el("td", { class: "num" }, fmtQL(r.away.v, r.unit)),
+        el("td", { class: "num rk" }, r.away.rank == null ? "" : String(r.away.rank)),
+        el("td", { class: "num" }, fmtQL(r.home.v, r.unit)),
+        el("td", { class: "num rk" }, r.home.rank == null ? "" : String(r.home.rank)),
+        el("td", { class: "ql-edge " + (r.edge || "") }, side)));
+    }
+    const w = q.winner;
+    tbl.append(el("tr", { class: "ql-total" },
+      el("th", { scope: "row" }, "Edge Count"),
+      el("td", { class: "num", colspan: "2" }, String(q.edge_count.away)),
+      el("td", { class: "num", colspan: "2" }, String(q.edge_count.home)),
+      el("td", { class: "ql-edge " + (w || "") }, w === "home" ? (d.game.home.short || hAbbr) : w === "away" ? (d.game.away.short || aAbbr) : "even")));
+    qlWrap.append(tbl);
+    qlWrap.append(el("p", { class: "note" }, q.edge_rule + " Ranks are among all teams in the league this week; blank means the metric has no rank."));
+  }
+  paintQuick();
+  sec("Quick look", el("div", {}, el("div", { class: "toolbar" }, el("label", {}, "Basis ", qlToggle)), qlWrap));
   const tabs = el("div", { class: "tabs" });
   for (const w of d.metrics.windows) { const b = el("button", { "aria-pressed": String(w === state.window) }, ({ SEASON: "Season", LAST5: "Last 5", LAST3: "Last 3", HOME: "Home", AWAY: "Away", CONF: "Conference" })[w] || w); b.addEventListener("click", () => { state.window = w; paintGrid(); }); tabs.append(b); }
   const adjTabs = el("div", { class: "tabs" });

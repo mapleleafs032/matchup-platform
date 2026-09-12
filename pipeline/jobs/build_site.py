@@ -158,6 +158,101 @@ def slate_entry(S: Season, g, mkt_row, edges: pd.DataFrame) -> dict:
             "filters": {"date": _local_date(kick, tz), "conf_home": home["conf"], "conf_away": away["conf"], "ranked": bool(home["rank"] or away["rank"]), "favorite": fav}}
 
 
+
+# Quick-look scorecard (§57): a fixed set of the stats worth seeing first, with each team's value and
+# national rank side by side and an edge tally. Rows are grouped so related pairs read together.
+QUICK_ROWS = [
+    ("SCORING",  "Points/Gm",        "points_per_game"),
+    ("SCORING",  "Points All/Gm",    "points_allowed_per_game"),
+    ("EFF",      "YPP (Offense)",    "yards_per_play_off"),
+    ("EFF",      "YPP (Defense)",    "yards_per_play_def"),
+    ("RUSH",     "Rush Yds/Gm",      "rush_yds_per_game"),
+    ("RUSH",     "Opp RY/Gm",        "opp_rush_yds_per_game"),
+    ("RUSH",     "Yds/Rush",         "yards_per_rush"),
+    ("RUSH",     "Opp Yds/Rush",     "opp_yards_per_rush"),
+    ("PASS",     "Pass Yds/Gm",      "pass_yds_per_game"),
+    ("PASS",     "Opp PY/Gm",        "opp_pass_yds_per_game"),
+    ("PASS",     "Yds/Pass",         "yards_per_pass"),
+    ("PASS",     "Opp Yds/Pass",     "opp_yards_per_pass"),
+    ("QB",       "QBR",              "__qbr"),
+    ("TRENCH",   "Sack Allowed%",    "sack_rate_allowed"),
+    ("TRENCH",   "Sack%",            "sack_rate"),
+    ("SIT",      "3D% (Offense)",    "third_down_pct_off"),
+    ("SIT",      "3D% (Defense)",    "third_down_pct_def"),
+    ("RZ",       "RZ% (Offense)",    "off_rz_td_rate"),
+    ("RZ",       "RZ% (Defense)",    "def_rz_td_rate_allowed"),
+    ("OTHER",    "TO Margin",        "turnover_margin"),
+    ("OTHER",    "SOS",              "__sos"),
+]
+QUICK_EDGE_PCT_GAP = 0.12       # percentile gap at which one side is credited with the edge
+
+
+def _team_qbr(S: "Season", team_id: str, week: int) -> float | None:
+    """Season QBR for the team's primary passer, weighted by attempts. NFL uses ESPN QBR merged by the
+    context job; CFB uses whatever the provider box supplies. None when unavailable."""
+    path = config.TABLES / "stats" / "player_game_stats" / S.league / f"{S.season}.parquet"
+    pgs = storage.read_table(path)
+    if pgs.empty or "qbr" not in pgs.columns:
+        return None
+    g = S.games[(S.games.week < week)]
+    ids = set(g.game_id)
+    sub = pgs[(pgs.team_id == team_id) & pgs.game_id.isin(ids) & pgs.qbr.notna() & pgs.pass_att.notna()]
+    if sub.empty:
+        return None
+    starters = sub.sort_values("pass_att").groupby("game_id").tail(1)
+    att = starters.pass_att.sum()
+    return round(float((starters.qbr * starters.pass_att).sum() / att), 1) if att else None
+
+
+def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, metrics_rows: list, adj: str = "OPP_ADJ") -> dict:
+    by_key = {r["metric_key"]: r for r in metrics_rows}
+    reg = S.reg.set_index("metric_key") if not S.reg.empty else pd.DataFrame()
+    rat = storage.read_table(AN / "team_ratings" / S.league / f"{S.season}.parquet")
+    rat = rat[rat.as_of_week == week].set_index("team_id") if not rat.empty and (rat.as_of_week == week).any() else pd.DataFrame()
+    qbr = {t: _team_qbr(S, t, week) for t in (home, away)}
+    rows, tally = [], {"home": 0, "away": 0}
+    for group, label, key in QUICK_ROWS:
+        hib, unit = True, None
+        if key == "__qbr":
+            a = {"v": qbr[away], "rank": None, "pct": None}
+            h = {"v": qbr[home], "rank": None, "pct": None}
+            unit = "qbr"
+        elif key == "__sos":
+            def sos(t):
+                if rat.empty or t not in rat.index:
+                    return {"v": None, "rank": None, "pct": None}
+                return {"v": int(rat.loc[t].sos_rank), "rank": None, "pct": None}
+            a, h = sos(away), sos(home)
+            hib = False            # a lower SOS rank means a tougher schedule faced
+            unit = "rank"
+        else:
+            row = by_key.get(key)
+            if not row:
+                continue
+            k = f"SEASON:{adj}"
+            a = row["away"].get(k) or row["away"].get("SEASON:RAW") or {}
+            h = row["home"].get(k) or row["home"].get("SEASON:RAW") or {}
+            if not reg.empty and key in reg.index:
+                hib = bool(reg.loc[key].higher_is_better); unit = reg.loc[key].unit
+        av, hv = a.get("v") if a else None, h.get("v") if h else None
+        edge = None
+        ap, hp = (a or {}).get("pct"), (h or {}).get("pct")
+        if ap is not None and hp is not None and abs(hp - ap) >= QUICK_EDGE_PCT_GAP:
+            edge = "home" if hp > ap else "away"
+        elif ap is None and hp is None and av is not None and hv is not None:
+            better_home = (hv > av) if hib else (hv < av)
+            edge = "home" if better_home else "away"
+        if edge:
+            tally[edge] += 1
+        rows.append({"group": group, "label": label, "metric_key": key, "unit": unit, "higher_is_better": hib,
+                     "away": {"v": av, "rank": (a or {}).get("rank")}, "home": {"v": hv, "rank": (h or {}).get("rank")},
+                     "edge": edge})
+    return {"rows": rows, "edge_count": tally,
+            "winner": ("home" if tally["home"] > tally["away"] else "away" if tally["away"] > tally["home"] else None),
+            "adjustment": adj, "edge_rule": f"An edge is credited when the two teams differ by at least "
+                                            f"{int(QUICK_EDGE_PCT_GAP*100)} percentile points on that metric."}
+
+
 def build_odds(S: Season, week: int, slate: dict) -> dict:
     """Odds tab payload: one entry per game with the splits history for both periods, plus the line history."""
     sp = splits_engine.build_week(S.league, S.season, week, S.games[(S.games.week == week)], S.teams)
@@ -357,6 +452,7 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
     return {"game": entry, "status": g.status, "frozen_from_snapshot": bool(snap), "locked_at": snap["locked_at"] if snap else None,
             "teams": {"away": team_block(away, entry["away"]), "home": team_block(home, entry["home"])},
             "metrics": {"windows": WINDOWS, "default_window": "SEASON", "rows": metrics_rows, "quality_flags": qflags},
+            "quick_look": {a: build_quick_look(S, week, gid, home, away, metrics_rows, a) for a in ("OPP_ADJ", "RAW")},
             "splits": splits_engine.build_week(S.league, S.season, week, S.games[S.games.game_id == gid], S.teams).get(gid, {}).get("periods", {}),
             "market_state": _market_state_for(S, week, gid, entry),
             "edges": edge_list, "model": model, "market": market, "market_history_url": f"json/market/{gid}.json", "weather": wx, "result": result, "ai": S.ai_block(gid),
