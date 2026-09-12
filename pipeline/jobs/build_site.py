@@ -242,15 +242,41 @@ def _team_qb_metric_passer(S: "Season", team_id: str, week: int) -> float | None
     return _passer_rating(st.pass_cmp.sum(), st.pass_att.sum(), st.pass_yds.sum(), st.pass_td.sum(), st.pass_int.sum())
 
 
-def _fpi_sos(S: "Season", team_id: str) -> int | None:
-    """ESPN FPI strength-of-schedule rank, taken from ESPN's own endpoint. CFB only."""
-    f = storage.read_table(config.TABLES / "context" / "espn_fpi" / f"{S.season}.parquet")
-    if f.empty or "sos_rank_espn" not in f.columns:
-        return None
-    r = f[f.team_id == team_id]
-    if r.empty or pd.isna(r.sos_rank_espn.iloc[0]):
-        return None
-    return int(r.sos_rank_espn.iloc[0])
+def _espn_sos_manual(S: "Season") -> dict:
+    """
+    ESPN's SOS ranks, entered by hand from the FPI resume page.
+
+    ESPN's public power-index endpoint does not carry this number: its `resume` array is unlabelled and,
+    checked against two known ranks (Texas State 1st, Clemson 5th), no column matches both. So there is
+    nothing to read automatically. Drop a two-column CSV at data/manual/espn_sos.csv with headers
+    `team,sos_rank` -- team may be the ESPN name, our team_id, or any known alias -- and it is used here.
+    """
+    path = config.DATA / "manual" / "espn_sos.csv"
+    if not path.exists():
+        return {}
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return {}
+    if not {"team", "sos_rank"} <= set(df.columns):
+        return {}
+    from pipeline import ids as _ids
+    resolver = _ids.AliasResolver.load()
+    out = {}
+    for _, r in df.iterrows():
+        if pd.isna(r.team) or pd.isna(r.sos_rank):
+            continue
+        name = str(r.team).strip()
+        tid = name if name.startswith(("CFB_", "NFL_")) else None
+        if tid is None:
+            for prov in ("espn", "vsin", "cfbd", "nflverse"):
+                try:
+                    tid = resolver.resolve(prov, alias=name); break
+                except _ids.UnmatchedAlias:
+                    resolver.unmatched.pop()
+        if tid:
+            out[tid] = int(r.sos_rank)
+    return out
 
 
 def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, metrics_rows: list, adj: str = "OPP_ADJ") -> dict:
@@ -272,10 +298,10 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
             unit = "qbr"
             label = "QBR" if qb_kind == "QBR" else "Pass Efficiency"
         elif key == "__sos":
+            manual = _espn_sos_manual(S)
             def sos(t):
-                fpi = _fpi_sos(S, t) if S.league == "CFB" else None       # ESPN FPI rank when we have it
-                if fpi is not None:
-                    return {"v": fpi, "rank": None, "pct": None}
+                if t in manual:                      # ESPN's own rank, when it has been entered
+                    return {"v": manual[t], "rank": None, "pct": None}
                 if rat.empty or t not in rat.index:
                     return {"v": None, "rank": None, "pct": None}
                 return {"v": int(rat.loc[t].sos_rank), "rank": None, "pct": None}
@@ -510,6 +536,8 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
             "teams": {"away": team_block(away, entry["away"]), "home": team_block(home, entry["home"])},
             "metrics": {"windows": WINDOWS, "default_window": "SEASON", "rows": metrics_rows, "quality_flags": qflags},
             "quick_look": {a: build_quick_look(S, week, gid, home, away, metrics_rows, a) for a in ("OPP_ADJ", "RAW")},
+            "sos_source": ("ESPN FPI resume, entered manually" if _espn_sos_manual(S)
+                           else "this platform's own opponent-rating strength of schedule"),
             "splits": splits_engine.build_week(S.league, S.season, week, S.games[S.games.game_id == gid], S.teams).get(gid, {}).get("periods", {}),
             "market_state": _market_state_for(S, week, gid, entry),
             "edges": edge_list, "model": model, "market": market, "market_history_url": f"json/market/{gid}.json", "weather": wx, "result": result, "ai": S.ai_block(gid),

@@ -11,6 +11,7 @@ async function oddsMain() {
     period: localStorage.getItem("odds.period") || "FULL",
     metric: localStorage.getItem("odds.metric") || "both",
     onlyWithSplits: false,
+    window: localStorage.getItem("odds.window") || "all",   // how far back the chart shows
   };
   const toolbar = document.getElementById("toolbar"), mt = document.getElementById("market-toolbar");
 
@@ -75,8 +76,10 @@ async function oddsMain() {
     const shown = games.filter(g => (S.date === "all" || g.filters.date === S.date) && (S.conf === "all" || g.filters.conf_home === S.conf || g.filters.conf_away === S.conf)
       && (!S.ranked || g.filters.ranked) && (S.fav === "all" || g.filters.favorite === S.fav) && (S.status === "all" || g.status === S.status)
       && (!S.onlyWithSplits || (g.splits?.[S.period]?.available)));
+    const winLabel = S.window === "all" ? "full history"
+      : S.window === "gameday" ? "game day only" : `last ${S.window} hours`;
     document.getElementById("coverage").textContent =
-      `${data.coverage.with_splits} of ${data.coverage.total} games have splits this week. ${data.source_note}`;
+      `${data.coverage.with_splits} of ${data.coverage.total} games have splits this week. Charts show ${winLabel}. ${data.source_note}`;
     root.replaceChildren();
     if (!shown.length) { root.append(el("div", { class: "empty" }, "No games match these filters.")); return; }
     for (const g of shown) root.append(card(g));
@@ -118,15 +121,39 @@ async function oddsMain() {
     return el("section", { class: "og" }, head, pair, chips, chart(sp, g), notes);
   }
 
+  /* Snapshots bunch up near kickoff: the week before is hourly, game day is every 15 minutes, so on a
+     full-history axis today's pulls collapse into the right-hand edge. Narrowing the window spreads
+     them out. Kickoff anchors "game day" so the window means the same thing for every game. */
+  function windowStart(g, series) {
+    if (S.window === "all" || !series.length) return null;
+    const last = new Date(series[series.length - 1].t).getTime();
+    if (S.window === "gameday") {
+      const kick = g.kickoff_utc ? new Date(g.kickoff_utc) : null;
+      if (!kick) return last - 24 * 3600e3;
+      const d0 = new Date(kick); d0.setHours(0, 0, 0, 0);
+      return d0.getTime();
+    }
+    return last - Number(S.window) * 3600e3;
+  }
   function chart(sp, g) {
-    return App.marketChart({
-      lineSeries: g.line_series || [],
-      splitsSeries: sp.series || [],
-      events: g.events || [],
+    const splits = sp.series || [];
+    const from = windowStart(g, splits);
+    const clip = arr => (from == null ? arr : arr.filter(p => new Date(p.t).getTime() >= from));
+    const cs = clip(splits), cl = clip(g.line_series || []), ce = clip(g.events || []);
+    const shown = App.marketChart({
+      lineSeries: cl.length ? cl : (from == null ? (g.line_series || []) : []),
+      splitsSeries: cs,
+      events: ce,
       market: S.market,
       homeAbbr: g.home.abbr, awayAbbr: g.away.abbr,
       book: sp.book || (g.market && g.market.book) || null,
     });
+    if (from != null && cs.length < 2) {
+      return el("div", {},
+        el("p", { class: "og-empty" }, `Only ${cs.length} snapshot${cs.length === 1 ? "" : "s"} in this window — widen it to see the movement.`),
+        shown);
+    }
+    return shown;
   }
 
   load();

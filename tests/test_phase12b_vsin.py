@@ -313,21 +313,56 @@ def _espn_resolver(rows):
     return r
 
 
-def test_espn_sos_column_is_verified_against_the_sort_order():
-    """Requested sorted by average SOS rank, so each team's position must equal the pinned column.
-    That proves the column on every pull instead of trusting a position that could move."""
+def test_positional_check_cannot_distinguish_a_rank_from_a_row_index():
+    """The mistake this guards against: resume[2] counting 1,2,3 down a list sorted by SOS looks
+    identical to a plain row index. A check against sort order therefore proves nothing, so an
+    unlabelled column is never trusted on that basis alone."""
+    import config
     from providers import espn_fpi
     rows = [("Texas State Bobcats", [103, 97, 1, 93, 68, 132]), ("Ball State Cardinals", [135, 97, 2, 127, 69, 133]),
             ("Wisconsin Badgers", [52, 97, 3, 60, 22, 109]), ("Clemson Tigers", [42, 97, 4, 45, 63, 123])]
     rows += [("Team %d" % i, [i, 97, i, i, i, i]) for i in range(5, 20)]
     r = _espn_resolver(rows)
-    ts = pd.Timestamp("2026-09-12T15:00:00Z")
-    df, notes = espn_fpi.normalize(_espn_payload(rows), 2026, r, ts, set())
-    assert any("column verified" in n for n in notes)
-    assert int(df.sos_rank_espn.iloc[0]) == 1 and int(df.sos_rank_espn.iloc[3]) == 4
-    # column 1 is a constant 97 for every team, so it is not a rank and must never be chosen
-    assert not (df.sos_rank_espn == 97).any()
-    shifted = [(n, v[1:] + v[:1]) for n, v in rows]
-    df2, notes2 = espn_fpi.normalize(_espn_payload(shifted), 2026, r, ts, set())
-    assert any("NOT verified" in n for n in notes2)
-    assert int(df2.sos_rank_espn.notna().sum()) == 0        # a moved column stores nothing
+    df, notes = espn_fpi.normalize(_espn_payload(rows), 2026, r, pd.Timestamp("2026-09-12T15:00:00Z"), set())
+    assert config.ESPN_SOS_RESUME_INDEX is None                 # unresolved, so nothing is pinned
+    assert int(df.sos_rank_espn.notna().sum()) == 0             # and nothing is stored
+    assert any("not pinned" in n or "NOT verified" in n for n in notes)
+
+
+def test_labelled_response_still_resolves_without_any_pinning():
+    """When ESPN returns named fields there is no ambiguity, and the value is used regardless."""
+    from providers import espn_fpi
+    r = ids.AliasResolver.load()
+    r.add([{"provider": "espn", "alias": "Alabama Crimson Tide", "provider_id": None, "team_id": "CFB_ALA",
+            "season_from": None, "season_to": None}])
+    payload = {"teams": [{"team": {"displayName": "Alabama Crimson Tide"},
+                          "stats": [{"name": "avgsosrank", "rank": 7}]}]}
+    df, _ = espn_fpi.normalize(payload, 2026, r, pd.Timestamp("2026-09-12T15:00:00Z"), set())
+    assert int(df.sos_rank_espn.iloc[0]) == 7
+
+
+def _payload_from(order):
+    return {"items": [{"team": {"displayName": n}, "categories": [
+        {"name": "resume", "ranks": ["-"] * 6, "values": [float(x) for x in v]}]} for n, v in order]}
+
+
+def test_cross_sort_check_separates_a_real_rank_from_a_row_index():
+    """The check that can actually fail. A statistic travels with its team when the sort changes;
+    a row index follows the position instead."""
+    from providers import espn_fpi
+    teams = [f"Team {i}" for i in range(1, 41)]
+    sos = {t: i + 1 for i, t in enumerate(teams)}                     # true SOS rank
+    # pull A: sorted by SOS, so position == rank for both readings
+    A = _payload_from([(t, [0, 0, sos[t], 0, 0, 0]) for t in teams])
+    # pull B: a different order. A real statistic keeps each team's own value.
+    shuffled = teams[::-1]
+    B_real = _payload_from([(t, [0, 0, sos[t], 0, 0, 0]) for t in shuffled])
+    ok, why = espn_fpi.verify_across_sorts(A, B_real, 2)
+    assert ok and "stayed with the team" in why
+    # ...whereas a row index renumbers 1..N down the new order
+    B_index = _payload_from([(t, [0, 0, pos, 0, 0, 0]) for pos, t in enumerate(shuffled, start=1)])
+    ok2, why2 = espn_fpi.verify_across_sorts(A, B_index, 2)
+    assert not ok2 and "it is an index, not a rank" in why2
+    # and an ignored sort parameter is caught rather than treated as agreement
+    ok3, why3 = espn_fpi.verify_across_sorts(A, A, 2)
+    assert not ok3 and "same order" in why3

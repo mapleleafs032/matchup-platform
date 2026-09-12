@@ -183,6 +183,21 @@ def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
             vlog.warn("PROVIDER_FAIL", "espn_fpi", "", str(e)[:160], "200")
             print(f"ESPN FPI {season}: unavailable ({str(e)[:120]})")
             payload = None
+        # Resolve the unlabelled column properly: a second pull under a different sort tells a real
+        # statistic (travels with the team) from a row index (follows the position).
+        verified_idx = None
+        if payload is not None and config.ESPN_SOS_CANDIDATE_INDEX is not None:
+            try:
+                second = espn_fpi.fetch_sorted(erm, season, "resume.strengthofrecord:desc")
+                ok2, why2 = espn_fpi.verify_across_sorts(payload, second, config.ESPN_SOS_CANDIDATE_INDEX)
+                print(f"    cross-sort check: {why2}")
+                if ok2:
+                    verified_idx = config.ESPN_SOS_CANDIDATE_INDEX
+            except Exception as e:
+                print(f"    cross-sort check could not run: {str(e)[:120]}")
+        import providers.espn_fpi as _ef
+        _prev = config.ESPN_SOS_RESUME_INDEX
+        config.ESPN_SOS_RESUME_INDEX = verified_idx
         if payload is not None:
             f, notes = espn_fpi.normalize(payload, season, resolver, erm and __import__("pandas").Timestamp.now(tz="UTC"), unmatched)
             for n in notes:
@@ -200,6 +215,7 @@ def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
                 _merge_by_key(CONTEXT / "espn_fpi" / f"{season}.parquet", f, ["team_id", "season"])
                 job.rows_written += len(f)
                 print(f"ESPN FPI {season} (via {which}): {len(f)} teams, {int(f.sos_rank_espn.notna().sum())} with a strength-of-schedule rank")
+        config.ESPN_SOS_RESUME_INDEX = _prev
         job.api_calls += erm.calls_this_run
     if "venues" in what:
         res = cfbd_context.fetch_venues(rm)

@@ -184,6 +184,38 @@ def resume_values(payload) -> list[tuple[str, list]]:
     return out
 
 
+def verify_across_sorts(primary, secondary, idx: int) -> tuple[bool, str]:
+    """
+    The only check that can separate a real rank from a row index: pull the same season under two
+    different sorts. A statistic TRAVELS WITH THE TEAM; a row index follows the position instead.
+    Checking a sorted list against its own order (what I did before) can never fail and proves nothing.
+    """
+    A = {n: v for n, v in resume_values(primary) if n}
+    B = {n: v for n, v in resume_values(secondary) if n}
+    shared = [t for t in A if t in B and len(A[t]) > idx and len(B[t]) > idx]
+    if len(shared) < 20:
+        return False, f"only {len(shared)} teams appeared in both pulls"
+    order_b = [t for t, _ in resume_values(secondary) if t]
+    if [t for t, _ in resume_values(primary) if t] == order_b:
+        return False, "both pulls returned the same order, so the sort parameter is being ignored"
+    travels = sum(1 for t in shared if float(A[t][idx]) == float(B[t][idx]))
+    pos_of = {t: i + 1 for i, t in enumerate(order_b)}
+    follows = sum(1 for t in shared if t in pos_of and int(float(B[t][idx])) == pos_of[t])
+    if follows > len(shared) * 0.9:
+        return False, f"resume[{idx}] tracked row position in the second pull ({follows}/{len(shared)}): it is an index, not a rank"
+    if travels > len(shared) * 0.95:
+        return True, f"resume[{idx}] stayed with the team across both sorts ({travels}/{len(shared)}): it is a real statistic"
+    return False, f"resume[{idx}] neither travelled with the team ({travels}/{len(shared)}) nor tracked position ({follows}/{len(shared)})"
+
+
+def fetch_sorted(rm, season: int, sort: str | None):
+    params = {"region": "us", "lang": "en", "contentorigin": "espn", "limit": 400, "page": 1, "season": season}
+    if sort:
+        params["sort"] = sort
+    return rm.get(FITT, params=params, headers={"User-Agent": UA, "Accept": "application/json",
+                                                "Referer": "https://www.espn.com/college-football/fpi/"}, timeout=45).payload
+
+
 def verify_sos_column(payload) -> tuple[bool, str]:
     """
     The response is requested sorted by average strength-of-schedule rank, so each team's position in

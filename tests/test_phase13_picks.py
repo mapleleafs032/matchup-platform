@@ -215,3 +215,21 @@ def test_ncaa_passing_efficiency_formula():
     # interceptions subtract
     assert _passer_rating(20, 30, 300, 3, 2) == round((8.4 * 300 + 330 * 3 + 100 * 20 - 200 * 2) / 30, 1)
     assert _passer_rating(0, 0, 0, 0, 0) is None          # no attempts -> unavailable, not a divide by zero
+
+
+def test_espn_sos_manual_override_and_honest_source_label(tmp_path, monkeypatch):
+    """ESPN's endpoint does not carry the SOS rank, so the number is either entered by hand or is our
+    own. Whichever it is, the page must say so rather than claim a source it is not using."""
+    import config
+    from pipeline.jobs import build_site as bs
+    monkeypatch.setattr(config, "DATA", tmp_path)
+    (tmp_path / "manual").mkdir()
+
+    class S:
+        league, season = "CFB", 2026
+    assert bs._espn_sos_manual(S()) == {}                       # no file -> nothing claimed
+    (tmp_path / "manual" / "espn_sos.csv").write_text("team,sos_rank\n")
+    assert bs._espn_sos_manual(S()) == {}                       # empty file is still nothing
+    (tmp_path / "manual" / "espn_sos.csv").write_text("team,sos_rank\nCFB_TXST,1\nCFB_CLEM,5\n")
+    m = bs._espn_sos_manual(S())
+    assert m == {"CFB_TXST": 1, "CFB_CLEM": 5}                  # team_ids pass straight through

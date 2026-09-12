@@ -149,12 +149,19 @@ SPLITS_BOOK_DEFAULT = "draftkings"
 # ESPN's core power-index endpoint returns the resume category as six UNLABELLED numbers. Once the
 # position of strength of schedule is confirmed against a team whose rank is known, pin it here.
 # Left as None, no strength-of-schedule value is stored at all -- a blank beats a wrong number.
-# Confirmed 2026-09-12: requesting sort=resume.avgsosrank:asc returns the teams in SOS order, and
-# resume[2] counts 1,2,3... in that order -- so resume[2] IS the average strength-of-schedule rank
-# (the "SOS" column on ESPN's FPI resume page). Row position and resume[2] are cross-checked on every
-# pull; if they ever disagree, nothing is stored and the job says so.
-ESPN_SOS_RESUME_INDEX = 2
-ESPN_SOS_SORTED_REQUEST = True      # the sort above is load-bearing for the cross-check
+# UNRESOLVED. resume[2] read 1,2,3... down a list requested sorted by SOS -- but a plain row index
+# would look identical, so that observation cannot tell the two apart. Until the probe below
+# distinguishes them, no strength-of-schedule value is stored and the row shows blank.
+#   python -m pipeline.jobs.probe_espn_sos --season 2026
+
+# ESPN's resume array comes back unlabelled. resume[2] read 1,2,3... down a list requested sorted by
+# SOS -- but a plain row index looks identical, so that alone cannot identify the column. Until
+# `python -m pipeline.jobs.probe_espn_sos` separates the two, nothing is stored and the row shows blank.
+ESPN_SOS_RESUME_INDEX = None        # set per-run by the cross-sort check below; never trusted statically
+# The column we believe holds the SOS rank. It is only used if a second pull under a different sort
+# shows the value travelling with the team rather than following the row position.
+ESPN_SOS_CANDIDATE_INDEX = 2
+ESPN_SOS_SORTED_REQUEST = True
 
 MARKET_FROM_VSIN = True    # VSiN carries the DraftKings line with the splits: one source, one timestamp
 VSIN = {"enabled": True, "attribution": "Betting splits: DraftKings action via VSiN (data.vsin.com)"}
