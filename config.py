@@ -146,6 +146,7 @@ SPLITS_API_KEY = os.environ.get("SPLITS_API_KEY", "").strip()
 SPLITS_BOOK_DEFAULT = "draftkings"
 # VSiN publishes DraftKings ticket/handle splits on a public page. Polite cadence, identifying User-Agent,
 # attribution shown in the app. Set enabled=False to stop collecting immediately.
+MARKET_FROM_VSIN = True    # VSiN carries the DraftKings line with the splits: one source, one timestamp
 VSIN = {"enabled": True, "attribution": "Betting splits: DraftKings action via VSiN (data.vsin.com)"}
 SPLITS_PERIODS = ("FULL", "1H")
 # Divergence: ticket share minus money share, in percentage points, at which the two disagree enough to note.

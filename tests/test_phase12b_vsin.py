@@ -206,3 +206,26 @@ def test_single_published_side_is_recovered_as_its_complement():
     assert rec["total_ticket_pct_home"] == 0.74          # over bets published on the away row
     assert rec["total_money_pct_home"] == 0.59           # under handle 41% published -> over handle is 59%
     assert any(p["kind"] == "single_sided_pct" for p in problems)    # recovery is recorded, not silent
+
+
+def test_vsin_lines_become_market_snapshots(tmp_path, monkeypatch):
+    """With VSiN as the single market source, its line must land in market_snapshots so the market
+    engine, predictions and picks keep working unchanged."""
+    import config
+    from pipeline.jobs import ingest_splits as isp
+    monkeypatch.setattr(config, "TABLES", tmp_path / "tables")
+    games = pd.DataFrame([{"game_id": "2026_NFL_W01_NE_SEA", "week": 1}])
+    recs = [{"game_id": "2026_NFL_W01_NE_SEA", "retrieved_at": "2026-09-09T18:00:00+00:00", "source": "vsin_dk",
+             "line_spread_home": -3.0, "line_total": 44.5, "line_ml_home": -166, "line_ml_away": 140,
+             "spread_ticket_pct_home": 0.65, "spread_money_pct_home": 0.78,
+             "total_ticket_pct_home": 0.47, "total_money_pct_home": 0.41,
+             "moneyline_ticket_pct_home": 0.71, "moneyline_money_pct_home": 0.64}]
+    n = isp.write_market_snapshots(recs, "NFL", 2026, games)
+    assert n == 1
+    out = pd.read_csv(tmp_path / "tables" / "market" / "snapshots" / "NFL" / "2026" / "W01.csv")
+    r = out.iloc[0]
+    assert r.book == "draftkings" and r.source == "vsin_dk"
+    assert r.spread_home == -3.0 and r.total == 44.5 and r.ml_home == -166
+    assert r.spread_ticket_pct_home == 0.65 and r.total_ticket_pct_over == 0.47
+    assert bool(r.is_first_snapshot) is True
+    assert isp.write_market_snapshots(recs, "NFL", 2026, games) == 0      # append-only, no duplicates

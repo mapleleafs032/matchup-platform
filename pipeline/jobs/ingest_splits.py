@@ -182,6 +182,51 @@ def repair_splits_files(league: str, season: int, vlog: ValidationLog) -> int:
     return fixed
 
 
+def write_market_snapshots(recs: list[dict], league: str, season: int, games: pd.DataFrame) -> int:
+    """
+    VSiN carries DraftKings' line alongside the splits, captured in the same request. Writing those lines
+    into market_snapshots makes VSiN the single market source: the line and the ticket/money split share a
+    timestamp exactly, and every downstream consumer (market engine, predictions, picks, charts) keeps
+    working without change. One book only, so book-disagreement is not available -- that is the trade.
+    """
+    if not recs:
+        return 0
+    wk_of = games.set_index("game_id").week.to_dict()
+    by_week: dict[int, list[dict]] = {}
+    for r in recs:
+        if r.get("line_spread_home") is None and r.get("line_total") is None:
+            continue
+        wk = wk_of.get(r["game_id"])
+        if wk is None:
+            continue
+        ts = pd.Timestamp(r["retrieved_at"])
+        by_week.setdefault(int(wk), []).append({
+            "snapshot_id": f"{r['game_id']}_draftkings_{ts.strftime('%Y%m%dT%H%M%SZ')}",
+            "game_id": r["game_id"], "retrieved_at": r["retrieved_at"], "provider_updated_at": None,
+            "book": "draftkings",
+            "spread_home": r.get("line_spread_home"), "spread_home_price": None, "spread_away_price": None,
+            "ml_home": r.get("line_ml_home"), "ml_away": r.get("line_ml_away"),
+            "total": r.get("line_total"), "over_price": None, "under_price": None,
+            "spread_ticket_pct_home": r.get("spread_ticket_pct_home"), "spread_money_pct_home": r.get("spread_money_pct_home"),
+            "ml_ticket_pct_home": r.get("moneyline_ticket_pct_home"), "ml_money_pct_home": r.get("moneyline_money_pct_home"),
+            "total_ticket_pct_over": r.get("total_ticket_pct_home"), "total_money_pct_over": r.get("total_money_pct_home"),
+            "is_first_snapshot": False, "provider_open_spread_home": None, "provider_open_total": None,
+            "source": "vsin_dk", "plan": "free",
+        })
+    written = 0
+    for wk, rows in by_week.items():
+        path = config.TABLES / "market" / "snapshots" / league / str(season) / f"W{wk:02d}.csv"
+        existing = storage.read_table(path)
+        seen = set(existing.snapshot_id) if not existing.empty else set()
+        fresh = [x for x in rows if x["snapshot_id"] not in seen]
+        if not fresh:
+            continue
+        if existing.empty:
+            fresh[0]["is_first_snapshot"] = True
+        written += storage.append_csv(path, pd.DataFrame(fresh), ["snapshot_id"], on_duplicate="skip")
+    return written
+
+
 def run(league: str, season: int, dry: bool, job: JobRun) -> None:
     games = storage.read_table(storage.games_path(league, season))
     if games.empty:
@@ -205,6 +250,11 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
                 recs += splits_feed.fetch(rm, league, season, int(wk))
             except (splits_feed.NotConfigured, NotImplementedError) as e:
                 vlog.warn("PROVIDER_FAIL", "splits_feed", "", str(e)[:120], "records")
+    if config.MARKET_FROM_VSIN and not dry:
+        n_mkt = write_market_snapshots([r for r in recs if r.get("source") == "vsin_dk"], league, season, games)
+        if n_mkt:
+            print(f"  wrote {n_mkt} market snapshot row(s) from the VSiN line")
+            job.rows_written += n_mkt
     clean = validate(recs, games, vlog)
     for p in problems[:40]:
         vlog.warn("SPLITS_UNREADABLE", p.get("file", ""), "line", f"{p.get('line')}: {p.get('why')} | {p.get('raw', '')[:60]}", "team + percentages")
