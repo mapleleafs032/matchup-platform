@@ -1,2 +1,4 @@
 prediction_id,game_id,model_version,league,season,week,is_backtest,actual_margin_home,actual_total,margin_error,abs_margin_error,total_error,abs_total_error,away_pts_abs_err,home_pts_abs_err,winner_correct,favorite_side,favorite_correct,model_ats_result,model_ou_result,clv_spread,win_prob_bin,evaluated_at
 2026_CFB_W01_SMU_FSU_CFB_v1.0_2026-09-07T12:30:57.868270+00:00,2026_CFB_W01_SMU_FSU,CFB_v1.0,CFB,2026,1,False,-3,51,5.09,5.09,3.35,3.35,0.87,4.22,False,AWAY,True,PUSH,WIN,,5,2026-09-08T10:44:23.595750+00:00
+2026_CFB_W02_RUTG_BC_CFB_v1.0_2026-09-11T12:29:39.601965+00:00,2026_CFB_W02_RUTG_BC,CFB_v1.0,CFB,2026,2,False,7,49,-9.78,9.78,8.85,8.85,9.31,0.46,False,HOME,True,LOSS,LOSS,,4,2026-09-12T10:40:49.891538+00:00
+2026_CFB_W02_MIZ_KU_CFB_v1.0_2026-09-11T12:29:39.601965+00:00,2026_CFB_W02_MIZ_KU,CFB_v1.0,CFB,2026,2,False,-17,59,12.46,12.46,-5.14,5.14,8.8,3.66,True,AWAY,True,WIN,WIN,,3,2026-09-12T10:40:49.893537+00:00
