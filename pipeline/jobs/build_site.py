@@ -243,14 +243,14 @@ def _team_qb_metric_passer(S: "Season", team_id: str, week: int) -> float | None
 
 
 def _fpi_sos(S: "Season", team_id: str) -> int | None:
-    """ESPN FPI strength-of-schedule rank, served by CFBD. CFB only."""
-    f = storage.read_table(config.TABLES / "context" / "fpi" / f"{S.season}.parquet")
-    if f.empty or "sos_rank_fpi" not in f.columns:
+    """ESPN FPI strength-of-schedule rank, taken from ESPN's own endpoint. CFB only."""
+    f = storage.read_table(config.TABLES / "context" / "espn_fpi" / f"{S.season}.parquet")
+    if f.empty or "sos_rank_espn" not in f.columns:
         return None
     r = f[f.team_id == team_id]
-    if r.empty or pd.isna(r.sos_rank_fpi.iloc[0]):
+    if r.empty or pd.isna(r.sos_rank_espn.iloc[0]):
         return None
-    return int(r.sos_rank_fpi.iloc[0])
+    return int(r.sos_rank_espn.iloc[0])
 
 
 def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, metrics_rows: list, adj: str = "OPP_ADJ") -> dict:

@@ -172,15 +172,28 @@ def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
             job.rows_written += n
             print(f"CFB head coaches {season}: {n} new rows; {int(co.needs_manual_dates.sum())} teams with mid-season change need manual dates")
     if "fpi" in what:
-        res = cfbd_context.fetch_fpi(rm, season)
-        f = cfbd_context.normalize_fpi(res.payload, season, resolver, res.retrieved_at, unmatched)
-        if not f.empty:
-            _merge_by_key(CONTEXT / "fpi" / f"{season}.parquet", f, ["team_id", "season"])
-            job.rows_written += len(f)
-            have = int(f.sos_rank_fpi.notna().sum())
-            print(f"CFB FPI {season}: {len(f)} teams, {have} with an FPI strength-of-schedule rank")
-        else:
-            print(f"CFB FPI {season}: no rows returned")
+        from providers import espn_fpi
+        from providers.base import RequestManager as _RM, ProviderError as _PE
+        erm = _RM("espn", job.job_run_id)
+        try:
+            payload, which = espn_fpi.fetch(erm, season)
+        except _PE as e:
+            vlog.warn("PROVIDER_FAIL", "espn_fpi", "", str(e)[:160], "200")
+            print(f"ESPN FPI {season}: unavailable ({str(e)[:120]})")
+            payload = None
+        if payload is not None:
+            f, notes = espn_fpi.normalize(payload, season, resolver, erm and __import__("pandas").Timestamp.now(tz="UTC"), unmatched)
+            for n in notes:
+                vlog.warn("SHAPE", "espn_fpi", "", n[:200], "strength of schedule")
+                print(f"    {n}")
+            if f.empty or f.sos_rank_espn.isna().all():
+                print(f"ESPN FPI {season}: no usable strength-of-schedule values. Response shape:")
+                print("    " + espn_fpi.describe(payload))
+            else:
+                _merge_by_key(CONTEXT / "espn_fpi" / f"{season}.parquet", f, ["team_id", "season"])
+                job.rows_written += len(f)
+                print(f"ESPN FPI {season} (via {which}): {len(f)} teams, {int(f.sos_rank_espn.notna().sum())} with a strength-of-schedule rank")
+        job.api_calls += erm.calls_this_run
     if "venues" in what:
         res = cfbd_context.fetch_venues(rm)
         v = cfbd_context.normalize_venues(res.payload, res.retrieved_at)

@@ -229,3 +229,30 @@ def test_vsin_lines_become_market_snapshots(tmp_path, monkeypatch):
     assert r.spread_ticket_pct_home == 0.65 and r.total_ticket_pct_over == 0.47
     assert bool(r.is_first_snapshot) is True
     assert isp.write_market_snapshots(recs, "NFL", 2026, games) == 0      # append-only, no duplicates
+
+
+def test_espn_fpi_parses_either_response_shape():
+    """ESPN's endpoints are unofficial, so the reader must survive both shapes and name the SOS field
+    however ESPN spells it."""
+    from providers import espn_fpi
+    r = ids.AliasResolver.load()
+    r.add([{"provider": "espn", "alias": "Alabama Crimson Tide", "provider_id": None, "team_id": "CFB_ALA", "season_from": None, "season_to": None},
+           {"provider": "espn", "alias": "Georgia Bulldogs", "provider_id": None, "team_id": "CFB_UGA", "season_from": None, "season_to": None}])
+    ts = pd.Timestamp("2026-09-12T12:00:00Z")
+    fitt = {"teams": [
+        {"team": {"displayName": "Alabama Crimson Tide"},
+         "categories": [{"name": "resume", "values": [], "ranks": []}],
+         "stats": [{"name": "avgsosrank", "rank": 7, "value": 7}, {"name": "fpi", "value": 21.4}]},
+        {"team": {"displayName": "Georgia Bulldogs"}, "stats": [{"name": "strengthOfSchedule", "rank": 3}]}]}
+    df, notes = espn_fpi.normalize(fitt, 2026, r, ts, set())
+    assert len(df) == 2
+    assert int(df[df.team_id == "CFB_ALA"].sos_rank_espn.iloc[0]) == 7
+    assert int(df[df.team_id == "CFB_UGA"].sos_rank_espn.iloc[0]) == 3      # different spelling, same field
+    core = {"items": [{"team": {"name": "Alabama Crimson Tide"}, "sosRank": 11}]}
+    df2, _ = espn_fpi.normalize(core, 2026, r, ts, set())
+    assert int(df2.sos_rank_espn.iloc[0]) == 11
+    unmatched = set()
+    espn_fpi.normalize({"teams": [{"team": {"displayName": "Nowhere State"}, "stats": [{"name": "sos", "rank": 1}]}]}, 2026, r, ts, unmatched)
+    assert unmatched == {"Nowhere State"}                                    # unknown teams reported, never guessed
+    df3, notes3 = espn_fpi.normalize({"nothing": 1}, 2026, r, ts, set())
+    assert df3.empty and "no team entries found" in notes3[0]
