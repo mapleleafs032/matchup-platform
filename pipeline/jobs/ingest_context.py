@@ -187,14 +187,21 @@ def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
         # statistic (travels with the team) from a row index (follows the position).
         verified_idx = None
         if payload is not None and config.ESPN_SOS_CANDIDATE_INDEX is not None:
-            try:
-                second = espn_fpi.fetch_sorted(erm, season, "resume.strengthofrecord:desc")
+            # Reversing the sort we already know is accepted is enough: a row index renumbers down the
+            # reversed list, a real rank stays with its team. Other keys are tried only as a fallback.
+            for alt in ("resume.avgsosrank:desc", "fpi.fpi:asc", None):
+                try:
+                    second = espn_fpi.fetch_sorted(erm, season, alt)
+                except Exception as e:
+                    print(f"    second pull ({alt or 'unsorted'}) rejected: {str(e)[:100]}")
+                    continue
                 ok2, why2 = espn_fpi.verify_across_sorts(payload, second, config.ESPN_SOS_CANDIDATE_INDEX)
-                print(f"    cross-sort check: {why2}")
+                print(f"    cross-sort check ({alt or 'unsorted'}): {why2}")
                 if ok2:
                     verified_idx = config.ESPN_SOS_CANDIDATE_INDEX
-            except Exception as e:
-                print(f"    cross-sort check could not run: {str(e)[:120]}")
+                    break
+                if "same order" not in why2:
+                    break          # a definite answer, even a negative one: stop asking
         import providers.espn_fpi as _ef
         _prev = config.ESPN_SOS_RESUME_INDEX
         config.ESPN_SOS_RESUME_INDEX = verified_idx

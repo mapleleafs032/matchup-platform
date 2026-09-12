@@ -366,3 +366,17 @@ def test_cross_sort_check_separates_a_real_rank_from_a_row_index():
     # and an ignored sort parameter is caught rather than treated as agreement
     ok3, why3 = espn_fpi.verify_across_sorts(A, A, 2)
     assert not ok3 and "same order" in why3
+
+
+def test_reversed_sort_is_enough_to_discriminate():
+    """The second pull only needs a different ORDER, not a different column — which matters because
+    ESPN rejects most sort keys with a 400. Reversing the one key it accepts works."""
+    from providers import espn_fpi
+    teams = [f"Team {i}" for i in range(1, 41)]
+    sos = {t: i + 1 for i, t in enumerate(teams)}
+    mk = lambda order, val: {"items": [{"team": {"displayName": t}, "categories": [
+        {"name": "resume", "ranks": ["-"] * 6, "values": [0.0, 0.0, float(val(t, i)), 0.0, 0.0, 0.0]}]}
+        for i, t in enumerate(order, start=1)]}
+    asc = mk(teams, lambda t, i: sos[t])
+    assert espn_fpi.verify_across_sorts(asc, mk(teams[::-1], lambda t, i: sos[t]), 2)[0] is True
+    assert espn_fpi.verify_across_sorts(asc, mk(teams[::-1], lambda t, i: i), 2)[0] is False
