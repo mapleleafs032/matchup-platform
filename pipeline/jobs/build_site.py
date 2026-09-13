@@ -78,10 +78,11 @@ class Season:
         rp = storage.read_table(ROSTER / "returning_production" / league / f"{season}.parquet")
         self.rp = rp[rp.method == "derived_position_weighted"].sort_values("as_of_week").drop_duplicates("team_id", keep="last").set_index("team_id") if not rp.empty else rp
         self.mv = self._model_versions()
-        pl = storage.read_table(config.TABLES / "ref" / "players.parquet")
         # Injury rows stored before the provider carried names hold only an id; resolve them here so the
-        # page never shows a raw identifier where a person's name belongs.
-        self.player_names = dict(zip(pl.player_id, pl.full_name)) if not pl.empty and "full_name" in pl.columns else {}
+        # page never shows a raw identifier where a person's name belongs. Players are stored per league.
+        pl = storage.read_table(config.TABLES / "ref" / "players" / f"{league}.parquet")
+        self.player_names = (dict(zip(pl.player_id, pl.full_name))
+                             if not pl.empty and {"player_id", "full_name"} <= set(pl.columns) else {})
 
     def _records(self) -> dict:
         rec: dict = {}
@@ -323,6 +324,7 @@ def _head_to_head(S: "Season", home: str, away: str, limit: int = 10) -> list[di
                 continue
             hs, as_ = int(r.home_score), int(r.away_score)
             out.append({"game_id": x.game_id, "season": int(season), "week": int(x.week),
+                        "has_page": bool(season == S.season),
                         "kickoff_utc": str(x.kickoff_utc) if pd.notna(x.kickoff_utc) else None,
                         "home": S.team(x.home_team_id), "away": S.team(x.away_team_id),
                         "home_score": hs, "away_score": as_,
@@ -700,6 +702,29 @@ def run(leagues: list[str], season: int, weeks: list[int] | None, job: JobRun) -
                     print(f"  matchup page failed for {entry['game_id']}: {e}")
             job.rows_written += n
             print(f"{league} {season} W{wk}: slate {len(slate['games'])} games, {n} matchup pages")
+        # Completed weeks outside the rolling window still need a page, otherwise every schedule and
+        # head-to-head link lands on "not built yet". Final games never change, so each is written once.
+        done_weeks = sorted(set(S.games[(S.games.season_type == "REG") & S.games.game_id.isin(set(S.res.index))].week.astype(int))) if not S.res.empty else []
+        made = 0
+        for wk in done_weeks:
+            if wk in wks:
+                continue
+            try:
+                past = build_slate(S, wk)
+            except Exception as e:
+                print(f"  slate for W{wk} failed: {e}")
+                continue
+            for entry in past["games"]:
+                out_path = OUT / "matchup" / f"{entry['game_id']}.json"
+                if out_path.exists():
+                    continue
+                try:
+                    out_path.write_text(json.dumps(build_matchup(S, wk, entry), default=str)); made += 1
+                except Exception as e:
+                    print(f"  matchup page failed for {entry['game_id']}: {e}")
+        if made:
+            print(f"{league} {season}: {made} archive page(s) written for completed games")
+            job.rows_written += made
     stamp_assets(manifest["version"])
     (OUT / "status.json").write_text(json.dumps(build_status(leagues, season), default=str))
     (OUT / "manifest.json").write_text(json.dumps(manifest))

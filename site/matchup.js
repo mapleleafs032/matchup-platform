@@ -158,8 +158,8 @@ async function matchupMain() {
           : `${r.result} ${r.us}-${r.them}`;
         t.append(el("tr", { class: r.result ? "r-" + r.result : "" },
           el("td", { class: "num" }, String(r.week)),
-          el("td", {}, gameLink(r.game_id, opp)),
-          el("td", { class: "num sched-res" }, r.us == null ? score : gameLink(r.game_id, score, "sched-link plain"))));
+          el("td", {}, r.has_page === false ? el("span", {}, opp) : gameLink(r.game_id, opp)),
+          el("td", { class: "num sched-res" }, (r.us == null || r.has_page === false) ? score : gameLink(r.game_id, score, "sched-link plain"))));
       }
       schedWrap.append(t);
       schedWrap.append(el("p", { class: "sub-note" }, "Click a game for its page: completed games carry the final score, the graded pick and the stats as of that week."));
@@ -171,13 +171,14 @@ async function matchupMain() {
       for (const r of rows) {
         const label = `${r.away.abbr} at ${r.home.abbr}`;
         const won = r.winner === H.identity.team_id ? "r-W" : r.winner === A.identity.team_id ? "r-L" : "";
+        const score = `${r.away_score}-${r.home_score}`;
         t.append(el("tr", { class: won },
           el("td", { class: "num" }, `${r.season} W${r.week}`),
-          el("td", {}, gameLink(r.game_id, label)),
-          el("td", { class: "num" }, gameLink(r.game_id, `${r.away_score}-${r.home_score}`, "sched-link plain"))));
+          el("td", {}, r.has_page ? gameLink(r.game_id, label) : el("span", {}, label)),
+          el("td", { class: "num" }, r.has_page ? gameLink(r.game_id, score, "sched-link plain") : el("span", {}, score))));
       }
       schedWrap.append(t);
-      schedWrap.append(el("p", { class: "sub-note" }, `Last ${rows.length} meeting${rows.length === 1 ? "" : "s"} held in the data (2021 onward). Click one for that game's page.`));
+      schedWrap.append(el("p", { class: "sub-note" }, `Last ${rows.length} meeting${rows.length === 1 ? "" : "s"} held in the data (2021 onward). This season's games link to their page; earlier ones show the result only.`));
     }
   }
   paintSched();
