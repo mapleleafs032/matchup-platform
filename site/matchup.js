@@ -29,7 +29,37 @@ async function matchupMain() {
   root.append(el("div", { class: "hero" }, side(A, "away"), spine, side(H, "home")));
 
   // ---- edges (diverging chart) + why
-  const sec = (title, note, ...kids) => { const s = el("section", { class: "block" }, el("h2", {}, title)); if (note) s.append(el("p", { class: "sub-note" }, note)); s.append(...kids); root.append(s); return s; };
+  // Every section gets an id and an entry in a sticky jump bar, so the page can be navigated without
+  // scrolling through it.
+  const navItems = [];
+  const slug = t => String(t).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const sec = (title, note, ...kids) => {
+    const id = "s-" + slug(title);
+    const s = el("section", { class: "block", id }, el("h2", {}, title));
+    if (note) s.append(el("p", { class: "sub-note" }, note));
+    s.append(...kids);
+    root.append(s);
+    navItems.push({ id, title });
+    return s;
+  };
+  const buildNav = () => {
+    if (!navItems.length) return;
+    const nav = el("nav", { class: "sec-nav", "aria-label": "Sections on this page" });
+    for (const it of navItems) {
+      const a = el("a", { href: "#" + it.id }, it.title);
+      a.addEventListener("click", ev => {
+        ev.preventDefault();
+        const t = document.getElementById(it.id);
+        if (t && t.scrollIntoView) t.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      nav.append(a);
+    }
+    try {
+      if (typeof root.prepend === "function") root.prepend(nav);
+      else if (typeof root.insertBefore === "function") root.insertBefore(nav, root.firstChild || null);
+      else root.append(nav);
+    } catch (e) { root.append(nav); }
+  };
   const avail = d.edges.filter(e => !e.unavailable && e.points_home != null);
   const maxPts = Math.max(1.5, ...avail.map(e => Math.abs(e.points_home)));
   const state = { window: d.metrics.default_window, adj: "OPP_ADJ" };
@@ -54,6 +84,7 @@ async function matchupMain() {
   function quickTableHTML(q) {
     const away = d.game.away, home = d.game.home;
     const aName = esc(away.short || away.name), hName = esc(home.short || home.name);
+    const aTag = esc(away.abbr || aName), hTag = esc(home.abbr || hName);
     const title = `${d.game.league === "CFB" ? "College" : "NFL"} analysis — season to date, ${qlAdj.v === "RAW" ? "raw" : "opponent-adjusted"}`;
     const tip = r => r.metric_key === "__qbr"
       ? "ESPN QBR when both teams have it, otherwise NCAA passing efficiency. Both teams are always on the same scale."
@@ -68,7 +99,7 @@ async function matchupMain() {
     h += `<tr class="ql-sub"><th scope="col">Value</th><th scope="col">Rk</th>`
        + `<th scope="col">Value</th><th scope="col">Rk</th></tr></thead><tbody>`;
     for (const r of q.rows) {
-      const side = r.edge === "home" ? hName : r.edge === "away" ? aName : "";
+      const side = r.edge === "home" ? hTag : r.edge === "away" ? aTag : "";
       h += `<tr class="g-${esc(r.group.toLowerCase())}">`
          + `<th scope="row" title="${esc(tip(r))}">${esc(r.label)}</th>`
          + `<td class="num${r.edge === "away" ? " win" : ""}">${esc(fmtQL(r.away.v, r.unit))}</td>`
@@ -81,7 +112,7 @@ async function matchupMain() {
     h += `</tbody><tfoot><tr class="ql-total"><th scope="row">Edge count</th>`
        + `<td class="num" colspan="2">${q.edge_count.away}</td>`
        + `<td class="num" colspan="2">${q.edge_count.home}</td>`
-       + `<td class="ql-edge ${esc(w || "")}">${w === "home" ? hName : w === "away" ? aName : "even"}</td>`
+       + `<td class="ql-edge ${esc(w || "")}">${w === "home" ? hTag : w === "away" ? aTag : "even"}</td>`
        + `</tr></tfoot></table>`;
     return h;
   }
@@ -94,7 +125,67 @@ async function matchupMain() {
     qlWrap.append(el("p", { class: "note" }, q.edge_rule + " Ranks are among all teams in the league as of this week; a blank rank means the metric is not ranked."));
   }
   paintQuick();
-  sec("Quick look", el("div", {}, el("div", { class: "toolbar" }, el("label", {}, "Basis ", qlToggle)), qlWrap));
+  /* ---- schedules and head-to-head, beside the quick look ---- */
+  const schedWrap = el("div", { class: "sched-wrap" });
+  const schedState = { view: "schedule", team: "home" };
+  const schedBar = el("div", { class: "toolbar sched-bar" });
+  const segView = el("div", { class: "seg", role: "group", "aria-label": "Schedule or head to head" });
+  for (const [k, lab] of [["schedule", "Schedules"], ["h2h", "Head-to-head"]]) segView.append(el("button", { "aria-pressed": String(k === schedState.view) }, lab));
+  [...segView.children].forEach((b, i) => b.addEventListener("click", () => { schedState.view = ["schedule", "h2h"][i]; paintSched(); }));
+  schedBar.append(segView);
+  const segTeam = el("div", { class: "seg", role: "group", "aria-label": "Team" });
+  for (const [k, lab] of [["away", A.identity.abbr], ["home", H.identity.abbr]]) segTeam.append(el("button", { "aria-pressed": String(k === schedState.team) }, lab));
+  [...segTeam.children].forEach((b, i) => b.addEventListener("click", () => { schedState.team = ["away", "home"][i]; paintSched(); }));
+  schedBar.append(segTeam);
+
+  function gameLink(gid, label, cls) {
+    const a = el("a", { class: cls || "sched-link", href: `matchup.html?g=${encodeURIComponent(gid)}` }, label);
+    return a;
+  }
+  function paintSched() {
+    [...segView.children].forEach((b, i) => b.setAttribute("aria-pressed", String(["schedule", "h2h"][i] === schedState.view)));
+    [...segTeam.children].forEach((b, i) => b.setAttribute("aria-pressed", String(["away", "home"][i] === schedState.team)));
+    segTeam.style.display = schedState.view === "schedule" ? "" : "none";
+    schedWrap.replaceChildren();
+    if (schedState.view === "schedule") {
+      const rows = ((d.schedules || {})[schedState.team]) || [];
+      if (!rows.length) { schedWrap.append(el("p", { class: "sub-note" }, "No schedule recorded.")); return; }
+      const t = el("table", { class: "sched" });
+      t.append(el("tr", { class: "sched-head" }, el("th", {}, "Wk"), el("th", {}, "Opponent"), el("th", {}, "Result")));
+      for (const r of rows) {
+        const opp = `${r.at} ${r.opponent.abbr}`;
+        const score = r.us == null ? (r.kickoff_utc ? fmt.kick(r.kickoff_utc, false) : "—")
+          : `${r.result} ${r.us}-${r.them}`;
+        t.append(el("tr", { class: r.result ? "r-" + r.result : "" },
+          el("td", { class: "num" }, String(r.week)),
+          el("td", {}, gameLink(r.game_id, opp)),
+          el("td", { class: "num sched-res" }, r.us == null ? score : gameLink(r.game_id, score, "sched-link plain"))));
+      }
+      schedWrap.append(t);
+      schedWrap.append(el("p", { class: "sub-note" }, "Click a game for its page: completed games carry the final score, the graded pick and the stats as of that week."));
+    } else {
+      const rows = d.head_to_head || [];
+      if (!rows.length) { schedWrap.append(el("p", { class: "sub-note" }, "No previous meetings in the seasons held (2021 onward).")); return; }
+      const t = el("table", { class: "sched" });
+      t.append(el("tr", { class: "sched-head" }, el("th", {}, "Season"), el("th", {}, "Matchup"), el("th", {}, "Score")));
+      for (const r of rows) {
+        const label = `${r.away.abbr} at ${r.home.abbr}`;
+        const won = r.winner === H.identity.team_id ? "r-W" : r.winner === A.identity.team_id ? "r-L" : "";
+        t.append(el("tr", { class: won },
+          el("td", { class: "num" }, `${r.season} W${r.week}`),
+          el("td", {}, gameLink(r.game_id, label)),
+          el("td", { class: "num" }, gameLink(r.game_id, `${r.away_score}-${r.home_score}`, "sched-link plain"))));
+      }
+      schedWrap.append(t);
+      schedWrap.append(el("p", { class: "sub-note" }, `Last ${rows.length} meeting${rows.length === 1 ? "" : "s"} held in the data (2021 onward). Click one for that game's page.`));
+    }
+  }
+  paintSched();
+
+  sec("Quick look", null,
+    el("div", { class: "ql-row" },
+      el("div", { class: "ql-col" }, el("div", { class: "toolbar" }, el("label", {}, "Basis ", qlToggle)), qlWrap),
+      el("div", { class: "sched-col" }, schedBar, schedWrap)));
   const tabs = el("div", { class: "tabs" });
   for (const w of d.metrics.windows) { const b = el("button", { "aria-pressed": String(w === state.window) }, ({ SEASON: "Season", LAST5: "Last 5", LAST3: "Last 3", HOME: "Home", AWAY: "Away", CONF: "Conference" })[w] || w); b.addEventListener("click", () => { state.window = w; paintGrid(); }); tabs.append(b); }
   const adjTabs = el("div", { class: "tabs" });
@@ -279,4 +370,5 @@ async function matchupMain() {
     books.slice(0, 5).forEach((b, i) => { const p = pts.filter(x => x.book === b); const path = p.map((x, j) => `${j ? "L" : "M"}${X(x.t).toFixed(1)},${Y(x.spread_home).toFixed(1)}`).join(" "); svg.append(mk("path", { d: path, fill: "none", stroke: colors[i], "stroke-width": 2 })); const tx = mk("text", { x: 44 + i * 120, y: 182 }); tx.setAttribute("fill", colors[i]); tx.textContent = b; svg.append(tx); });
     const cap = mk("text", { x: 780, y: 14, "text-anchor": "end" }); cap.textContent = `${homeAbbr} spread · negative = home favored`; svg.append(cap);
   }
+  buildNav();
 }

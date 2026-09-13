@@ -78,6 +78,10 @@ class Season:
         rp = storage.read_table(ROSTER / "returning_production" / league / f"{season}.parquet")
         self.rp = rp[rp.method == "derived_position_weighted"].sort_values("as_of_week").drop_duplicates("team_id", keep="last").set_index("team_id") if not rp.empty else rp
         self.mv = self._model_versions()
+        pl = storage.read_table(config.TABLES / "ref" / "players.parquet")
+        # Injury rows stored before the provider carried names hold only an id; resolve them here so the
+        # page never shows a raw identifier where a person's name belongs.
+        self.player_names = dict(zip(pl.player_id, pl.full_name)) if not pl.empty and "full_name" in pl.columns else {}
 
     def _records(self) -> dict:
         rec: dict = {}
@@ -277,6 +281,55 @@ def _espn_sos_manual(S: "Season") -> dict:
                     resolver.unmatched.pop()
         if tid:
             out[tid] = int(r.sos_rank)
+    return out
+
+
+def _schedule_rows(S: "Season", team_id: str, upto_week: int, limit: int = 20) -> list[dict]:
+    """Every game this team has on the books this season, result included where it is final."""
+    g = S.games[((S.games.home_team_id == team_id) | (S.games.away_team_id == team_id)) & (S.games.season_type == "REG")]
+    g = g.sort_values("week")
+    out = []
+    for _, x in g.iterrows():
+        home = x.home_team_id == team_id
+        opp = x.away_team_id if home else x.home_team_id
+        r = S.res.loc[x.game_id] if not S.res.empty and x.game_id in S.res.index else None
+        us = them = None
+        if r is not None:
+            us = int(r.home_score if home else r.away_score)
+            them = int(r.away_score if home else r.home_score)
+        out.append({"game_id": x.game_id, "week": int(x.week), "at": "vs" if home else "at",
+                    "opponent": S.team(opp), "kickoff_utc": str(x.kickoff_utc) if pd.notna(x.kickoff_utc) else None,
+                    "status": x.status, "us": us, "them": them,
+                    "result": None if us is None else ("W" if us > them else "L" if us < them else "T"),
+                    "has_page": bool(r is not None or x.status == "SCHEDULED")})
+    return out[:limit]
+
+
+def _head_to_head(S: "Season", home: str, away: str, limit: int = 10) -> list[dict]:
+    """Previous meetings between these two, most recent first, across every season we hold."""
+    out = []
+    for season in sorted({S.season} | set(config.BACKTEST_SEASONS), reverse=True):
+        g = storage.read_table(storage.games_path(S.league, season))
+        if g.empty:
+            continue
+        pair = g[((g.home_team_id == home) & (g.away_team_id == away)) | ((g.home_team_id == away) & (g.away_team_id == home))]
+        if pair.empty:
+            continue
+        res = storage.read_table(config.TABLES / "results" / S.league / f"{season}.csv")
+        res = res.set_index("game_id") if not res.empty else res
+        for _, x in pair.sort_values("week", ascending=False).iterrows():
+            r = res.loc[x.game_id] if not res.empty and x.game_id in res.index else None
+            if r is None:
+                continue
+            hs, as_ = int(r.home_score), int(r.away_score)
+            out.append({"game_id": x.game_id, "season": int(season), "week": int(x.week),
+                        "kickoff_utc": str(x.kickoff_utc) if pd.notna(x.kickoff_utc) else None,
+                        "home": S.team(x.home_team_id), "away": S.team(x.away_team_id),
+                        "home_score": hs, "away_score": as_,
+                        "winner": x.home_team_id if hs > as_ else x.away_team_id if as_ > hs else None,
+                        "margin_home": hs - as_, "total": hs + as_})
+            if len(out) >= limit:
+                return out
     return out
 
 
@@ -510,7 +563,10 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
                                      "career_epa_dropback": _j(q.career_ppa_dropback), "season_att": float(q.season_att)}
         ti = inj[inj.team_id == tid] if not inj.empty else inj
         return {"identity": ident, "games_n": games_n.get(tid, 0), "qb": qd,
-                "injuries": [{"player": _j(x.get("player_name")) or _j(x.get("player_id")), "position": _j(x.position), "status": x.status, "desc": _j(x.get("injury_desc")), "source": x.source} for _, x in ti.iterrows()],
+                "injuries": [{"player": (_j(x.get("player_name")) or S.player_names.get(_j(x.get("player_id")))
+                                          or _j(x.get("player_id"))),
+                               "position": _j(x.position), "status": x.status, "desc": _j(x.get("injury_desc")),
+                               "source": x.source} for _, x in ti.iterrows()],
                 "roster": {"continuity": _j(S.cont.loc[tid].continuity_index) if not S.cont.empty and tid in S.cont.index else None,
                            "rp_total": _j(S.rp.loc[tid].rp_total) if not S.rp.empty and tid in S.rp.index else None}}
     # market: from the engine payload (live) or re-analyzed from the frozen history (locked)
@@ -537,6 +593,8 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
             "teams": {"away": team_block(away, entry["away"]), "home": team_block(home, entry["home"])},
             "metrics": {"windows": WINDOWS, "default_window": "SEASON", "rows": metrics_rows, "quality_flags": qflags},
             "quick_look": {a: build_quick_look(S, week, gid, home, away, metrics_rows, a) for a in ("OPP_ADJ", "RAW")},
+            "schedules": {"away": _schedule_rows(S, away, week), "home": _schedule_rows(S, home, week)},
+            "head_to_head": _head_to_head(S, home, away),
             "sos_source": ("ESPN FPI resume, entered manually" if _espn_sos_manual(S)
                            else "this platform's own opponent-rating strength of schedule"),
             "splits": splits_engine.build_week(S.league, S.season, week, S.games[S.games.game_id == gid], S.teams).get(gid, {}).get("periods", {}),

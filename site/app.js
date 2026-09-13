@@ -183,6 +183,11 @@ App.indicatorChips = function (state, market) {
    Shared by the Odds tab and the matchup page.
    opts: { lineSeries, splitsSeries, events, market, homeAbbr, awayAbbr, book }
 ------------------------------------------------------------------- */
+App.probToAmerican = function (p) {
+  if (p == null || p <= 0 || p >= 1) return null;
+  return p >= 0.5 ? -Math.round((100 * p) / (1 - p)) : Math.round((100 * (1 - p)) / p);
+};
+
 App.impliedProb = function (ml) {
   if (ml == null) return null;
   const n = Number(ml);
@@ -222,9 +227,12 @@ App.marketChart = function (opts) {
     // American odds jump from -100 to +100 with nothing in between, so plotting the raw price on a
     // linear axis misrepresents the movement. Implied probability is continuous and comparable; the
     // price itself is kept in the readout.
+    // Plotted on an implied-probability scale so the distances are meaningful -- American odds jump
+    // from -100 to +100 with nothing in between -- but every number shown is the American price.
     moneyline: { a: p => App.impliedProb(p.ml_away), b: p => App.impliedProb(p.ml_home),
-                 fmt: v => (v * 100).toFixed(1) + "%", aLab: away, bLab: home, splitKey: "moneyline",
-                 rawA: p => p.ml_away, rawB: p => p.ml_home, axis: "implied win probability" },
+                 fmt: v => { const am = App.probToAmerican(v); return am == null ? "—" : (am > 0 ? "+" : "") + am; },
+                 aLab: away, bLab: home, splitKey: "moneyline",
+                 rawA: p => p.ml_away, rawB: p => p.ml_home },
   }[market];
 
   const pts = line.filter(p => spec.a(p) != null || (spec.b && spec.b(p) != null));

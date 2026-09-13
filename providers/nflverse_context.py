@@ -233,7 +233,9 @@ def normalize_injuries(raw: pd.DataFrame, season: int, games: pd.DataFrame, reso
         rows.append({
             "injury_row_id": f"{x.team_id}_{x.gsis_id}_{season}W{int(x.week):02d}_{st or 'NA'}_{pr or 'NA'}",
             "league": "NFL", "season": season, "week": int(x.week), "game_id": g.game_id if g is not None else None,
-            "team_id": x.team_id, "player_id": f"NFL_P_{x.gsis_id}", "position": _POS_NORM.get(str(x.position), None),
+            "team_id": x.team_id, "player_id": f"NFL_P_{x.gsis_id}",
+            "player_name": x.get("full_name") or " ".join(str(v) for v in (x.get("first_name"), x.get("last_name")) if pd.notna(v)) or None,
+            "position": _POS_NORM.get(str(x.position), None),
             "depth_slot": None, "status": st or "UNKNOWN", "practice_status": pr,
             "injury_desc": (x.get("report_primary_injury") if pd.notna(x.get("report_primary_injury")) else x.get("practice_primary_injury")),   # columns vary by season
             "report_date": report_date, "source": "nflverse", "entered_by": None, "retrieved_at": ts,
