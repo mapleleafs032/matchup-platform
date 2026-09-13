@@ -183,6 +183,13 @@ App.indicatorChips = function (state, market) {
    Shared by the Odds tab and the matchup page.
    opts: { lineSeries, splitsSeries, events, market, homeAbbr, awayAbbr, book }
 ------------------------------------------------------------------- */
+App.impliedProb = function (ml) {
+  if (ml == null) return null;
+  const n = Number(ml);
+  if (!Number.isFinite(n) || n === 0) return null;
+  return n > 0 ? 100 / (n + 100) : -n / (-n + 100);
+};
+
 App.marketChart = function (opts) {
   const el = App.el;
   const market = opts.market || "spread";
@@ -212,8 +219,12 @@ App.marketChart = function (opts) {
               fmt: v => (v > 0 ? "+" : "") + v.toFixed(1), aLab: away, bLab: home, splitKey: "spread" },
     total: { a: p => (p.total == null ? null : p.total), b: () => null,
              fmt: v => v.toFixed(1), aLab: "total", bLab: null, splitKey: "total" },
-    moneyline: { a: p => (p.ml_away == null ? null : p.ml_away), b: p => (p.ml_home == null ? null : p.ml_home),
-                 fmt: v => (v > 0 ? "+" : "") + Math.round(v), aLab: away, bLab: home, splitKey: "moneyline" },
+    // American odds jump from -100 to +100 with nothing in between, so plotting the raw price on a
+    // linear axis misrepresents the movement. Implied probability is continuous and comparable; the
+    // price itself is kept in the readout.
+    moneyline: { a: p => App.impliedProb(p.ml_away), b: p => App.impliedProb(p.ml_home),
+                 fmt: v => (v * 100).toFixed(1) + "%", aLab: away, bLab: home, splitKey: "moneyline",
+                 rawA: p => p.ml_away, rawB: p => p.ml_home, axis: "implied win probability" },
   }[market];
 
   const pts = line.filter(p => spec.a(p) != null || (spec.b && spec.b(p) != null));
@@ -225,6 +236,14 @@ App.marketChart = function (opts) {
     for (const s of splits) { if (new Date(s.t) <= new Date(t)) found = s; else break; }
     return found;
   };
+  // nearest plotted line point at or before a time, so the readout shows the number in force
+  const lineAt = (t) => {
+    let found = null;
+    for (const q of pts) { if (new Date(q.t) <= new Date(t)) found = q; else break; }
+    return found || pts[0];
+  };
+  const fmtAmerican = (v) => (v == null ? "—" : (Number(v) > 0 ? "+" : "") + Math.round(Number(v)));
+
   const pctTxt = (s, side) => {
     if (!s) return "no splits recorded";
     const tk = s[`${spec.splitKey}_ticket`], mn = s[`${spec.splitKey}_money`];
@@ -294,9 +313,9 @@ App.marketChart = function (opts) {
       const tip = `${label} ${spec.fmt(v)}\n${when}\n${pctTxt(sp, sideKey)}${p.book ? "\nbook: " + p.book : ""}${changed ? "\n(number changed here)" : ""}`;
       const cx = x(t).toFixed(1), cy = y(v).toFixed(1);
       // generous transparent target first, so the dot is easy to hit on a phone
-      out.push(`<g class="pt"><circle cx="${cx}" cy="${cy}" r="13" fill="transparent"/>`
-             + (changed ? `<circle cx="${cx}" cy="${cy}" r="9" fill="${colour}" opacity=".18"/>` : "")
-             + `<circle cx="${cx}" cy="${cy}" r="${changed ? 6 : 4.6}" fill="${colour}" stroke="var(--paper)" stroke-width="1.5"/>`
+      out.push(`<g class="pt" data-t="${p.t}"><circle cx="${cx}" cy="${cy}" r="20" fill="transparent"/>`
+             + (changed ? `<circle cx="${cx}" cy="${cy}" r="12" fill="${colour}" opacity=".18"/>` : "")
+             + `<circle class="dot" cx="${cx}" cy="${cy}" r="${changed ? 8 : 6.5}" fill="${colour}" stroke="var(--paper)" stroke-width="2"/>`
              + `<title>${tip}</title></g>`);
     }
   };
@@ -311,9 +330,44 @@ App.marketChart = function (opts) {
   out.push(`<text x="${W - R}" y="${H - 10}" text-anchor="end" font-size="11" fill="var(--mute)">${fmtT(t1)}</text>`);
 
   const wrap = el("div", { class: "mchart" });
-  wrap.append(el("div", { html: `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Line movement with market events">${out.join("")}</svg>` }));
+  const svgBox = el("div", { html: `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Line movement with market events">${out.join("")}</svg>` });
+  wrap.append(svgBox);
+  const readout = el("div", { class: "mchart-readout" }, el("span", { class: "ro-hint" }, "Tap or click the chart for the detail at that moment."));
+  wrap.append(readout);
+  // Nearest-point selection on the whole plot: a touch never has to land on the dot itself.
+  const picks = [];
+  for (const p of splits.length ? splits : lines) {
+    const t = new Date(p.t).getTime();
+    if (t >= t0 && t <= t1) picks.push({ t, p });
+  }
+  const showAt = (clientX) => {
+    const svgEl = svgBox.querySelector && svgBox.querySelector("svg");
+    if (!svgEl || !picks.length) return;
+    const box = svgEl.getBoundingClientRect();
+    const vx = ((clientX - box.left) / box.width) * W;
+    const tGuess = t0 + ((vx - L) / Math.max(1, W - L - R)) * span;
+    let best = picks[0];
+    for (const c of picks) if (Math.abs(c.t - tGuess) < Math.abs(best.t - tGuess)) best = c;
+    const sp = splitAt(best.p.t) || best.p;
+    const ln = lineAt ? lineAt(best.p.t) : best.p;
+    const when = new Date(best.t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    const aV = spec.a(ln || {}), bV = spec.b(ln || {});
+    const priceTxt = spec.rawA
+      ? ` · ${spec.aLab} ${fmtAmerican(spec.rawA(ln || {}))} / ${spec.bLab} ${fmtAmerican(spec.rawB(ln || {}))}`
+      : "";
+    readout.replaceChildren(
+      el("span", { class: "ro-when" }, when),
+      el("span", { class: "ro-line" }, spec.bLab
+        ? `${spec.aLab} ${aV == null ? "—" : spec.fmt(aV)} · ${spec.bLab} ${bV == null ? "—" : spec.fmt(bV)}${priceTxt}`
+        : `${bV == null ? (aV == null ? "—" : spec.fmt(aV)) : spec.fmt(bV)}`),
+      el("span", { class: "ro-split" }, pctTxt(sp, "home")));
+  };
+  const onPick = ev => { const x = ev.touches && ev.touches[0] ? ev.touches[0].clientX : ev.clientX; if (x != null) showAt(x); };
+  svgBox.addEventListener("click", onPick);
+  svgBox.addEventListener("touchstart", onPick, { passive: true });
+  svgBox.addEventListener("mousemove", onPick);
   wrap.append(el("p", { class: "mchart-key" },
-    "Hover or tap a dot for the number, time and the ticket/money split; larger dots are snapshots where the number changed. Dashed marks: ",
+    "Tap anywhere on the chart for the detail at that moment; larger dots are snapshots where the number changed. Dashed marks: ",
     el("b", { style: "color:var(--mute)" }, "grey"), " line move, ",
     el("b", { style: "color:var(--steam)" }, "STEAM"), " fast move, ",
     el("b", { style: "color:var(--rlm)" }, "RLM"), " moved against the crowd, ",
