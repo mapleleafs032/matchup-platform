@@ -6,7 +6,7 @@
 <title>Matchup board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=202609131258">
+<link rel="stylesheet" href="app.css?v=202609131358">
 </head>
 <body>
 <header class="top"><div class="wrap">
@@ -18,7 +18,7 @@
   <div id="board" class="board"><div class="empty">Loading the board…</div></div>
   <p id="built" class="note"></p>
 </main>
-<script src="app.js?v=202609131258"></script>
+<script src="app.js?v=202609131358"></script>
 <script>boardMain().catch(e => { document.getElementById("board").innerHTML = '<div class="empty">The board could not load: ' + e.message + '. If this persists, the site has not been built yet — run the Site workflow.</div>'; });</script>
 </body>
 </html>
