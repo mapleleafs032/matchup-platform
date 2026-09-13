@@ -60,7 +60,9 @@ async function oddsMain() {
       el("option", { value: "all" }, "All"),
       el("option", { value: "week" }, "This week"),
       el("option", { value: "today" }, "Today"),
-      el("option", { value: "12" }, "Last 12 hours"));
+      el("option", { value: "12" }, "Last 12 hours"),
+      el("option", { value: "4" }, "Last 4 hours"),
+      el("option", { value: "2" }, "Last 2 hours"));
     win.value = S.window;
     win.addEventListener("change", () => { S.window = win.value; localStorage.setItem("odds.window", S.window); paint(window.__odds); });
     mt.append(el("label", {}, "Window ", win));
@@ -84,7 +86,8 @@ async function oddsMain() {
     const shown = games.filter(g => (S.date === "all" || g.filters.date === S.date) && (S.conf === "all" || g.filters.conf_home === S.conf || g.filters.conf_away === S.conf)
       && (!S.ranked || g.filters.ranked) && (S.fav === "all" || g.filters.favorite === S.fav) && (S.status === "all" || g.status === S.status)
       && (!S.onlyWithSplits || (g.splits?.[S.period]?.available)));
-    const winLabel = { all: "the full history", week: "this week", today: "today", "12": "the last 12 hours" }[S.window] || "the full history";
+    const winLabel = { all: "the full history", week: "this week", today: "today" }[S.window]
+      || (/^\d+$/.test(S.window) ? `the last ${S.window} hours` : "the full history");
     document.getElementById("coverage").textContent =
       `${data.coverage.with_splits} of ${data.coverage.total} games have splits this week. Charts show ${winLabel}. ${data.source_note}`;
     root.replaceChildren();
@@ -134,7 +137,7 @@ async function oddsMain() {
   function windowStart(g, series) {
     if (S.window === "all" || !series.length) return null;
     const last = new Date(series[series.length - 1].t).getTime();
-    if (S.window === "12") return last - 12 * 3600e3;
+    if (/^\d+$/.test(S.window)) return last - Number(S.window) * 3600e3;
     // "Today" and "This week" anchor to the local calendar, so they mean the same thing all day rather
     // than sliding with whenever the most recent pull happened to land.
     const midnight = new Date(Math.min(Date.now(), last));

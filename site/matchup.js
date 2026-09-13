@@ -186,7 +186,9 @@ async function matchupMain() {
       el("option", { value: "all" }, "All"),
       el("option", { value: "week" }, "This week"),
       el("option", { value: "today" }, "Today"),
-      el("option", { value: "12" }, "Last 12 hours"));
+      el("option", { value: "12" }, "Last 12 hours"),
+      el("option", { value: "4" }, "Last 4 hours"),
+      el("option", { value: "2" }, "Last 2 hours"));
     segW.value = SP.window;
     segW.addEventListener("change", () => { SP.window = segW.value; localStorage.setItem("odds.window", SP.window); redraw(); });
     [...segM.children].forEach((b, i) => b.addEventListener("click", () => { SP.market = ["spread", "total", "moneyline"][i]; redraw(); }));
@@ -226,7 +228,7 @@ async function matchupMain() {
   function chartWindowStart(series, wsel) {
     if (wsel === "all" || !series.length) return null;
     const last = new Date(series[series.length - 1].t).getTime();
-    if (wsel === "12") return last - 12 * 3600e3;
+    if (/^\d+$/.test(wsel)) return last - Number(wsel) * 3600e3;
     const midnight = new Date(Math.min(Date.now(), last));
     midnight.setHours(0, 0, 0, 0);
     if (wsel === "today") return midnight.getTime();
