@@ -294,7 +294,9 @@ async function matchupMain() {
     spSec.append(spChart);
     const spNotes = el("ul", { class: "market-notes" });
     spSec.append(spNotes);
-    const evList = el("ul", { class: "market-notes evt" });
+    const moveBox = el("div", {});
+    spSec.append(moveBox);
+    const evList = el("div", {});
     spSec.append(evList);
     const redraw = () => {
       const key = SP.market === "moneyline" ? "spread" : SP.market;
@@ -304,12 +306,8 @@ async function matchupMain() {
       spChart.replaceChildren(splitsChart(spFull, mstate, SP));
       spNotes.replaceChildren();
       for (const n of spFull.notes || []) spNotes.append(el("li", {}, n));
-      evList.replaceChildren();
-      const evs = (mstate.events || []).filter(e => e.market === key);
-      if (evs.length) {
-        evList.append(el("li", {}, el("b", {}, "What moved, and when:")));
-        for (const e of evs.slice(-8)) evList.append(el("li", {}, `${fmt.kick(e.t, false)} — ${e.kind.replace("_", " ")}: ${e.detail}`));
-      }
+      moveBox.replaceChildren(App.movementTable(spFull.series || [], SP.market, H.identity.abbr, A.identity.abbr, spFull.book));
+      evList.replaceChildren(App.eventLog(mstate.events || [], SP.market));
     };
     redraw();
   }

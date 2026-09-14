@@ -91,6 +91,7 @@ async function boardMain() {
     document.getElementById("f-conf").onchange = e => { state.conf = e.target.value; paint(slate); };
     const shown = games.filter(g => (state.date === "all" || g.filters.date === state.date) && (state.conf === "all" || g.filters.conf_home === state.conf || g.filters.conf_away === state.conf)
       && (!state.ranked || g.filters.ranked) && (state.fav === "all" || g.filters.favorite === state.fav) && (state.status === "all" || g.status === state.status));
+    shown.sort(App.byPlayFirst);
     root.replaceChildren();
     if (!shown.length) { root.append(el("div", { class: "empty" }, "No games match these filters.")); return; }
     let lastDate = null;
@@ -193,6 +194,84 @@ App.impliedProb = function (ml) {
   const n = Number(ml);
   if (!Number.isFinite(n) || n === 0) return null;
   return n > 0 ? 100 / (n + 100) : -n / (-n + 100);
+};
+
+/* Every snapshot behind the chart, as a table: the line, the price, and both splits, each stamped.
+   Collapsed by default so it does not crowd the page. */
+App.movementTable = function (series, market, homeAbbr, awayAbbr, book) {
+  const rows = (series || []).filter(Boolean);
+  const wrap = document.createElement("details");
+  wrap.className = "move-tbl";
+  const sum = document.createElement("summary");
+  sum.textContent = `Every recorded move (${rows.length} snapshot${rows.length === 1 ? "" : "s"})`;
+  wrap.appendChild(sum);
+  if (!rows.length) {
+    const p = document.createElement("p"); p.className = "sub-note";
+    p.textContent = "No snapshots recorded for this game yet."; wrap.appendChild(p); return wrap;
+  }
+  const key = market === "moneyline" ? "moneyline" : market;
+  const am = v => (v == null ? "—" : (Number(v) > 0 ? "+" : "") + Math.round(Number(v)));
+  const pc = v => (v == null ? "—" : Math.round(v * 100) + "%");
+  const lineOf = r => market === "total" ? (r.line_total == null ? "—" : Number(r.line_total).toFixed(1))
+    : market === "moneyline" ? `${awayAbbr} ${am(r.ml_away)} / ${homeAbbr} ${am(r.ml_home)}`
+    : (r.line_spread_home == null ? "—" : `${homeAbbr} ${Number(r.line_spread_home) > 0 ? "+" : ""}${Number(r.line_spread_home).toFixed(1)}`);
+  const sideLab = market === "total" ? "Over" : homeAbbr;
+  let html = `<table class="mvt"><thead><tr><th>When (local)</th><th>${market === "moneyline" ? "Price" : "Line"}</th>`
+           + `<th>Bets ${sideLab}</th><th>Money ${sideLab}</th><th>Change</th></tr></thead><tbody>`;
+  let prevLine = null;
+  // newest first: the most recent state is what matters most
+  for (const r of rows.slice().reverse()) {
+    const when = new Date(r.t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    const cur = market === "total" ? r.line_total : market === "moneyline" ? r.ml_home : r.line_spread_home;
+    let chg = "";
+    if (prevLine != null && cur != null && Number(cur) !== Number(prevLine)) {
+      const d = Number(prevLine) - Number(cur);      // prevLine is the NEWER row, so this is older -> newer
+      chg = (d > 0 ? "+" : "") + (market === "moneyline" ? Math.round(-d) : (-d).toFixed(1));
+    }
+    prevLine = cur == null ? prevLine : cur;
+    const tk = r[`${key}_ticket`], mn = r[`${key}_money`];
+    const carried = r[`${key}_ticket_carried`] || r[`${key}_money_carried`];
+    html += `<tr${carried ? ' class="carried"' : ""}><td>${when}</td><td class="num">${lineOf(r)}</td>`
+         + `<td class="num">${pc(tk)}</td><td class="num">${pc(mn)}</td><td class="num chg">${chg}</td></tr>`;
+  }
+  html += "</tbody></table>";
+  const box = document.createElement("div");
+  box.className = "mvt-wrap";
+  box.innerHTML = html;
+  wrap.appendChild(box);
+  const note = document.createElement("p");
+  note.className = "sub-note";
+  note.textContent = `Newest first. Percentages are the share on ${sideLab}; a shaded row means that figure was carried from an earlier pull because the source published nothing new.${book ? " Prices from " + book + "." : ""}`;
+  wrap.appendChild(note);
+  return wrap;
+};
+
+/* Timestamped log of what the market did, for the bullets under a chart. */
+App.eventLog = function (events, market) {
+  const key = market === "moneyline" ? "spread" : market;
+  const evs = (events || []).filter(e => e.market === key);
+  const ul = document.createElement("ul");
+  ul.className = "market-notes evt";
+  if (!evs.length) return ul;
+  const head = document.createElement("li");
+  head.innerHTML = "<b>What moved, and when</b>";
+  ul.appendChild(head);
+  const NAME = { rlm: "Reverse line movement", steam: "Steam (fast move)", lopsided: "Lopsided support",
+                 money_divergence: "Tickets and money disagree", key_number: "Key number crossed", line_move: "Line moved" };
+  for (const e of evs.slice(-12)) {
+    const li = document.createElement("li");
+    const when = new Date(e.t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    li.textContent = `${when} — ${NAME[e.kind] || e.kind.replace(/_/g, " ")}: ${e.detail}`;
+    ul.appendChild(li);
+  }
+  return ul;
+};
+
+/* Upcoming and in-progress first, finished last; within a group, by kickoff. */
+App.byPlayFirst = function (a, b) {
+  const rank = s => (s === "FINAL" ? 2 : s === "LOCKED" ? 1 : 0);
+  const d = rank(a.status) - rank(b.status);
+  return d !== 0 ? d : String(a.kickoff_utc || "9999").localeCompare(String(b.kickoff_utc || "9999"));
 };
 
 App.marketChart = function (opts) {

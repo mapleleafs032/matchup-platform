@@ -134,11 +134,21 @@ def analyze_game(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: str
             gap = round((t - mo) * 100, 1)
             divergence[m] = {"points": gap, "notable": abs(gap) >= config.SPLITS_DIVERGENCE_PTS}
             if abs(gap) >= config.SPLITS_DIVERGENCE_PTS:
-                crowd = _side_label(m, t, home_abbr, away_abbr); money = _side_label(m, mo, home_abbr, away_abbr)
+                crowd = _side_label(m, t, home_abbr, away_abbr)
+                money = _side_label(m, mo, home_abbr, away_abbr)
+                # Both stored values are the HOME share. A sentence that names the away side must quote
+                # the away share, or it reports one team's number under the other team's name.
+                crowd_is_home = (t >= 0.5)
+                t_crowd = t if crowd_is_home else 1 - t
+                m_crowd = mo if crowd_is_home else 1 - mo
+                m_other = 1 - m_crowd
+                asof = f" (as of {pd.Timestamp(t_at).strftime('%b %d %H:%M')} UTC)" if t_at else ""
                 if crowd != money:
-                    notes.append(f"On the {m}, {t*100:.0f}% of tickets are on {crowd} but only {mo*100:.0f}% of the money is — the dollars lean {money}.")
+                    notes.append(f"On the {m}, {t_crowd*100:.0f}% of tickets are on {crowd} but only {m_crowd*100:.0f}% of the money is — "
+                                 f"{m_other*100:.0f}% of the dollars are on {money}{asof}.")
                 else:
-                    notes.append(f"On the {m}, tickets ({t*100:.0f}%) and money ({mo*100:.0f}%) are on {crowd} but differ by {abs(gap):.0f} points, so bet sizes are uneven.")
+                    notes.append(f"On the {m}, tickets ({t_crowd*100:.0f}%) and money ({m_crowd*100:.0f}%) are both on {crowd}, "
+                                 f"differing by {abs(gap):.0f} points, so bet sizes are uneven{asof}.")
     # reverse line movement: line moved toward the minority-ticket side
     rlm = {}
     for m, line_col in (("spread", "line_spread_home"), ("total", "line_total")):

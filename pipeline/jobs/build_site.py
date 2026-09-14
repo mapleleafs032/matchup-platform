@@ -495,6 +495,10 @@ def build_odds(S: Season, week: int, slate: dict) -> dict:
                       "filters": entry["filters"], "splits": s_.get("periods", {}), "splits_available": s_.get("any_available", False),
                       "line_series": line_series, "market_state": state, "events": state.get("events", [])})
     covered = sum(1 for g in games if g["splits_available"])
+    # Finished games sink to the bottom: what has not kicked off is what you are looking for.
+    _rank = {"SCHEDULED": 0, "LOCKED": 1, "FINAL": 2}
+    games.sort(key=lambda e: (_rank.get(e["status"], 0), str(e["kickoff_utc"] or "9999")))
+
     return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
             "games": games, "coverage": {"with_splits": covered, "total": len(games)},
             "source_note": (f"{config.VSIN['attribution']}. Percentages are the share of tickets and of money on the home side "

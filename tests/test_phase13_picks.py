@@ -249,3 +249,32 @@ def test_site_json_never_contains_nan():
     assert back["a"] is None and back["b"] is None and back["c"] == [1, None]
     assert back["d"]["e"] == 3 and back["d"]["f"] is None
     assert back["g"] == "fine" and back["h"] is True and back["i"] is None
+
+
+def test_grading_is_a_full_rescan_and_never_double_counts(tmp_path, monkeypatch):
+    """A pick made days before kickoff must still be graded even if no run happened when the game
+    ended. Grading re-scans every stored week and is keyed on pick_id, so repeats are free."""
+    import config
+    from pipeline.jobs import build_picks as bp
+    from pipeline.log import JobRun
+    import pipeline.log as L
+    monkeypatch.setattr(config, "TABLES", tmp_path / "tables")
+    monkeypatch.setattr(bp, "MODEL", tmp_path / "tables" / "model")
+    monkeypatch.setattr(L, "JOB_LOG", tmp_path / "tables" / "ops" / "job_log.csv")
+    (tmp_path / "tables" / "results" / "NFL").mkdir(parents=True)
+    pd.DataFrame([{"game_id": "G1", "away_score": 20, "home_score": 27, "margin_home": 7, "total": 47},
+                  {"game_id": "G2", "away_score": 10, "home_score": 13, "margin_home": 3, "total": 23}]
+                 ).to_csv(tmp_path / "tables" / "results" / "NFL" / "2026.csv", index=False)
+    d = tmp_path / "tables" / "model" / "picks" / "NFL" / "2026"; d.mkdir(parents=True)
+    mk = lambda pid, gid, side_home, line: {"pick_id": pid, "game_id": gid, "week": 1, "market": "SPREAD",
+        "side": "H", "side_is_home": side_home, "line": line, "price": -110, "tier": "A", "score": 3.0,
+        "edge_points": 3.0, "signals": ""}
+    pd.DataFrame([mk("p1", "G1", True, -3.5)]).to_parquet(d / "W01.parquet")       # home -3.5, won by 7 -> WIN
+    pd.DataFrame([mk("p2", "G2", False, 6.5)]).to_parquet(d / "W02.parquet")       # away +6.5, lost by 3 -> WIN
+    with JobRun("PICKS", "NFL") as job:
+        n = bp.grade("NFL", 2026, job)
+    assert n == 2                                            # an older week is graded, not skipped
+    ev = pd.read_csv(tmp_path / "tables" / "model" / "picks_evaluation" / "NFL" / "2026.csv")
+    assert set(ev.result) == {"WIN"} and set(ev.pick_id) == {"p1", "p2"}
+    with JobRun("PICKS", "NFL") as job:
+        assert bp.grade("NFL", 2026, job) == 0               # re-running adds nothing

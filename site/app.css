@@ -449,3 +449,16 @@ a.sched-link.plain { border-bottom: none; font-variant-numeric: tabular-nums; }
 table.ql.boxtbl thead th.ql-metric { width: 38%; }
 table.ql.boxtbl thead th.ql-team { width: 31%; }
 table.ql.boxtbl td.num { text-align: right; }
+
+/* ---------- movement table ---------- */
+.move-tbl { margin: 8px 0 4px; }
+.move-tbl > summary { cursor: pointer; font-family: var(--cond); font-weight: 600; font-size: 14px; color: var(--ink-2); }
+.move-tbl > summary:hover { color: var(--ink); }
+.mvt-wrap { max-height: 360px; overflow: auto; border: 1px solid var(--rule); margin-top: 6px; }
+table.mvt { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.mvt th, table.mvt td { padding: 4px 9px; border-bottom: 1px solid var(--rule); text-align: left; white-space: nowrap; }
+table.mvt thead th { position: sticky; top: 0; background: var(--chalk); font-family: var(--cond); font-size: 12px;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--mute); border-bottom: 1px solid var(--ink); }
+table.mvt td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.mvt td.chg { font-weight: 700; }
+table.mvt tr.carried td { color: var(--mute); background: rgba(138,143,134,.07); }

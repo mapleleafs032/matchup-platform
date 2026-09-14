@@ -90,6 +90,7 @@ async function oddsMain() {
       || (/^\d+$/.test(S.window) ? `the last ${S.window} hours` : "the full history");
     document.getElementById("coverage").textContent =
       `${data.coverage.with_splits} of ${data.coverage.total} games have splits this week. Charts show ${winLabel}. ${data.source_note}`;
+    shown.sort(App.byPlayFirst);
     root.replaceChildren();
     if (!shown.length) { root.append(el("div", { class: "empty" }, "No games match these filters.")); return; }
     for (const g of shown) root.append(card(g));
@@ -128,7 +129,9 @@ async function oddsMain() {
     for (const chip of App.indicatorChips(g.market_state, S.market)) chips.append(chip);
     const notes = el("ul", { class: "og-notes" });
     for (const n of sp.notes) notes.append(el("li", {}, n));
-    return el("section", { class: "og" }, head, pair, chips, chart(sp, g), notes);
+    const moveTbl = App.movementTable(sp.series || [], S.market, g.home.abbr, g.away.abbr, sp.book);
+    const evLog = App.eventLog(g.events || [], S.market);
+        return el("section", { class: "og" }, head, chips, chart(sp, g), moveTbl, evLog, notes);
   }
 
   /* Snapshots bunch up near kickoff: the week before is hourly, game day is every 15 minutes, so on a

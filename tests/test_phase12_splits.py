@@ -257,3 +257,18 @@ def test_series_carries_splits_forward_so_points_never_read_unknown():
                  "spread_ticket_pct_home": None, "spread_money_pct_home": 0.5, "line_spread_home": -3.0, "line_total": 51.5}])
     b = se.analyze_game(h2, "FULL", "ILL", "DUKE", None)
     assert b["series"][0]["spread_ticket"] is None and b["series"][0]["spread_ticket_carried"] is False
+
+
+def test_divergence_note_quotes_the_side_it_names():
+    """The bug from the Denver at Kansas City card: percentages are stored as the HOME share, so a
+    sentence naming the away side must quote the away share or it reports one team's number under the
+    other team's name."""
+    from pipeline import splits_engine as se
+    h = _hist([{"game_id": "G", "period": "FULL", "book": "draftkings", "retrieved_at": "2026-09-14T08:23:00Z",
+                "spread_ticket_pct_home": 0.34, "spread_money_pct_home": 0.51,
+                "line_spread_home": -2.5, "line_total": 43.5}])
+    a = se.analyze_game(h, "FULL", "KC", "DEN", pd.Timestamp("2026-09-15T00:15:00Z"))
+    note = next(n for n in a["notes"] if "tickets" in n)
+    assert "66% of tickets are on DEN" in note        # not 34%, which is Kansas City's share
+    assert "49% of the money" in note and "51% of the dollars are on KC" in note
+    assert a["latest"]["spread"]["ticket_side"] == "DEN" and a["latest"]["spread"]["money_side"] == "KC"

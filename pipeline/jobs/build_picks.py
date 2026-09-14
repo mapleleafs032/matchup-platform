@@ -17,18 +17,30 @@ MODEL = config.TABLES / "model"
 
 
 def grade(league: str, season: int, job: JobRun) -> int:
-    """Grade any stored pick whose game has finished. Append-only; a pick is graded once."""
+    """
+    Grade every stored pick whose game has finished, in any week, however long ago.
+
+    This is deliberately a full re-scan rather than a look at the current week: a pick made days before
+    kickoff must still be graded even if no run happened at the moment the game ended. Grading is
+    append-only and keyed on pick_id, so re-scanning costs nothing and can never double-count.
+    """
     res = storage.read_table(config.TABLES / "results" / league / f"{season}.csv")
     if res.empty:
+        print(f"{league}: no results table yet, nothing to grade")
         return 0
     res = res.set_index("game_id")
     done = storage.read_table(MODEL / "picks_evaluation" / league / f"{season}.csv")
     graded = set(done.pick_id) if not done.empty else set()
-    rows = []
-    for p in sorted((MODEL / "picks" / league / str(season)).glob("W*.parquet")) if (MODEL / "picks" / league / str(season)).exists() else []:
+    rows, scanned, waiting = [], [], 0
+    pick_dir = MODEL / "picks" / league / str(season)
+    for p in sorted(pick_dir.glob("W*.parquet")) if pick_dir.exists() else []:
         picks = pd.read_parquet(p)
+        scanned.extend(picks.pick_id.tolist())
         for _, k in picks.iterrows():
-            if k.pick_id in graded or k.game_id not in res.index:
+            if k.pick_id in graded:
+                continue
+            if k.game_id not in res.index:
+                waiting += 1
                 continue
             r = res.loc[k.game_id]
             outcome = None
@@ -55,8 +67,12 @@ def grade(league: str, season: int, job: JobRun) -> int:
             graded.add(k.pick_id)
     if rows:
         n = storage.append_csv(MODEL / "picks_evaluation" / league / f"{season}.csv", pd.DataFrame(rows), ["pick_id"], on_duplicate="skip")
-        print(f"{league}: graded {n} picks")
+        by_wk = {}
+        for r in rows:
+            by_wk[r["week"]] = by_wk.get(r["week"], 0) + 1
+        print(f"{league}: graded {n} picks across weeks {sorted(by_wk)} {by_wk}")
         return n
+    print(f"{league}: {len(scanned)} stored picks scanned, {len(graded)} already graded, {waiting} still awaiting a result")
     return 0
 
 
@@ -112,11 +128,16 @@ def main(argv=None):
     p.add_argument("--league", default="BOTH", choices=["NFL", "CFB", "BOTH"])
     p.add_argument("--season", type=int, default=config.SEASON)
     p.add_argument("--weeks", nargs="*", type=int)
+    p.add_argument("--grade-only", action="store_true",
+                   help="skip generating new plays; only grade stored picks whose games have finished")
     p.add_argument("--trigger", default="manual")
     a = p.parse_args(argv)
     with JobRun("PICKS", a.league, a.trigger) as job:
         for lg in (["NFL", "CFB"] if a.league == "BOTH" else [a.league]):
-            run(lg, a.season, a.weeks, job)
+            if a.grade_only:
+                job.rows_written += grade(lg, a.season, job)
+            else:
+                run(lg, a.season, a.weeks, job)
 
 
 if __name__ == "__main__":
