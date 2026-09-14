@@ -202,6 +202,14 @@ def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
                     break
                 if "same order" not in why2:
                     break          # a definite answer, even a negative one: stop asking
+        if payload is not None:
+            _teams = storage.read_table(REF / "teams.parquet")
+            _added, _unmapped = espn_fpi.seed_aliases(payload, "CFB", resolver, _teams)
+            if _added:
+                print(f"    learned {_added} ESPN team alias(es)")
+            if _unmapped:
+                print(f"    {len(_unmapped)} ESPN name(s) still unmapped: {', '.join(_unmapped[:12])}"
+                      + (" ..." if len(_unmapped) > 12 else ""))
         import providers.espn_fpi as _ef
         _prev = config.ESPN_SOS_RESUME_INDEX
         config.ESPN_SOS_RESUME_INDEX = verified_idx

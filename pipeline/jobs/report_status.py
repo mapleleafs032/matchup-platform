@@ -108,7 +108,11 @@ def main():
         files = sorted(glob.glob(str(config.TABLES / f"analytics/market_analysis/{lg}/*/W*.parquet")))
         if files:
             m = pd.read_parquet(files[-1]); av = m[m.available]
-            print(f"  {lg} {files[-1].split('/')[-2]} {files[-1].split('/')[-1][:-8]}: {len(av)}/{len(m)} games with history | key-number moves={int((av.key_numbers.fillna('') != '').sum())} steam={int(av.steam.notna().sum())} | median |model-market| spread diff={av.model_spread_diff.abs().median():.1f}" if len(av) else f"  {lg}: no market history")
+            diff = pd.to_numeric(av.model_spread_diff, errors="coerce").abs().median() if len(av) else None
+            diff_txt = "n/a" if diff is None or pd.isna(diff) else f"{diff:.1f}"
+            print(f"  {lg} {files[-1].split('/')[-2]} {files[-1].split('/')[-1][:-8]}: {len(av)}/{len(m)} games with history"
+                  f" | key-number moves={int((av.key_numbers.fillna('') != '').sum())} steam={int(av.steam.notna().sum())}"
+                  f" | median |model-market| spread diff={diff_txt}" if len(av) else f"  {lg}: no market history")
     print("\nMATCHUP EDGES (latest week per league; prelim weighted advantage, home perspective, points)")
     for lg in ("NFL", "CFB"):
         files = sorted(glob.glob(str(config.TABLES / f"analytics/matchup_edges/{lg}/*/W*.parquet")))

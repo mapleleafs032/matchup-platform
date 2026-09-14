@@ -246,6 +246,47 @@ def verify_sos_column(payload) -> tuple[bool, str]:
     return True, f"position {idx} matched the sorted order on {checked - mismatched} of {checked} teams"
 
 
+def seed_aliases(payload, league: str, resolver: ids.AliasResolver, teams: pd.DataFrame) -> tuple[int, list[str]]:
+    """
+    Map ESPN's team names onto our team_ids. Without this the `espn` namespace holds no teams, every
+    FPI row fails to resolve, and the strength-of-schedule column silently comes back empty.
+    Matching is exact on a normalised name only -- an ambiguous name is reported, never guessed.
+    """
+    if teams.empty:
+        return 0, []
+    t = teams[teams.league == league]
+    lookup: dict[str, set] = {}
+    for _, x in t.iterrows():
+        cands = {x.display_name, x.school_or_city}
+        if pd.notna(x.mascot):
+            cands.add(f"{x.school_or_city} {x.mascot}")
+        for c in cands:
+            if isinstance(c, str) and c.strip():
+                lookup.setdefault(_norm(c), set()).add(x.team_id)
+    known = set(resolver.aliases[resolver.aliases.provider == "espn"].alias)
+    added, unmatched = [], []
+    for e in _entries(payload):
+        name = _team_name(e)
+        if not name or name in known:
+            continue
+        hit = lookup.get(_norm(name))
+        if hit is None:                       # try dropping the mascot: "UCLA Bruins" -> "UCLA"
+            parts = name.split()
+            for cut in range(len(parts) - 1, 0, -1):
+                hit = lookup.get(_norm(" ".join(parts[:cut])))
+                if hit:
+                    break
+        if hit and len(hit) == 1:
+            added.append({"provider": "espn", "alias": name, "provider_id": None,
+                          "team_id": next(iter(hit)), "season_from": None, "season_to": None})
+            known.add(name)
+        else:
+            unmatched.append(name)
+    if added:
+        resolver.add(added); resolver.save()
+    return len(added), sorted(set(unmatched))
+
+
 def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: set[str]) -> tuple[pd.DataFrame, list[str]]:
     """Returns (rows, notes). Notes describe anything that could not be read, for the job log."""
     entries = _entries(payload)

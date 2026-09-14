@@ -380,3 +380,20 @@ def test_reversed_sort_is_enough_to_discriminate():
     asc = mk(teams, lambda t, i: sos[t])
     assert espn_fpi.verify_across_sorts(asc, mk(teams[::-1], lambda t, i: sos[t]), 2)[0] is True
     assert espn_fpi.verify_across_sorts(asc, mk(teams[::-1], lambda t, i: i), 2)[0] is False
+
+
+def test_espn_team_aliases_are_seeded_so_sos_is_not_silently_dropped():
+    """Without team aliases every FPI row fails to resolve and the SOS column comes back empty while
+    the job still reports success — which is exactly what happened."""
+    from providers import espn_fpi
+    teams = pd.DataFrame([
+        {"team_id": "CFB_UCLA", "league": "CFB", "school_or_city": "UCLA", "mascot": "Bruins", "display_name": "UCLA Bruins", "abbr": "UCLA"},
+        {"team_id": "CFB_WIS", "league": "CFB", "school_or_city": "Wisconsin", "mascot": "Badgers", "display_name": "Wisconsin Badgers", "abbr": "WIS"},
+    ])
+    r = ids.AliasResolver.load()
+    payload = {"items": [{"team": {"displayName": n}, "categories": []}
+                         for n in ("UCLA Bruins", "Wisconsin Badgers", "Nowhere State Somethings")]}
+    added, unmatched = espn_fpi.seed_aliases(payload, "CFB", r, teams)
+    assert added == 2 and unmatched == ["Nowhere State Somethings"]
+    assert r.resolve("espn", alias="UCLA Bruins") == "CFB_UCLA"
+    assert espn_fpi.seed_aliases(payload, "CFB", r, teams)[0] == 0      # idempotent
