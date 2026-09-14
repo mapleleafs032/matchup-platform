@@ -623,3 +623,4 @@ snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_hom
 2026_NFL_W10_LAC_BAL_betus_20260911T230606Z,2026_NFL_W10_LAC_BAL,2026-09-11T23:06:06.990934+00:00,2026-09-11T23:05:24Z,betus,-2.5,-110,-110,,,48.5,-110,-110,,,,,,,True,,,odds_api,free
 2026_NFL_W10_MIN_GB_draftkings_20260914T023100Z,2026_NFL_W10_MIN_GB,2026-09-14T02:31:00.601927+00:00,,draftkings,2.5,,,120.0,-142.0,46.5,,,0.55,0.47,0.54,0.37,0.54,0.71,False,,,vsin_dk,free
 2026_NFL_W10_MIN_GB_draftkings_20260914T024448Z,2026_NFL_W10_MIN_GB,2026-09-14T02:44:48.351153+00:00,,draftkings,2.5,,,120.0,-142.0,46.5,,,0.55,0.47,0.54,0.37,0.54,0.71,False,,,vsin_dk,free
+2026_NFL_W10_MIN_GB_draftkings_20260914T024557Z,2026_NFL_W10_MIN_GB,2026-09-14T02:45:57.809060+00:00,,draftkings,2.5,,,120.0,-142.0,46.5,,,0.55,0.47,0.54,0.37,0.54,0.71,False,,,vsin_dk,free
