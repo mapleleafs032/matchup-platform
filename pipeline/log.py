@@ -22,7 +22,14 @@ def now_iso() -> str:
 
 
 class ValidationLog:
+    """Collects validation events for a job run.
+
+    Unmatched aliases are deduplicated within a run: a name that appears on 400 roster rows is one
+    fact, not 400. Logging every occurrence buried the real problems under tens of thousands of rows.
+    """
     def __init__(self, job_run_id: str, table_name: str):
+        self._seen_aliases: set = set()
+        self._alias_counts: dict = {}
         self.job_run_id = job_run_id
         self.table_name = table_name
         self.rows: list[dict] = []
@@ -34,6 +41,15 @@ class ValidationLog:
         self._add("WARN", rule, record_key, field, observed, expected)
 
     def _add(self, severity, rule, record_key, field, observed, expected):
+        # An unmatched alias is one fact however many rows carry it. Logging every occurrence produced
+        # tens of thousands of identical warnings and buried everything else.
+        if rule == "ALIAS_UNMATCHED":
+            key = str(observed)
+            if key in self._seen_aliases:
+                self._alias_counts[key] = self._alias_counts.get(key, 1) + 1
+                return
+            self._seen_aliases.add(key)
+            self._alias_counts[key] = 1
         self.rows.append({
             "validation_id": uuid.uuid4().hex[:16], "job_run_id": self.job_run_id, "table_name": self.table_name,
             "rule": rule, "severity": severity, "record_key": str(record_key), "field": field,
@@ -44,7 +60,16 @@ class ValidationLog:
     def rejects(self) -> int:
         return sum(1 for r in self.rows if r["severity"] == "REJECT")
 
+    def _apply_alias_counts(self):
+        """Record how many rows each unmatched alias affected, so deduping loses no information."""
+        for r in self.rows:
+            if r.get("rule") == "ALIAS_UNMATCHED":
+                n = self._alias_counts.get(str(r.get("observed")), 1)
+                if n > 1:
+                    r["expected"] = f"{r.get('expected','')} (seen on {n} rows)".strip()
+
     def flush(self) -> None:
+        self._apply_alias_counts()
         if self.rows:
             storage.append_csv(VALIDATION_LOG, pd.DataFrame(self.rows), key_cols=["validation_id"], on_duplicate="skip")
             self.rows = []

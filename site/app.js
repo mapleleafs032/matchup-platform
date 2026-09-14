@@ -257,7 +257,7 @@ App.eventLog = function (events, market) {
   head.innerHTML = "<b>What moved, and when</b>";
   ul.appendChild(head);
   const NAME = { rlm: "Reverse line movement", steam: "Steam (fast move)", lopsided: "Lopsided support",
-                 money_divergence: "Tickets and money disagree", key_number: "Key number crossed", line_move: "Line moved" };
+                 money_divergence: "Big money", divergence: "Big money", key_number: "Key number crossed", line_move: "Line moved" };
   for (const e of evs.slice(-12)) {
     const li = document.createElement("li");
     const when = new Date(e.t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });

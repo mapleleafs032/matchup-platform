@@ -511,6 +511,7 @@ def build_odds(S: Season, week: int, slate: dict) -> dict:
 def build_picks(S: Season, week: int) -> dict:
     """Picks payload: tiered plays plus the measured hit rate for each tier and the season's graded record."""
     path = config.TABLES / "model" / "picks" / S.league / str(S.season) / f"W{week:02d}.parquet"
+    lean_path = config.TABLES / "model" / "picks_leans" / S.league / str(S.season) / f"W{week:02d}.parquet"
     picks = storage.read_table(path)
     cal = picks_engine.calibrate(S.league)
     ev = storage.read_table(config.TABLES / "model" / "picks_evaluation" / S.league / f"{S.season}.csv")

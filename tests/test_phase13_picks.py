@@ -278,3 +278,29 @@ def test_grading_is_a_full_rescan_and_never_double_counts(tmp_path, monkeypatch)
     assert set(ev.result) == {"WIN"} and set(ev.pick_id) == {"p1", "p2"}
     with JobRun("PICKS", "NFL") as job:
         assert bp.grade("NFL", 2026, job) == 0               # re-running adds nothing
+
+
+def test_leans_are_separated_from_ranked_plays():
+    """A play whose only failing is missing market confirmation is a lean: shown, never tiered, never
+    graded. The rule is edge AND market support — an edge alone cannot earn an A+."""
+    from pipeline import picks_engine as pe
+    rejected = pd.DataFrame([
+        {"pick_id": "p1", "veto_reasons": pe.LEAN_ONLY_REASON},
+        {"pick_id": "p2", "veto_reasons": f"{pe.LEAN_ONLY_REASON} | lopsided support"},
+        {"pick_id": "p3", "veto_reasons": "reverse line movement against our side"},
+    ])
+    vetoed, leans = pe.split_leans(rejected)
+    assert list(leans.pick_id) == ["p1"] and leans.tier.iloc[0] == "LEAN"
+    assert set(vetoed.pick_id) == {"p2", "p3"}      # anything with a real veto is not a lean
+
+
+def test_alias_warnings_are_deduplicated_but_counted():
+    """Tens of thousands of identical alias warnings buried every other validation event."""
+    from pipeline.log import ValidationLog
+    v = ValidationLog("t", "roster")
+    for _ in range(500):
+        v.warn("ALIAS_UNMATCHED", "Villanova", "team", "Villanova", "known team")
+    v.warn("RANGE", "x", "pct", 1.5, "0..1")
+    assert len(v.rows) == 2                         # one per distinct alias, plus the unrelated warning
+    v._apply_alias_counts()
+    assert "seen on 500 rows" in v.rows[0]["expected"]

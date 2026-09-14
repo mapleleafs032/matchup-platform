@@ -87,6 +87,11 @@ def run(league: str, season: int, weeks: list[int] | None, job: JobRun) -> None:
     total = 0
     for wk in weeks:
         picks, rejected, calib = picks_engine.build_week(league, season, wk)
+        rejected, leans = picks_engine.split_leans(rejected)
+        storage.write_parquet(MODEL / "picks_leans" / league / str(season) / f"W{wk:02d}.parquet",
+                              leans if not leans.empty else picks_engine.empty_picks_frame())
+        if not leans.empty:
+            print(f"{league} {season} W{wk}: {len(leans)} lean(s) — model edge with no market confirmation, not ranked and not graded")
         if picks.empty and rejected.empty:
             print(f"{league} {season} W{wk}: no candidates clear the minimum edge"); continue
         if not rejected.empty:
@@ -103,10 +108,14 @@ def run(league: str, season: int, weeks: list[int] | None, job: JobRun) -> None:
             reb = int(picks.rlm_earlier_only.fillna(False).astype(bool).sum())
             if reb:
                 print(f"      ({reb} of these showed reverse movement earlier in the week but have since rebounded, so they were kept)")
+        # Always write, even when nothing qualifies. Skipping the write leaves the previous run's file in
+        # place, so a play that has since lost its market support keeps showing as a ranked pick while
+        # simultaneously appearing in the filtered-out list. The current state must replace the old one.
+        picks = picks.head(config.PICK_MAX_PER_WEEK) if not picks.empty else picks
+        storage.write_parquet(MODEL / "picks" / league / str(season) / f"W{wk:02d}.parquet",
+                              picks if not picks.empty else picks_engine.empty_picks_frame())
         if picks.empty:
-            print(f"{league} {season} W{wk}: nothing survived the gates"); continue
-        picks = picks.head(config.PICK_MAX_PER_WEEK)
-        storage.write_parquet(MODEL / "picks" / league / str(season) / f"W{wk:02d}.parquet", picks)
+            print(f"{league} {season} W{wk}: nothing survived the gates (previous picks cleared)"); continue
         total += len(picks)
         by_tier = picks.tier.value_counts().to_dict()
         print(f"{league} {season} W{wk}: {len(picks)} plays {by_tier}")

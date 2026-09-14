@@ -564,6 +564,40 @@ def assign_tiers(df: pd.DataFrame, calib: dict | None = None) -> pd.DataFrame:
     return d[d.tier.notna()].sort_values("score", ascending=False)
 
 
+PICK_COLUMNS = ["pick_id", "game_id", "league", "season", "week", "kickoff_utc", "market", "side", "side_is_home",
+                "line", "price", "tier", "score", "score_edge_only", "edge_points", "expected_value", "signals",
+                "opposes", "signal_notes", "data_quality", "model_number", "market_number", "tickets_pct_side",
+                "money_pct_side", "model_version", "home", "away", "band_hit_rate", "band_n", "built_at"]
+
+
+def empty_picks_frame() -> pd.DataFrame:
+    """An explicitly empty picks table, so 'nothing qualifies' is written rather than left implied."""
+    return pd.DataFrame(columns=PICK_COLUMNS)
+
+
+LEAN_ONLY_REASON = "no market evidence supports this side (edge only)"
+
+
+def split_leans(rejected: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Separate "the market simply has not confirmed this" from "the market is against it".
+
+    A play whose ONLY failing is missing confirmation still has a real model edge, so it is worth
+    seeing -- but it is a lean, not a ranked play. It carries no tier, and it is excluded from the
+    graded record, because the rule is edge AND market support.
+    """
+    if rejected.empty or "veto_reasons" not in rejected.columns:
+        return rejected, rejected.iloc[0:0]
+    def only_missing_confirmation(v):
+        parts = [x.strip() for x in str(v).split(" | ") if x.strip()]
+        return bool(parts) and all(LEAN_ONLY_REASON in p for p in parts)
+    mask = rejected.veto_reasons.map(only_missing_confirmation)
+    leans = rejected[mask].copy()
+    if not leans.empty:
+        leans["tier"] = "LEAN"
+    return rejected[~mask].copy(), leans
+
+
 def build_week(league: str, season: int, week: int) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     """Returns (qualified picks, rejected candidates with reasons, calibration)."""
     c = candidates(league, season, week)

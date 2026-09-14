@@ -265,12 +265,19 @@ def detect_events(hist: pd.DataFrame, period: str, home_abbr: str, away_abbr: st
                 gap = abs(float(r[tc]) - float(r[mc])) * 100
                 now_div = gap >= config.SPLITS_DIVERGENCE_PTS
                 if now_div and not prev_div:
+                    money_home = float(r[mc]) >= 0.5
                     crowd = _dir_label(mkt, float(r[tc]) >= 0.5, home_abbr, away_abbr)
-                    money = _dir_label(mkt, float(r[mc]) >= 0.5, home_abbr, away_abbr)
+                    money = _dir_label(mkt, money_home, home_abbr, away_abbr)
+                    # Say what the money actually is on that side, and how much more of it than tickets.
+                    # "Divergence of 15 points" tells you nothing about which way or how big the money is.
+                    m_side = float(r[mc]) if money_home else 1 - float(r[mc])
+                    t_side = float(r[tc]) if money_home else 1 - float(r[tc])
                     out.append({"t": r.retrieved_at.isoformat(), "kind": "divergence", "market": mkt,
-                                "toward": money, "toward_home": float(r[mc]) >= 0.5, "move": None,
-                                "detail": (f"tickets and money split by {gap:.0f} points"
-                                           + (f": tickets on {crowd}, money on {money}" if crowd != money else f", both on {crowd}"))})
+                                "toward": money, "toward_home": money_home, "move": None,
+                                "money_pct_side": round(m_side, 4), "ticket_pct_side": round(t_side, 4),
+                                "detail": (f"{m_side*100:.0f}% of the money is on {money} against {t_side*100:.0f}% of tickets"
+                                           f" — {gap:.0f} points more money than tickets"
+                                           + ("" if crowd != money else ", the same side the crowd is on"))})
                 prev_div = now_div
             side = None
             if pd.notna(r.get(tc)) and pd.notna(r.get(mc)):
