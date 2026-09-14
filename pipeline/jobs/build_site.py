@@ -248,6 +248,18 @@ def _team_qb_metric_passer(S: "Season", team_id: str, week: int) -> float | None
     return _passer_rating(st.pass_cmp.sum(), st.pass_att.sum(), st.pass_yds.sum(), st.pass_td.sum(), st.pass_int.sum())
 
 
+def _espn_sos_table(S: "Season") -> dict:
+    """
+    ESPN's strength-of-schedule ranks as stored by the context job. The job only writes these once the
+    cross-sort check has shown the column really is a rank, so anything present here has been verified.
+    """
+    f = storage.read_table(config.TABLES / "context" / "espn_fpi" / f"{S.season}.parquet")
+    if f.empty or "sos_rank_espn" not in f.columns:
+        return {}
+    f = f[f.sos_rank_espn.notna()]
+    return {r.team_id: int(r.sos_rank_espn) for _, r in f.iterrows()}
+
+
 def _espn_sos_manual(S: "Season") -> dict:
     """
     ESPN's SOS ranks, entered by hand from the FPI resume page.
@@ -335,6 +347,74 @@ def _head_to_head(S: "Season", home: str, away: str, limit: int = 10) -> list[di
     return out
 
 
+# How a completed game actually played out. Each entry is (label, how to compute it from that team's
+# box row, and that team's opponent row where the stat is a rate against them).
+def _box_stats(S: "Season", gid: str, home: str, away: str) -> dict | None:
+    """The box score for one finished game: what each side actually did, not what was projected."""
+    t = storage.read_table(config.TABLES / "stats" / "team_game_stats" / S.league / f"{S.season}.parquet")
+    if t.empty:
+        return None
+    g = t[t.game_id == gid]
+    if g.empty:
+        return None
+    if "is_garbage_filtered" in g.columns and (~g.is_garbage_filtered.astype(bool)).any():
+        g = g[~g.is_garbage_filtered.astype(bool)]      # full-game numbers, not the garbage-time cut
+    rows = {r.team_id: r for _, r in g.iterrows()}
+    if home not in rows or away not in rows:
+        return None
+
+    def num(r, c):
+        return None if c not in r or pd.isna(r[c]) else float(r[c])
+
+    def ratio(r, num_c, den_c):
+        n, d = num(r, num_c), num(r, den_c)
+        return None if n is None or not d else n / d
+
+    def mmss(sec):
+        if sec is None:
+            return None
+        return f"{int(sec) // 60}:{int(sec) % 60:02d}"
+
+    def side(team, opp):
+        r, o = rows[team], rows[opp]
+        return {
+            "points": num(r, "points"), "total_yards": num(r, "total_yards"), "plays": num(r, "plays"),
+            "yards_per_play": ratio(r, "total_yards", "plays"),
+            "pass_yards": num(r, "pass_yds"), "pass_att": num(r, "pass_att"), "pass_cmp": num(r, "pass_cmp"),
+            "yards_per_pass": ratio(r, "pass_yds", "pass_att"),
+            "rush_yards": num(r, "rush_yds"), "rush_att": num(r, "rush_att"),
+            "yards_per_rush": ratio(r, "rush_yds", "rush_att"),
+            "first_downs": num(r, "first_downs"),
+            "third_down": (None if num(r, "third_down_att") in (None, 0) else
+                           {"conv": num(r, "third_down_conv"), "att": num(r, "third_down_att"),
+                            "pct": ratio(r, "third_down_conv", "third_down_att")}),
+            "fourth_down": (None if num(r, "fourth_down_att") in (None, 0) else
+                            {"conv": num(r, "fourth_down_conv"), "att": num(r, "fourth_down_att")}),
+            "turnovers": num(r, "turnovers"), "takeaways": num(r, "takeaways"),
+            "turnover_margin": (None if num(r, "takeaways") is None or num(r, "turnovers") is None
+                                else num(r, "takeaways") - num(r, "turnovers")),
+            "sacks_taken": num(r, "sacks_taken"), "sacks_made": num(r, "sacks_made"),
+            "penalties": num(r, "penalties"), "penalty_yds": num(r, "penalty_yds"),
+            "possession": mmss(num(r, "possession_sec")),
+            # defensive view: what this team allowed is simply what the opponent produced
+            "yards_allowed": num(o, "total_yards"), "yards_per_play_allowed": ratio(o, "total_yards", "plays"),
+            "pass_yards_allowed": num(o, "pass_yds"), "rush_yards_allowed": num(o, "rush_yds"),
+            "third_down_allowed_pct": ratio(o, "third_down_conv", "third_down_att"),
+        }
+
+    adv = storage.read_table(config.TABLES / "stats" / "team_game_advanced" / S.league / f"{S.season}.parquet")
+    rz = {}
+    if not adv.empty and "off_rz_td_rate" in adv.columns:
+        a = adv[adv.game_id == gid]
+        for _, r in a.iterrows():
+            if pd.notna(r.get("off_rz_td_rate")):
+                rz[r.team_id] = float(r.off_rz_td_rate)
+    out = {"away": side(away, home), "home": side(home, away)}
+    for k, tid in (("away", away), ("home", home)):
+        out[k]["redzone_td_rate"] = rz.get(tid)
+    return out
+
+
 def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, metrics_rows: list, adj: str = "OPP_ADJ") -> dict:
     by_key = {r["metric_key"]: r for r in metrics_rows}
     reg = S.reg.set_index("metric_key") if not S.reg.empty else pd.DataFrame()
@@ -355,9 +435,12 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
             label = "QBR" if qb_kind == "QBR" else "Pass Efficiency"
         elif key == "__sos":
             manual = _espn_sos_manual(S)
+            espn = _espn_sos_table(S)
             def sos(t):
-                if t in manual:                      # ESPN's own rank, when it has been entered
+                if t in manual:                      # a hand-entered rank always wins
                     return {"v": manual[t], "rank": None, "pct": None}
+                if t in espn:                        # ESPN's own rank, as pulled by the context job
+                    return {"v": espn[t], "rank": None, "pct": None}
                 if rat.empty or t not in rat.index:
                     return {"v": None, "rank": None, "pct": None}
                 return {"v": int(rat.loc[t].sos_rank), "rank": None, "pct": None}
@@ -577,7 +660,7 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
     if snap and snap.get("market_history"):
         hist = pd.DataFrame(snap["market_history"]); hist["retrieved_at"] = pd.to_datetime(hist.retrieved_at, utc=True)
         market = market_engine.analyze_game(S.league, hist, None, pd.Timestamp(g.kickoff_utc), pd.Timestamp(snap["locked_at"]))
-        (OUT / "market").mkdir(parents=True, exist_ok=True); (OUT / "market" / f"{gid}.json").write_text(json.dumps(market, default=str))
+        (OUT / "market").mkdir(parents=True, exist_ok=True); (OUT / "market" / f"{gid}.json").write_text(dumps(market))
     wx = None
     if snap and snap.get("weather"):
         wx = snap["weather"][0]
@@ -595,9 +678,11 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
             "teams": {"away": team_block(away, entry["away"]), "home": team_block(home, entry["home"])},
             "metrics": {"windows": WINDOWS, "default_window": "SEASON", "rows": metrics_rows, "quality_flags": qflags},
             "quick_look": {a: build_quick_look(S, week, gid, home, away, metrics_rows, a) for a in ("OPP_ADJ", "RAW")},
+            "box": (_box_stats(S, gid, home, away) if g.status in ("FINAL", "LOCKED") else None),
             "schedules": {"away": _schedule_rows(S, away, week), "home": _schedule_rows(S, home, week)},
             "head_to_head": _head_to_head(S, home, away),
             "sos_source": ("ESPN FPI resume, entered manually" if _espn_sos_manual(S)
+                           else "ESPN FPI resume (espn.com)" if _espn_sos_table(S)
                            else "this platform's own opponent-rating strength of schedule"),
             "splits": splits_engine.build_week(S.league, S.season, week, S.games[S.games.game_id == gid], S.teams).get(gid, {}).get("periods", {}),
             "market_state": _market_state_for(S, week, gid, entry),
@@ -606,6 +691,35 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
                         "lines": "CollegeFootballData lines" if S.league == "CFB" else "The Odds API (US books)", "weather": "Open-Meteo", "injuries": "official league report" if S.league == "NFL" else "manual entries",
                         "note": "Opponent-adjusted values are this platform's own ridge fits; early-season values blend the previous season's adjusted numbers."},
             "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
+def _clean(obj):
+    """NaN/NA -> None, numpy scalars -> plain Python. json.dumps emits a bare NaN by default, which is
+    not valid JSON: a browser refuses the whole file, so one stray value blanks an entire page."""
+    if isinstance(obj, dict):
+        return {k: _clean(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_clean(v) for v in obj]
+    if isinstance(obj, (str, bytes, bool)) or obj is None:
+        return obj
+    if hasattr(obj, "item"):
+        try:
+            obj = obj.item()
+        except (ValueError, TypeError):
+            return str(obj)
+    if isinstance(obj, float) and obj != obj:
+        return None
+    try:
+        if not isinstance(obj, (int, float, dict, list)) and pd.isna(obj):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return obj
+
+
+def dumps(obj) -> str:
+    """Every JSON the site writes goes through here, so no page can be blanked by a stray NaN."""
+    return json.dumps(_clean(obj), default=str, allow_nan=False)
 
 
 def stamp_assets(version: str) -> None:
@@ -685,19 +799,19 @@ def run(leagues: list[str], season: int, weeks: list[int] | None, job: JobRun) -
             slate = build_slate(S, wk)
             (OUT / "slate" / league / str(season)).mkdir(parents=True, exist_ok=True)
             rel = f"json/slate/{league}/{season}/W{wk:02d}.json"
-            (config.SITE_DIR / rel).write_text(json.dumps(slate, default=str))
+            (config.SITE_DIR / rel).write_text(dumps(slate))
             manifest["slates"][league][str(wk)] = rel
             (OUT / "picks" / league / str(season)).mkdir(parents=True, exist_ok=True)
-            (OUT / "picks" / league / str(season) / f"W{wk:02d}.json").write_text(json.dumps(build_picks(S, wk), default=str))
+            (OUT / "picks" / league / str(season) / f"W{wk:02d}.json").write_text(dumps(build_picks(S, wk)))
             manifest.setdefault("picks", {}).setdefault(league, {})[str(wk)] = f"json/picks/{league}/{season}/W{wk:02d}.json"
             (OUT / "odds" / league / str(season)).mkdir(parents=True, exist_ok=True)
-            (OUT / "odds" / league / str(season) / f"W{wk:02d}.json").write_text(json.dumps(build_odds(S, wk, slate), default=str))
+            (OUT / "odds" / league / str(season) / f"W{wk:02d}.json").write_text(dumps(build_odds(S, wk, slate)))
             manifest.setdefault("odds", {}).setdefault(league, {})[str(wk)] = f"json/odds/{league}/{season}/W{wk:02d}.json"
             (OUT / "matchup").mkdir(parents=True, exist_ok=True)
             n = 0
             for entry in slate["games"]:
                 try:
-                    (OUT / "matchup" / f"{entry['game_id']}.json").write_text(json.dumps(build_matchup(S, wk, entry), default=str)); n += 1
+                    (OUT / "matchup" / f"{entry['game_id']}.json").write_text(dumps(build_matchup(S, wk, entry))); n += 1
                 except Exception as e:  # one broken game never breaks the board
                     print(f"  matchup page failed for {entry['game_id']}: {e}")
             job.rows_written += n
@@ -719,15 +833,15 @@ def run(leagues: list[str], season: int, weeks: list[int] | None, job: JobRun) -
                 if out_path.exists():
                     continue
                 try:
-                    out_path.write_text(json.dumps(build_matchup(S, wk, entry), default=str)); made += 1
+                    out_path.write_text(dumps(build_matchup(S, wk, entry))); made += 1
                 except Exception as e:
                     print(f"  matchup page failed for {entry['game_id']}: {e}")
         if made:
             print(f"{league} {season}: {made} archive page(s) written for completed games")
             job.rows_written += made
     stamp_assets(manifest["version"])
-    (OUT / "status.json").write_text(json.dumps(build_status(leagues, season), default=str))
-    (OUT / "manifest.json").write_text(json.dumps(manifest))
+    (OUT / "status.json").write_text(dumps(build_status(leagues, season)))
+    (OUT / "manifest.json").write_text(dumps(manifest))
     print(f"manifest: {manifest['current_week']} version {manifest['version']}")
 
 

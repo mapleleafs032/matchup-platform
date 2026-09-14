@@ -426,3 +426,15 @@ App.splitsPair = function (opts) {
   };
   return el("div", { class: "splits-pair" + (disagree ? " disagree" : "") }, line("Bets:", t), line("Money:", m));
 };
+
+/* Segmented controls set aria-pressed when they are built, but most click handlers only repaint the
+   thing below them and never rebuild the toolbar -- so the highlight stayed on whatever was selected
+   when the page loaded. One delegated listener keeps every .seg and .tabs group on every page in step,
+   whether or not its own handler bothers to. */
+document.addEventListener("click", (ev) => {
+  const btn = ev.target && ev.target.closest ? ev.target.closest(".seg button, .tabs button") : null;
+  if (!btn) return;
+  const seg = btn.closest(".seg, .tabs");
+  if (!seg) return;
+  for (const sib of seg.querySelectorAll("button")) sib.setAttribute("aria-pressed", String(sib === btn));
+}, true);

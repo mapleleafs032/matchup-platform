@@ -343,6 +343,58 @@ async function matchupMain() {
     });
   }
 
+  // ---- how the game actually played out (completed games only)
+  if (d.box) {
+    const B = d.box, aT = A.identity.abbr, hT = H.identity.abbr;
+    const n1 = v => (v == null ? "—" : (Math.abs(v) >= 100 ? Math.round(v) : v.toFixed(1)));
+    const pc = v => (v == null ? "—" : (v * 100).toFixed(1) + "%");
+    const td = (side, key) => {
+      const x = B[side][key];
+      return x ? `${x.conv}/${x.att} (${pc(x.pct)})` : "—";
+    };
+    const ROWS = [
+      ["Points", s => n1(B[s].points), "scoring"],
+      ["Total yards", s => n1(B[s].total_yards), "eff"],
+      ["Plays", s => n1(B[s].plays), "eff"],
+      ["Yards per play", s => n1(B[s].yards_per_play), "eff"],
+      ["Passing yards", s => `${n1(B[s].pass_yards)} (${n1(B[s].pass_cmp)}/${n1(B[s].pass_att)})`, "pass"],
+      ["Yards per pass", s => n1(B[s].yards_per_pass), "pass"],
+      ["Rushing yards", s => `${n1(B[s].rush_yards)} (${n1(B[s].rush_att)} att)`, "rush"],
+      ["Yards per rush", s => n1(B[s].yards_per_rush), "rush"],
+      ["First downs", s => n1(B[s].first_downs), "sit"],
+      ["Third down", s => td(s, "third_down"), "sit"],
+      ["Red zone TD%", s => pc(B[s].redzone_td_rate), "rz"],
+      ["Turnovers", s => n1(B[s].turnovers), "other"],
+      ["Takeaways", s => n1(B[s].takeaways), "other"],
+      ["Turnover margin", s => (B[s].turnover_margin == null ? "—" : (B[s].turnover_margin > 0 ? "+" : "") + n1(B[s].turnover_margin)), "other"],
+      ["Sacks made / taken", s => `${n1(B[s].sacks_made)} / ${n1(B[s].sacks_taken)}`, "trench"],
+      ["Penalties", s => `${n1(B[s].penalties)} for ${n1(B[s].penalty_yds)}`, "other"],
+      ["Time of possession", s => (B[s].possession || "—"), "other"],
+      ["Yards allowed", s => n1(B[s].yards_allowed), "eff"],
+      ["Yards per play allowed", s => n1(B[s].yards_per_play_allowed), "eff"],
+      ["Pass yards allowed", s => n1(B[s].pass_yards_allowed), "pass"],
+      ["Rush yards allowed", s => n1(B[s].rush_yards_allowed), "rush"],
+      ["Third down allowed", s => pc(B[s].third_down_allowed_pct), "sit"],
+    ];
+    const t = el("table", { class: "ql boxtbl" });
+    const thead = el("thead", {},
+      el("tr", { class: "ql-teams" },
+        el("th", { class: "ql-metric", scope: "col" }, "Statistic"),
+        el("th", { class: "ql-team away", scope: "col" }, aT),
+        el("th", { class: "ql-team home", scope: "col" }, hT)));
+    t.append(thead);
+    const tb = el("tbody", {});
+    for (const [label, fn, grp] of ROWS) {
+      tb.append(el("tr", { class: "g-" + grp },
+        el("th", { scope: "row" }, label),
+        el("td", { class: "num" }, fn("away")),
+        el("td", { class: "num" }, fn("home"))));
+    }
+    t.append(tb);
+    sec("How it played out", "Actual production in this game, from the official box score.",
+        el("div", { class: "ql-wrap" }, t));
+  }
+
   // ---- AI
   if (d.ai && !d.ai.withheld && d.ai.sections) {
     const s = d.ai.sections; const ai = el("div", { class: "ai" });

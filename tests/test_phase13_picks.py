@@ -233,3 +233,19 @@ def test_espn_sos_manual_override_and_honest_source_label(tmp_path, monkeypatch)
     (tmp_path / "manual" / "espn_sos.csv").write_text("team,sos_rank\nCFB_TXST,1\nCFB_CLEM,5\n")
     m = bs._espn_sos_manual(S())
     assert m == {"CFB_TXST": 1, "CFB_CLEM": 5}                  # team_ids pass straight through
+
+
+def test_site_json_never_contains_nan():
+    """json.dumps writes a bare NaN by default, which is invalid JSON — a browser rejects the whole
+    file, so one stray value blanks an entire page. Every site write goes through dumps()."""
+    import json as _json
+    import numpy as _np
+    from pipeline.jobs.build_site import dumps
+    payload = {"a": float("nan"), "b": _np.float64("nan"), "c": [1, float("nan")],
+               "d": {"e": _np.int64(3), "f": pd.NaT}, "g": "fine", "h": True, "i": None}
+    txt = dumps(payload)
+    assert "NaN" not in txt and "Infinity" not in txt
+    back = _json.loads(txt)                       # must parse, which a NaN would prevent
+    assert back["a"] is None and back["b"] is None and back["c"] == [1, None]
+    assert back["d"]["e"] == 3 and back["d"]["f"] is None
+    assert back["g"] == "fine" and back["h"] is True and back["i"] is None

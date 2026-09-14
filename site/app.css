@@ -444,3 +444,8 @@ a.sched-link { color: var(--ink); text-decoration: none; border-bottom: 1px dott
 a.sched-link:hover { border-bottom-color: var(--ink); }
 a.sched-link.plain { border-bottom: none; font-variant-numeric: tabular-nums; }
 @media (max-width: 900px) { .ql-row { grid-template-columns: 1fr; gap: 14px; } }
+
+/* box score reuses the quick-look styling, with two value columns instead of four */
+table.ql.boxtbl thead th.ql-metric { width: 38%; }
+table.ql.boxtbl thead th.ql-team { width: 31%; }
+table.ql.boxtbl td.num { text-align: right; }
