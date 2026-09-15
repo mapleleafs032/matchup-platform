@@ -34308,3 +34308,28 @@ ef68752cdc174dd2,SPLITS_20260915T171852_86aa30,betting_splits,SPLITS_UNREADABLE,
 51902119a644433d,SPLITS_20260915T171852_86aa30,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_TEX vs CFB_TEX (VSiN slugs: texas-san-antonio-roadrunners / texas-longhorns) | ,team + percentages,2026-09-15T17:18:59+00:00
 42cbfa9bce2f4413,SPLITS_20260915T171852_86aa30,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: san-jose-st-spartans | ,team + percentages,2026-09-15T17:18:59+00:00
 a5e42cfbb9864adb,SPLITS_20260915T171852_86aa30,betting_splits,SPLITS_UNREADABLE,WARN,,line,"None: these slugs resolve to a team but never matched a scheduled game, which is what a wrong mapping looks like: buffalo-bulls -> CFB_BUF; fresno-st-bulldogs -> CFB_FRES; kentucky-wildcats -> CFB_UK;",team + percentages,2026-09-15T17:18:59+00:00
+4291d76ae0504aa2,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: 2026_NFL_W02_JAX_DEN: only 2 of 6 percentages usable | ,team + percentages,2026-09-15T18:21:56+00:00
+7485b69379bb40bb,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,duquesne,vsin_slug,duquesne,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+e8d50d8c3d9042df,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,e-washington,vsin_slug,e-washington,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+80f220ec7bd84330,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,maine,vsin_slug,maine,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+eb3e013b4d0a476b,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,mercer,vsin_slug,mercer,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+8f21433d382c4980,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,n-dakota,vsin_slug,n-dakota,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+ec662878336a4fe0,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,n-iowa,vsin_slug,n-iowa,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+21fd3aaf9c4b49db,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,portland-st,vsin_slug,portland-st,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+40775a8da996478e,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,s-illinois,vsin_slug,s-illinois,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+44a2b574349f45de,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,san-jose-st-spartans,vsin_slug,san-jose-st-spartans,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+4e08cfbb52c24fb0,SPLITS_20260915T182153_2976ac,betting_splits,ALIAS_UNMATCHED,WARN,stonehill-college,vsin_slug,stonehill-college,add to team_aliases.csv (provider=vsin),2026-09-15T18:22:01+00:00
+90aa3648e6b74f6c,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: portland-st | ,team + percentages,2026-09-15T18:22:02+00:00
+98a9243dbe6a4d46,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: mercer | ,team + percentages,2026-09-15T18:22:02+00:00
+b0c9e22e7e3742e0,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: maine | ,team + percentages,2026-09-15T18:22:02+00:00
+49f6773f473e436d,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: s-illinois | ,team + percentages,2026-09-15T18:22:02+00:00
+b2a13dfa1d7c427a,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_UK vs CFB_TEX (VSiN slugs: kentucky-wildcats / texas-a-and-m-aggies) | ,team + percentages,2026-09-15T18:22:02+00:00
+cdf465997ac34f86,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: duquesne | ,team + percentages,2026-09-15T18:22:02+00:00
+ac2b01a911a843d5,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: stonehill-college | ,team + percentages,2026-09-15T18:22:02+00:00
+117b4c4f702a407a,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: n-iowa | ,team + percentages,2026-09-15T18:22:02+00:00
+25df41708d8048c1,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_TENN vs CFB_MEM (VSiN slugs: tennessee-martin / memphis-tigers) | ,team + percentages,2026-09-15T18:22:02+00:00
+5e5f9315e333492b,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: n-dakota | ,team + percentages,2026-09-15T18:22:02+00:00
+d71e5e7af2a448e8,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: e-washington | ,team + percentages,2026-09-15T18:22:02+00:00
+ee507d429d5d4023,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: no scheduled game for CFB_TEX vs CFB_TEX (VSiN slugs: texas-san-antonio-roadrunners / texas-longhorns) | ,team + percentages,2026-09-15T18:22:02+00:00
+1111d7599bcd41fa,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: unmapped VSiN slug: san-jose-st-spartans | ,team + percentages,2026-09-15T18:22:02+00:00
+cfc8e896e46e4619,SPLITS_20260915T182153_2976ac,betting_splits,SPLITS_UNREADABLE,WARN,,line,"None: these slugs resolve to a team but never matched a scheduled game, which is what a wrong mapping looks like: boston-college-eagles -> CFB_BC; fresno-st-bulldogs -> CFB_FRES; georgia-tech-yellow-j",team + percentages,2026-09-15T18:22:02+00:00
