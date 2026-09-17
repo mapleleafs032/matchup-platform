@@ -1,3 +1,5 @@
 game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
 2026_CFB_W05_WKU_NMSU,2026-09-17T11:07:57.779659+00:00,2026-10-02T00:00:00+00:00,348.9,False,False,open_meteo,65.5,58.5,17.7,21.7,108.0,0.06,0.0,61.0,2.0
 2026_CFB_W05_UNT_TLSA,2026-09-17T11:07:57.780173+00:00,2026-10-02T01:00:00+00:00,349.9,False,False,open_meteo,65.8,58.3,12.4,22.1,8.0,0.1,0.0,40.0,3.0
+2026_CFB_W05_WKU_NMSU,2026-09-17T17:05:13.280102+00:00,2026-10-02T00:00:00+00:00,342.9,False,False,open_meteo,82.7,81.6,6.7,5.6,143.0,0.03,0.0,39.0,3.0
+2026_CFB_W05_UNT_TLSA,2026-09-17T17:05:13.280571+00:00,2026-10-02T01:00:00+00:00,343.9,False,False,open_meteo,64.0,60.8,15.7,27.7,6.0,0.11,0.004,87.0,51.0

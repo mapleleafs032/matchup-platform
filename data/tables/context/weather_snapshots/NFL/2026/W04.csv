@@ -1,2 +1,3 @@
 game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
 2026_NFL_W04_PIT_CLE,2026-09-17T11:05:42.501998+00:00,2026-10-02T00:15:00+00:00,349.2,False,False,open_meteo,62.0,58.5,13.6,17.2,340.0,0.06,0.0,83.0,3.0
+2026_NFL_W04_PIT_CLE,2026-09-17T17:02:56.673114+00:00,2026-10-02T00:15:00+00:00,343.2,False,False,open_meteo,70.3,75.2,4.7,15.2,199.0,0.23,0.079,92.0,80.0
