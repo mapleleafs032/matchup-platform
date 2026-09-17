@@ -34866,3 +34866,172 @@ b7019030985f41c3,CONTEXT_20260916T110411_9268c1,context,ALIAS_UNMATCHED,WARN,Wes
 dbdd99a862364140,CONTEXT_20260916T110411_9268c1,context,ALIAS_UNMATCHED,WARN,Wofford,team,Wofford,team_aliases row (non-FBS teams expected),2026-09-16T11:05:22+00:00
 af2285f5b67a4534,CONTEXT_20260916T110411_9268c1,context,ALIAS_UNMATCHED,WARN,Yale,team,Yale,team_aliases row (non-FBS teams expected),2026-09-16T11:05:22+00:00
 4530fee87bf842d8,CONTEXT_20260916T110411_9268c1,context,ALIAS_UNMATCHED,WARN,Youngstown State,team,Youngstown State,team_aliases row (non-FBS teams expected),2026-09-16T11:05:22+00:00
+22f4f5cc99974c17,CONTEXT_20260917T110405_adcecb,context,SHAPE,WARN,espn_fpi,,strength-of-schedule column verified: position 2 matched the sorted order on 138 of 138 teams,strength of schedule,2026-09-17T11:05:15+00:00
+b905e66a67654e9e,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Abilene Christian,team,Abilene Christian,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+5fcaab48cb5a407b,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Alabama A&M,team,Alabama A&M,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+fd0b82b915334e5c,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Alabama State,team,Alabama State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+1b9629b8ba164fde,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Albany State,team,Albany State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+98b153874eba41c9,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Alcorn State,team,Alcorn State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+85789666d0a74c3f,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Anderson (SC),team,Anderson (SC),team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+50e36cb6963641fb,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Arkansas-Pine Bluff,team,Arkansas-Pine Bluff,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+d8cea01232f84737,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Austin Peay,team,Austin Peay,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+38036c4b216b46d5,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Bethune-Cookman,team,Bethune-Cookman,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+1db4d5e245674f18,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Bowie State,team,Bowie State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+31fb7729de3a432f,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Brown,team,Brown,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+d447398453f547d2,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Bryant,team,Bryant,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+6f20c1fb1d624487,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Bucknell,team,Bucknell,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+bc9b5c117cb54ed3,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Butler,team,Butler,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+5eded614d9e644cc,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Cal Poly,team,Cal Poly,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+ce11c337338846a1,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Campbell,team,Campbell,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+6562b923a63b427f,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Central Arkansas,team,Central Arkansas,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+7b44c8cc21ae46c3,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Central Connecticut,team,Central Connecticut,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+ad6b905350c34534,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Central Oklahoma,team,Central Oklahoma,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+c2448eeab13947a0,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Central State,team,Central State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+2a2fb42154aa4365,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Central Washington,team,Central Washington,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+6090fd3431384073,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Charleston Southern,team,Charleston Southern,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+8155e1ce5b734071,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Chattanooga,team,Chattanooga,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+efde836501a84041,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Chicago State,team,Chicago State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+3533a5acb0c64b96,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Clark Atlanta,team,Clark Atlanta,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+37956a39df494810,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Colgate,team,Colgate,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+dcfc33583fba474d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Columbia,team,Columbia,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+957130d3161b43b7,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Concord,team,Concord,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+74651fe0b8844bd5,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Cornell,team,Cornell,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+7cf114c498684a06,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Dartmouth,team,Dartmouth,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+ec66f179df6c4d87,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Davidson,team,Davidson,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+9a79d201bf4142d4,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Dayton,team,Dayton,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+80f559f147d8400d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Delaware State,team,Delaware State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+881e17cbcfa548d7,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Dickinson,team,Dickinson,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+55384f09cb364146,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Drake,team,Drake,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+d62bb36cc49f4dc9,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Duquesne,team,Duquesne,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+71d0c9243f254542,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,East Tennessee State,team,East Tennessee State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+aeac225eba0c4fc0,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,East Texas A&M,team,East Texas A&M,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+1eda329d27494cf8,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Eastern Illinois,team,Eastern Illinois,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+295df17f049545a3,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Eastern Kentucky,team,Eastern Kentucky,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+5b91f15eeae5476f,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Eastern Washington,team,Eastern Washington,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+063936b67cc142c0,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Edward Waters,team,Edward Waters,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+bce48c7c64d84f05,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Elizabeth City State,team,Elizabeth City State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+7885b4e7c9b947fb,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Elon,team,Elon,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+f05d400b30c04cbe,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Fairmont State,team,Fairmont State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+3b08aef13fcc4fcf,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Florida A&M,team,Florida A&M,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+83be251f5b8142fe,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Fordham,team,Fordham,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+da10365cf9c14ed4,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Franklin,team,Franklin,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+cb3a567a36c84bf7,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Franklin Pierce,team,Franklin Pierce,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+de36db4fd41044de,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Furman,team,Furman,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+5ffea9acbbcf457d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Gardner-Webb,team,Gardner-Webb,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+7fb30f90f2ab41ee,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Georgetown,team,Georgetown,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+6723f3ec49ff462d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Glenville State,team,Glenville State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+e24cd2388ca5498e,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Grambling,team,Grambling,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+aaa53c0bb6064fba,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Hampton,team,Hampton,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+f45d762b0704448b,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Harvard,team,Harvard,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+71061eaa0e314be4,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Holy Cross,team,Holy Cross,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+06b0e690e0e846ca,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Houston Christian,team,Houston Christian,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+b4b5626af1ba495a,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Howard,team,Howard,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+6831cb1b804b47be,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Idaho,team,Idaho,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+cde36d7c510f4d4e,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Idaho State,team,Idaho State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+a9add482ceba4d24,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Illinois State,team,Illinois State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+a7c7626b5b914224,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Incarnate Word,team,Incarnate Word,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+486cdc4a744a4f2a,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Indiana State,team,Indiana State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+3b6ffee783dc430f,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Jackson State,team,Jackson State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+31d3204562c24181,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Kentucky Christian,team,Kentucky Christian,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+dc79efc803174f1e,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Kentucky State,team,Kentucky State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+aadac7a46253486e,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Lafayette,team,Lafayette,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+59b8623f4b4a428d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Lamar,team,Lamar,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+97055dc516c44a46,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Lane College,team,Lane College,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+bf5a40bf7cf24d12,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Lehigh,team,Lehigh,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+fbcb8cf038e447ea,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Lincoln (PA),team,Lincoln (PA),team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+63f9841845524ae3,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Lindenwood,team,Lindenwood,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+c136571476774ca7,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Long Island University,team,Long Island University,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+957d84ee36f845b3,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Louisiana Christian,team,Louisiana Christian,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+ac79953ffec7420a,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Maine,team,Maine,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+f3427b9344c04e05,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Marist,team,Marist,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+3e56c28006954013,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,McNeese,team,McNeese,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+29389d29641d44ca,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Mercer,team,Mercer,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+7b1cc551c54b4f8f,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Mercyhurst,team,Mercyhurst,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+af5daa9421db4e13,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Merrimack,team,Merrimack,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+0a83c7d7d9444ac0,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Miles,team,Miles,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+d45fcf3cd9174820,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Mississippi Valley State,team,Mississippi Valley State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+8d67626fa85d4655,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Monmouth,team,Monmouth,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+76532f79657d4009,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Montana,team,Montana,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+3ec736b457d2446d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Montana State,team,Montana State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+0e632f18db784ffe,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Morehead State,team,Morehead State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+b723f83053f64a95,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Morehouse,team,Morehouse,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+96ae55a1acb04f3a,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Morgan State,team,Morgan State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+10a84278cf76407d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Murray State,team,Murray State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+e3f189160a544771,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,New Hampshire,team,New Hampshire,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+1415c135601542fa,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,New Haven,team,New Haven,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+49de94e5e7c74ffd,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Nicholls,team,Nicholls,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+ca042dfdcfea4532,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Norfolk State,team,Norfolk State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+1f42f3c32a624146,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,North Alabama,team,North Alabama,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+6a038ab7916145f6,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,North Carolina A&T,team,North Carolina A&T,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+73754605380e4691,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,North Carolina Central,team,North Carolina Central,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+83981bb9d91c4434,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,North Dakota,team,North Dakota,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+3dd187d2d08a4279,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Northern Arizona,team,Northern Arizona,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+5e895e203c974f61,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Northern Colorado,team,Northern Colorado,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+8cd2eac5d35e4820,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Northern Iowa,team,Northern Iowa,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+e707662ea02e4837,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Northern Michigan,team,Northern Michigan,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+ecdc7601ca404965,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Northwestern (IA),team,Northwestern (IA),team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+d652797b9d6749b3,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Northwestern State,team,Northwestern State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+fd6e4042b0654c1f,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Ohio Dominican,team,Ohio Dominican,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+310e0407fb404fc4,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Oklahoma Panhandle,team,Oklahoma Panhandle,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+48fd11217e864d8a,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Pennsylvania,team,Pennsylvania,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+b2cd40ebc8394e8d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Portland State,team,Portland State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+db35ea45b7674819,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Prairie View A&M,team,Prairie View A&M,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+a228f3dd88fd46c3,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Presbyterian,team,Presbyterian,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+4c9566fa0a354a7b,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Princeton,team,Princeton,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+12841e36210247fb,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Rhode Island,team,Rhode Island,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+f1ff72d10f904f5b,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Richmond,team,Richmond,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+9f709e485a6d4102,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Robert Morris,team,Robert Morris,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+27cee1144c6640f0,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Roosevelt,team,Roosevelt,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+f54401cbeb184f64,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,SE Louisiana,team,SE Louisiana,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+8e676c30bc5c403d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Sacred Heart,team,Sacred Heart,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+dda16269716c44cb,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Samford,team,Samford,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+7c80794b6d34458e,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,San Diego,team,San Diego,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+23084349ff834830,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Savannah State,team,Savannah State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+9a752eb0a9b44f4d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,South Carolina State,team,South Carolina State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+39adae78b1894310,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,South Dakota,team,South Dakota,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+8f0a85ae960a4513,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,South Dakota Mines,team,South Dakota Mines,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+8f6c7f685557454d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,South Dakota State,team,South Dakota State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+7a6a4549b1d04018,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Southeast Missouri State,team,Southeast Missouri State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+dfcd0640abf94c59,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Southern,team,Southern,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+9901c3b162bd4fa6,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Southern Connecticut State,team,Southern Connecticut State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+15267f14f1664842,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Southern Illinois,team,Southern Illinois,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+245840cddc0847e9,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Southern Utah,team,Southern Utah,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+4eb417eda8ee4645,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,St. Thomas (MN),team,St. Thomas (MN),team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+fa3d43c0d3c14a62,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Stephen F. Austin,team,Stephen F. Austin,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+e20cb122a5b449bd,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Stetson,team,Stetson,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+9032fa6b2c2a4ff4,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Stonehill,team,Stonehill,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+aef2d7d800034b17,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Stony Brook,team,Stony Brook,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+e66a7c5ca0d744d4,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Tarleton State,team,Tarleton State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+da655e9c9fdd4256,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Tennessee State,team,Tennessee State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+4d30d9ba3d1f41be,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Tennessee Tech,team,Tennessee Tech,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+688a02a364484e57,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Texas Southern,team,Texas Southern,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+a2d5ff7f8a5b4f66,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Texas Wesleyan,team,Texas Wesleyan,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+c0121bcdd9f24ced,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,The Citadel,team,The Citadel,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+5e765d7e3ecf4aed,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Thomas More,team,Thomas More,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+41e39c0001d544a3,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Towson,team,Towson,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+3baafa2f2248464b,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Tusculum,team,Tusculum,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+5177fc06320a4c67,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,UAlbany,team,UAlbany,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+fcc09ddbec19483d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,UC Davis,team,UC Davis,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+93221ed485b347de,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,UT Martin,team,UT Martin,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+34d1fc40d7ba4890,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,UT Permian Basin,team,UT Permian Basin,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+ded30fc6086d4cc9,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,UT Rio Grande Valley,team,UT Rio Grande Valley,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+0e7e4399f503486b,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,UVA Wise,team,UVA Wise,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+c7b7e0c6cca8470b,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Utah Tech,team,Utah Tech,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+0753ba7b318d4e93,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,VMI,team,VMI,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+dbb3bdd6b2c640a9,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Valparaiso,team,Valparaiso,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+e42d68cd6bd5453d,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Villanova,team,Villanova,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+3fe69ca0d01642f7,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Virginia Lynchburg,team,Virginia Lynchburg,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+b5c09f314360450c,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Virginia State,team,Virginia State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+0cd466dbe3174ba7,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Wagner,team,Wagner,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+29216461a4914f50,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Weber State,team,Weber State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+f9689e0b986c433c,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,West Florida,team,West Florida,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+f7038108c0b94540,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,West Georgia,team,West Georgia,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+3b2e54f3aa3d4204,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,West Virginia State,team,West Virginia State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+16f253db56bc4977,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Western Carolina,team,Western Carolina,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+b857790b7e7b45aa,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Western Illinois,team,Western Illinois,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+f1aa6c5247334623,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,William & Mary,team,William & Mary,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+03dbf3d88dc54c90,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Winona State,team,Winona State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+afe9b8a140404d76,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Winston-Salem State,team,Winston-Salem State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+62aa5762e38b436c,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Wofford,team,Wofford,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+d511717d95b94a9c,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Yale,team,Yale,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
+16e418d88ec64ef0,CONTEXT_20260917T110405_adcecb,context,ALIAS_UNMATCHED,WARN,Youngstown State,team,Youngstown State,team_aliases row (non-FBS teams expected),2026-09-17T11:05:16+00:00
