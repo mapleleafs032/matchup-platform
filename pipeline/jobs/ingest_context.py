@@ -126,7 +126,85 @@ def nfl(what: set[str], season: int, job: JobRun):
     job.api_calls = rm.calls_this_run
 
 
+    if "fpi" in what:
+        from pipeline.log import ValidationLog as _VL
+        espn_fpi_ingest("NFL", season, job, _VL(job.job_run_id, "espn_fpi"), ids.AliasResolver.load(), set())
+
+
 # ---- CFB --------------------------------------------------------------------------
+def espn_fpi_ingest(league: str, season: int, job: JobRun, vlog: ValidationLog,
+                    resolver: ids.AliasResolver, unmatched: set) -> None:
+    """ESPN power-index ranks (strength of schedule, FPI, offence, defence, special teams).
+
+    Shared by both leagues: the college and NFL pages are the same product on different
+    endpoints, with a different sort key for the strength-of-schedule column."""
+    from providers import espn_fpi
+    from providers.base import RequestManager as _RM, ProviderError as _PE
+    erm = _RM("espn", job.job_run_id)
+    try:
+        payload, which, fnotes = espn_fpi.fetch(erm, season, league)
+        for fn in fnotes:
+            print(f'    endpoint note: {fn}')
+    except _PE as e:
+        vlog.warn("PROVIDER_FAIL", "espn_fpi", "", str(e)[:160], "200")
+        print(f"ESPN FPI {season}: unavailable ({str(e)[:120]})")
+        payload = None
+    # Resolve the unlabelled column properly: a second pull under a different sort tells a real
+    # statistic (travels with the team) from a row index (follows the position).
+    verified_idx = None
+    if payload is not None and config.ESPN_SOS_CANDIDATE_INDEX is not None:
+        # Reversing the sort we already know is accepted is enough: a row index renumbers down the
+        # reversed list, a real rank stays with its team. Other keys are tried only as a fallback.
+        for alt in ("resume.avgsosrank:desc", "fpi.fpi:asc", None):
+            try:
+                second = espn_fpi.fetch_sorted(erm, season, alt, league)
+            except Exception as e:
+                print(f"    second pull ({alt or 'unsorted'}) rejected: {str(e)[:100]}")
+                continue
+            ok2, why2 = espn_fpi.verify_across_sorts(payload, second, config.ESPN_SOS_CANDIDATE_INDEX)
+            print(f"    cross-sort check ({alt or 'unsorted'}): {why2}")
+            if ok2:
+                verified_idx = config.ESPN_SOS_CANDIDATE_INDEX
+                break
+            if "same order" not in why2:
+                break          # a definite answer, even a negative one: stop asking
+    if payload is not None:
+        _teams = storage.read_table(REF / "teams.parquet")
+        _added, _unmapped = espn_fpi.seed_aliases(payload, league, resolver, _teams)
+        if _added:
+            print(f"    learned {_added} ESPN team alias(es)")
+        if _unmapped:
+            print(f"    {len(_unmapped)} ESPN name(s) still unmapped: {', '.join(_unmapped[:12])}"
+                  + (" ..." if len(_unmapped) > 12 else ""))
+    import providers.espn_fpi as _ef
+    _prev = config.ESPN_SOS_RESUME_INDEX
+    config.ESPN_SOS_RESUME_INDEX = verified_idx
+    if payload is not None:
+        f, notes = espn_fpi.normalize(payload, season, resolver, __import__("pandas").Timestamp.now(tz="UTC"), unmatched)
+        for n in notes:
+            vlog.warn("SHAPE", "espn_fpi", "", n[:200], "strength of schedule")
+            print(f"    {n}")
+        if f.empty or f.sos_rank_espn.isna().all():
+            print(f"ESPN FPI {season}: no usable strength-of-schedule values. Response shape:")
+            print("    " + espn_fpi.describe(payload))
+            rv = espn_fpi.resume_values(payload)[:6]
+            if rv:
+                print("    resume values per team (to pin the column):")
+                for nm, vals in rv:
+                    print(f"      {nm}: {vals}")
+        else:
+            _merge_by_key(CONTEXT / "espn_fpi" / f"{season}.parquet", f, ["team_id", "season"])
+            # print a couple of teams so the rank columns can be checked against the page directly
+            show = f.dropna(subset=["power_rank_espn"]).head(3)
+            for _, rr in show.iterrows():
+                print(f"      {rr.espn_team}: SOS {rr.sos_rank_espn}, Power {rr.power_rank_espn}, "
+                      f"Off {rr.offense_rank_espn}, Def {rr.defense_rank_espn}, ST {rr.special_teams_rank_espn}")
+            job.rows_written += len(f)
+            print(f"ESPN FPI {season} (via {which}): {len(f)} teams, {int(f.sos_rank_espn.notna().sum())} with a strength-of-schedule rank")
+    config.ESPN_SOS_RESUME_INDEX = _prev
+    job.api_calls += erm.calls_this_run
+
+
 def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
     rm = RequestManager("cfbd", job.job_run_id)
     resolver = ids.AliasResolver.load()
@@ -172,66 +250,7 @@ def cfb(what: set[str], season: int, job: JobRun, vlog: ValidationLog):
             job.rows_written += n
             print(f"CFB head coaches {season}: {n} new rows; {int(co.needs_manual_dates.sum())} teams with mid-season change need manual dates")
     if "fpi" in what:
-        from providers import espn_fpi
-        from providers.base import RequestManager as _RM, ProviderError as _PE
-        erm = _RM("espn", job.job_run_id)
-        try:
-            payload, which, fnotes = espn_fpi.fetch(erm, season)
-            for fn in fnotes:
-                print(f'    endpoint note: {fn}')
-        except _PE as e:
-            vlog.warn("PROVIDER_FAIL", "espn_fpi", "", str(e)[:160], "200")
-            print(f"ESPN FPI {season}: unavailable ({str(e)[:120]})")
-            payload = None
-        # Resolve the unlabelled column properly: a second pull under a different sort tells a real
-        # statistic (travels with the team) from a row index (follows the position).
-        verified_idx = None
-        if payload is not None and config.ESPN_SOS_CANDIDATE_INDEX is not None:
-            # Reversing the sort we already know is accepted is enough: a row index renumbers down the
-            # reversed list, a real rank stays with its team. Other keys are tried only as a fallback.
-            for alt in ("resume.avgsosrank:desc", "fpi.fpi:asc", None):
-                try:
-                    second = espn_fpi.fetch_sorted(erm, season, alt)
-                except Exception as e:
-                    print(f"    second pull ({alt or 'unsorted'}) rejected: {str(e)[:100]}")
-                    continue
-                ok2, why2 = espn_fpi.verify_across_sorts(payload, second, config.ESPN_SOS_CANDIDATE_INDEX)
-                print(f"    cross-sort check ({alt or 'unsorted'}): {why2}")
-                if ok2:
-                    verified_idx = config.ESPN_SOS_CANDIDATE_INDEX
-                    break
-                if "same order" not in why2:
-                    break          # a definite answer, even a negative one: stop asking
-        if payload is not None:
-            _teams = storage.read_table(REF / "teams.parquet")
-            _added, _unmapped = espn_fpi.seed_aliases(payload, "CFB", resolver, _teams)
-            if _added:
-                print(f"    learned {_added} ESPN team alias(es)")
-            if _unmapped:
-                print(f"    {len(_unmapped)} ESPN name(s) still unmapped: {', '.join(_unmapped[:12])}"
-                      + (" ..." if len(_unmapped) > 12 else ""))
-        import providers.espn_fpi as _ef
-        _prev = config.ESPN_SOS_RESUME_INDEX
-        config.ESPN_SOS_RESUME_INDEX = verified_idx
-        if payload is not None:
-            f, notes = espn_fpi.normalize(payload, season, resolver, erm and __import__("pandas").Timestamp.now(tz="UTC"), unmatched)
-            for n in notes:
-                vlog.warn("SHAPE", "espn_fpi", "", n[:200], "strength of schedule")
-                print(f"    {n}")
-            if f.empty or f.sos_rank_espn.isna().all():
-                print(f"ESPN FPI {season}: no usable strength-of-schedule values. Response shape:")
-                print("    " + espn_fpi.describe(payload))
-                rv = espn_fpi.resume_values(payload)[:6]
-                if rv:
-                    print("    resume values per team (to pin the column):")
-                    for nm, vals in rv:
-                        print(f"      {nm}: {vals}")
-            else:
-                _merge_by_key(CONTEXT / "espn_fpi" / f"{season}.parquet", f, ["team_id", "season"])
-                job.rows_written += len(f)
-                print(f"ESPN FPI {season} (via {which}): {len(f)} teams, {int(f.sos_rank_espn.notna().sum())} with a strength-of-schedule rank")
-        config.ESPN_SOS_RESUME_INDEX = _prev
-        job.api_calls += erm.calls_this_run
+        espn_fpi_ingest("CFB", season, job, vlog, resolver, unmatched)
     if "venues" in what:
         res = cfbd_context.fetch_venues(rm)
         v = cfbd_context.normalize_venues(res.payload, res.retrieved_at)
@@ -414,7 +433,7 @@ def main(argv=None):
         vlog = ValidationLog(job.job_run_id, "context")
         if "manual" in what:
             load_manual(job, vlog)
-        if "NFL" in leagues and what & {"players", "rosters", "injuries", "qbr", "coaches"}:
+        if "NFL" in leagues and what & {"players", "rosters", "injuries", "qbr", "coaches", "fpi"}:
             nfl(what, a.season, job)
         if "CFB" in leagues and what & {"rosters", "rankings", "coaches", "venues", "fpi"}:
             cfb(what, a.season, job, vlog)

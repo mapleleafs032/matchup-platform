@@ -462,3 +462,4 @@ table.mvt thead th { position: sticky; top: 0; background: var(--chalk); font-fa
 table.mvt td.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.mvt td.chg { font-weight: 700; }
 table.mvt tr.carried td { color: var(--mute); background: rgba(138,143,134,.07); }
+table.ql tbody tr.g-ranks td, table.ql tbody tr.g-ranks th { background: rgba(31, 78, 154, .06); }

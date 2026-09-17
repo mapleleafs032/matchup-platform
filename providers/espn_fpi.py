@@ -25,8 +25,25 @@ import pandas as pd
 from pipeline import ids
 from providers.base import RequestManager, ProviderError
 
-FITT = "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex"
-CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/{season}/powerindex"
+# Per league. The college page sorts on resume.avgsosrank, the NFL page on fpi.avgsosrank.
+ENDPOINTS = {
+    "CFB": {"fitt": "https://site.web.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex",
+            "core": "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/{season}/powerindex",
+            "sos_sort": "resume.avgsosrank", "referer": "https://www.espn.com/college-football/fpi/"},
+    "NFL": {"fitt": "https://site.web.api.espn.com/apis/fitt/v3/sports/football/nfl/powerindex",
+            "core": "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/{season}/powerindex",
+            "sos_sort": "fpi.avgsosrank", "referer": "https://www.espn.com/nfl/fpi/"},
+}
+FITT = ENDPOINTS["CFB"]["fitt"]
+CORE = ENDPOINTS["CFB"]["core"]
+
+# In `totals` a rank carries an ordinal suffix ("120th") and a value does not. That is a structural
+# tell, so ranks are identified rather than guessed at by array position.
+_ORDINAL_TOTAL = re.compile(r"^-?\d+(st|nd|rd|th)$", re.I)
+
+# Order of the efficiency pairs ESPN returns. The ingest job prints a verification block so this can be
+# checked against the page rather than trusted.
+EFFICIENCY_ORDER = ("overall", "offense", "defense", "special_teams")
 UA = "matchup-platform/1.0 (personal football research project)"
 
 # field names that have been used for the resume strength-of-schedule rank
@@ -45,30 +62,73 @@ _REM_NORM = {_norm(k) for k in REM_SOS_KEYS}
 _SOR_NORM = {_norm(k) for k in SOR_KEYS}
 
 
-def fetch(rm: RequestManager, season: int) -> tuple[object, str, list[str]]:
+def fetch(rm: RequestManager, season: int, league: str = "CFB") -> tuple[object, str, list[str]]:
     """Returns (payload, which endpoint answered, notes). Raises only when every endpoint fails."""
     notes = []
     # 1) the endpoint behind the web page: returns LABELLED columns, which is what we want
+    ep = ENDPOINTS[league]
     for params in (
         {"region": "us", "lang": "en", "contentorigin": "espn", "limit": 400, "page": 1,
-         "sort": "resume.avgsosrank:asc", "season": season},
+         "sort": f"{ep['sos_sort']}:asc", "season": season},
         {"region": "us", "lang": "en", "contentorigin": "espn", "limit": 400, "season": season},
     ):
         try:
-            res = rm.get(FITT, params=params, headers={"User-Agent": UA, "Accept": "application/json",
-                                                       "Referer": "https://www.espn.com/college-football/fpi/"},
-                         timeout=45)
+            res = rm.get(ep["fitt"], params=params, headers={"User-Agent": UA, "Accept": "application/json",
+                                                             "Referer": ep["referer"]}, timeout=45)
             return res.payload, "fitt", notes
         except ProviderError as e:
             notes.append(f"fitt ({'sorted' if 'sort' in params else 'plain'}): {str(e)[:150]}")
     # 2) the documented core endpoint: UNLABELLED parallel arrays, usable only once the column is pinned
     try:
-        res = rm.get(CORE.format(season=season), params={"limit": 400},
+        res = rm.get(ep["core"].format(season=season), params={"limit": 400},
                      headers={"User-Agent": UA, "Accept": "application/json"}, timeout=45)
         return res.payload, "core", notes
     except ProviderError as e:
         notes.append(f"core: {str(e)[:150]}")
         raise ProviderError("ESPN FPI unavailable. " + " | ".join(notes))
+
+
+def category_pairs(entry: dict, name: str) -> list[dict]:
+    """
+    Split a category into (value, rank) pairs, using the ordinal suffix in `totals` to tell a rank from
+    a value instead of assuming which array position holds which.
+    """
+    for c in (entry.get("categories") or []):
+        if not isinstance(c, dict) or _norm(c.get("name") or "") != _norm(name):
+            continue
+        vals, totals = c.get("values") or [], c.get("totals") or []
+        out, pending = [], None
+        for i, v in enumerate(vals):
+            tot = str(totals[i]).strip() if i < len(totals) else ""
+            try:
+                num = float(v)
+            except (TypeError, ValueError):
+                continue
+            if _ORDINAL_TOTAL.match(tot):
+                out.append({"value": pending, "rank": int(num)}); pending = None
+            else:
+                if pending is not None:
+                    out.append({"value": pending, "rank": None})
+                pending = num
+        if pending is not None:
+            out.append({"value": pending, "rank": None})
+        return out
+    return []
+
+
+def efficiency_ranks(entry: dict) -> dict:
+    """Overall / offense / defense / special-teams ranks from the efficiencies category."""
+    out = {}
+    for name, pr in zip(EFFICIENCY_ORDER, category_pairs(entry, "efficiencies")):
+        out[f"{name}_rank"] = pr.get("rank")
+        out[f"{name}_value"] = pr.get("value")
+    return out
+
+
+def fpi_rank(entry: dict) -> int | None:
+    """The FPI rank — the page's FPI column, shown on the table as Power Rk."""
+    pairs = category_pairs(entry, "fpi")
+    return pairs[0].get("rank") if pairs else None
 
 
 def _collect(obj, out: dict, depth: int = 0):
@@ -208,12 +268,13 @@ def verify_across_sorts(primary, secondary, idx: int) -> tuple[bool, str]:
     return False, f"resume[{idx}] neither travelled with the team ({travels}/{len(shared)}) nor tracked position ({follows}/{len(shared)})"
 
 
-def fetch_sorted(rm, season: int, sort: str | None):
+def fetch_sorted(rm, season: int, sort: str | None, league: str = "CFB"):
+    ep = ENDPOINTS[league]
     params = {"region": "us", "lang": "en", "contentorigin": "espn", "limit": 400, "page": 1, "season": season}
     if sort:
         params["sort"] = sort
-    return rm.get(FITT, params=params, headers={"User-Agent": UA, "Accept": "application/json",
-                                                "Referer": "https://www.espn.com/college-football/fpi/"}, timeout=45).payload
+    return rm.get(ep["fitt"], params=params, headers={"User-Agent": UA, "Accept": "application/json",
+                                                      "Referer": ep["referer"]}, timeout=45).payload
 
 
 def verify_sos_column(payload) -> tuple[bool, str]:
@@ -312,7 +373,12 @@ def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: 
             sos = _resume_by_index(e, __import__("config").ESPN_SOS_RESUME_INDEX)
         if sos is None:
             no_sos += 1
+        eff = efficiency_ranks(e)
         rows.append({"team_id": tid, "season": season, "espn_team": name,
+                     "power_rank_espn": fpi_rank(e),
+                     "offense_rank_espn": eff.get("offense_rank"), "defense_rank_espn": eff.get("defense_rank"),
+                     "special_teams_rank_espn": eff.get("special_teams_rank"),
+                     "overall_eff_rank_espn": eff.get("overall_rank"),
                      "sos_rank_espn": None if sos is None else int(sos),
                      "remaining_sos_rank_espn": (lambda v: None if v is None else int(v))(_pick(nums, _REM_NORM, "rank")),
                      "strength_of_record_rank": (lambda v: None if v is None else int(v))(_pick(nums, _SOR_NORM, "rank")),

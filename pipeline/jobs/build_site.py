@@ -188,6 +188,10 @@ QUICK_ROWS = [
     ("RZ",       "RZ% (Offense)",    "off_rz_td_rate"),
     ("RZ",       "RZ% (Defense)",    "def_rz_td_rate_allowed"),
     ("OTHER",    "TO Margin",        "turnover_margin"),
+    ("RANKS",    "Power Rk",         "__espn_power"),
+    ("RANKS",    "Offense Rk",       "__espn_off"),
+    ("RANKS",    "Defense Rk",       "__espn_def"),
+    ("RANKS",    "Spec Teams Rk",    "__espn_st"),
     ("OTHER",    "SOS",              "__sos"),
 ]
 QUICK_EDGE_PCT_GAP = 0.12       # percentile gap at which one side is credited with the edge
@@ -246,6 +250,15 @@ def _team_qb_metric_passer(S: "Season", team_id: str, week: int) -> float | None
     if not all(c in st.columns for c in need) or st[list(need)].isna().any().any():
         return None
     return _passer_rating(st.pass_cmp.sum(), st.pass_att.sum(), st.pass_yds.sum(), st.pass_td.sum(), st.pass_int.sum())
+
+
+ESPN_RANK_COLUMNS = {"__espn_power": "power_rank_espn", "__espn_off": "offense_rank_espn",
+                     "__espn_def": "defense_rank_espn", "__espn_st": "special_teams_rank_espn"}
+
+
+def _espn_ranks(S: "Season") -> pd.DataFrame:
+    """ESPN power-index ranks per team, as stored by the context job. Empty when not pulled yet."""
+    return storage.read_table(config.TABLES / "context" / "espn_fpi" / f"{S.season}.parquet")
 
 
 def _espn_sos_table(S: "Season") -> dict:
@@ -433,6 +446,19 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
             h = {"v": qb[home][0], "rank": None, "pct": None}
             unit = "qbr"
             label = "QBR" if qb_kind == "QBR" else "Pass Efficiency"
+        elif key in ESPN_RANK_COLUMNS:
+            col = ESPN_RANK_COLUMNS[key]
+            tbl = _espn_ranks(S)
+            def rk(t):
+                if tbl.empty or col not in tbl.columns:
+                    return {"v": None, "rank": None, "pct": None}
+                r = tbl[tbl.team_id == t]
+                if r.empty or pd.isna(r[col].iloc[0]):
+                    return {"v": None, "rank": None, "pct": None}
+                return {"v": int(r[col].iloc[0]), "rank": None, "pct": None}
+            a, h = rk(away), rk(home)
+            hib = False            # a lower rank is better
+            unit = "rank"
         elif key == "__sos":
             manual = _espn_sos_manual(S)
             espn = _espn_sos_table(S)

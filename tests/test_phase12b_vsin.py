@@ -397,3 +397,28 @@ def test_espn_team_aliases_are_seeded_so_sos_is_not_silently_dropped():
     assert added == 2 and unmatched == ["Nowhere State Somethings"]
     assert r.resolve("espn", alias="UCLA Bruins") == "CFB_UCLA"
     assert espn_fpi.seed_aliases(payload, "CFB", r, teams)[0] == 0      # idempotent
+
+
+def test_espn_ranks_are_identified_by_ordinal_suffix_not_by_position():
+    """ESPN returns each category as alternating values and ranks with no labels. `totals` marks a rank
+    with an ordinal suffix, which identifies it structurally instead of guessing at array positions."""
+    from providers import espn_fpi
+    entry = {"categories": [
+        {"name": "fpi", "values": [-7.9, 103.0], "totals": ["-7.9", "103rd"]},
+        {"name": "efficiencies", "values": [30.7, 120.0, 44.7, 80.0, 42.0, 117.0, 10.2, 131.0],
+         "totals": ["30.7", "120th", "44.7", "80th", "42.0", "117th", "10.2", "131st"]}]}
+    assert espn_fpi.fpi_rank(entry) == 103
+    eff = espn_fpi.efficiency_ranks(entry)
+    assert eff["offense_rank"] == 80 and eff["defense_rank"] == 117 and eff["special_teams_rank"] == 131
+    assert eff["overall_rank"] == 120
+    assert eff["offense_value"] == 44.7          # the value is kept apart from its rank
+    # a category with no ordinals yields values only, never a value mistaken for a rank
+    plain = {"categories": [{"name": "fpi", "values": [1.5, 2.5], "totals": ["1.5", "2.5"]}]}
+    assert espn_fpi.fpi_rank(plain) is None
+
+
+def test_nfl_and_cfb_use_different_endpoints_and_sort_keys():
+    from providers import espn_fpi
+    assert espn_fpi.ENDPOINTS["NFL"]["sos_sort"] == "fpi.avgsosrank"
+    assert espn_fpi.ENDPOINTS["CFB"]["sos_sort"] == "resume.avgsosrank"
+    assert "/nfl/" in espn_fpi.ENDPOINTS["NFL"]["fitt"] and "/college-football/" in espn_fpi.ENDPOINTS["CFB"]["fitt"]
