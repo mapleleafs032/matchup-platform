@@ -235,6 +235,13 @@ def candidates(league: str, season: int, week: int) -> pd.DataFrame:
         base.pop("_mstate", None)
         for pl in plays:
             pl.pop("_mstate", None)
+            ages = signal_ages_from_events(mstate.get("events") or [], pl.get("market"), pl.get("side_is_home"), kick_ts)
+            pl["signal_ages"] = ages
+            # steam toward our side is a market signal in its own right, not just a chart mark
+            if "steam" in ages and "steam" not in str(pl.get("signals", "")):
+                pl["signals"] = ",".join([x for x in [pl.get("signals", ""), "steam"] if x])
+            pl["hours_to_kick"] = (round((pd.Timestamp(g.kickoff_utc) - pd.Timestamp.now(tz="UTC")).total_seconds() / 3600, 1)
+                                   if pd.notna(g.kickoff_utc) else None)
             pl["marquee_ok"] = ok
             pl["marquee_why"] = why
             reasons = apply_gates(pl, ctx)
@@ -390,19 +397,87 @@ def _moneyline_play(base, p, gid, league, season, week, last_split) -> list[dict
 
 
 # ---- scoring and tiering -------------------------------------------------------------------------
+def signal_ages_from_events(events: list, market: str, side_is_home, kickoff) -> dict:
+    """
+    How many hours before kickoff each supporting signal last appeared.
+
+    Only moves TOWARD our side count: steam pushing the number away from us is not support. A signal
+    with no timestamp ages to the slowest bucket rather than being treated as fresh.
+    """
+    if not events or kickoff is None:
+        return {}
+    key = "spread" if market in ("SPREAD", "MONEYLINE") else "total"
+    kick = pd.Timestamp(kickoff)
+    out: dict = {}
+    for e in events:
+        if e.get("market") != key:
+            continue
+        toward_home = e.get("toward_home")
+        if side_is_home is not None and toward_home is not None and bool(toward_home) != bool(side_is_home):
+            continue                       # the move went the other way; it is not our signal
+        name = {"steam": "steam", "rlm": "rlm_agrees", "divergence": "money_agrees",
+                "line_move": "line_agrees", "key_number": "key_number"}.get(e.get("kind"))
+        if not name:
+            continue
+        try:
+            hrs = (kick - pd.Timestamp(e["t"])).total_seconds() / 3600
+        except Exception:
+            continue
+        if hrs < 0:
+            continue                       # after kickoff: not usable
+        out[name] = min(hrs, out.get(name, 1e9))    # the most recent occurrence wins
+    return out
+
+
+def recency_weight(hours_before_kick: float | None) -> float:
+    """A move six hours out carries more than one from Monday."""
+    if hours_before_kick is None:
+        return config.PICK_SIGNAL_RECENCY[-1][1]
+    for limit, w in config.PICK_SIGNAL_RECENCY:
+        if hours_before_kick <= limit:
+            return w
+    return config.PICK_SIGNAL_RECENCY[-1][1]
+
+
+def market_component(signals: str, ages: dict | None) -> float:
+    """
+    Market strength on 0..1. Each confirming signal contributes its weight, aged by how close to
+    kickoff it happened; several independent signals saturate rather than adding without limit.
+    """
+    total = 0.0
+    for sig in [x for x in str(signals or "").split(",") if x]:
+        w = config.PICK_MARKET_COMPONENTS.get(sig)
+        if w is None:
+            continue
+        total += w * recency_weight((ages or {}).get(sig))
+    return min(1.0, round(total, 4))
+
+
 def score(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Score = model edge and market behaviour, weighted by config.PICK_WEIGHTS.
+
+    The market half is not a bonus on top of the model: it is half the reason a play is ranked where
+    it is. Early in a season a model running mostly on last year's prior knows less than the money
+    does, and the gate already refuses anything the market has not confirmed.
+    """
     if df.empty:
         return df
     d = df.copy()
     cap = d.market.map(lambda m: config.PICK_EDGE_CAP.get(m, 10.0))
     d["score_base"] = np.minimum(d.edge_points, cap)
     d["score_quality"] = d.data_quality.clip(0.3, 1.0)
-    bonus = d.signals.fillna("").map(lambda s: sum(config.PICK_SIGNAL_BONUS.get(x, 0.0) for x in s.split(",") if x))
-    d["score_signals"] = bonus
-    # edge-only score: the historical bands were measured without splits, so this is the like-for-like
-    # value used to look a play up against that history. The full score adds the live signal bonuses.
+    # kept for the historical bands, which were measured on edge alone because splits did not exist
     d["score_edge_only"] = (d.score_base * d.score_quality).round(3)
-    d["score"] = (d.score_edge_only + d.score_signals).round(3)
+    d["model_component"] = (d.score_edge_only / cap).clip(0, 1).round(4)
+    ages = d.signal_ages if "signal_ages" in d.columns else pd.Series([None] * len(d), index=d.index)
+    d["market_component"] = [market_component(sg, ag) for sg, ag in zip(d.signals.fillna(""), ages)]
+    wm, wk = config.PICK_WEIGHTS["model"], config.PICK_WEIGHTS["market"]
+    d["score"] = ((wm * d.model_component + wk * d.market_component) * config.PICK_SCORE_SCALE).round(3)
+    # what share of the score each half supplied, so a card can say why it ranks where it does
+    denom = (wm * d.model_component + wk * d.market_component).replace(0, np.nan)
+    d["market_share"] = ((wk * d.market_component) / denom).fillna(0).round(3)
+    d["score_signals"] = (wk * d.market_component * config.PICK_SCORE_SCALE).round(3)
     return d
 
 
@@ -484,12 +559,23 @@ def calibrate(league: str) -> dict:
     out["losing_bands"] = [[b["lo"], b["hi"]] for b in merged if b.get("measurably_losing")]
     # Tiers order by SCORE. Ranking bands by observed hit rate would fit noise: with ~100 plays a band's
     # interval spans roughly 20 points, so the "best" band is usually just the luckiest one.
+    # Tiers are now scored half on market behaviour, but the historical bands measure edge ALONE,
+    # because betting splits do not exist for past seasons. Pooling those bands by tier would quote a
+    # number for a population the history never contained, so no tier-level rate is published. Each
+    # play still carries the measured record of its own EDGE band, which is a like-for-like comparison.
+    out["tier_history_available"] = False
+    out["tier_history_note"] = ("Tiers are scored half on market behaviour. The bands below measure the model edge "
+                                "alone, since betting splits do not exist for past seasons, so no historical rate is "
+                                "quoted per tier. Each play shows the measured record of its own edge band instead.")
     for tier, lo in config.PICK_TIERS.items():
         hi = None
         higher = [v for k, v in config.PICK_TIERS.items() if v > lo]
         if higher:
             hi = min(higher)
-        out["tiers"][tier] = combine_bands(merged, lo, hi)
+        pooled = combine_bands(merged, lo, hi)
+        out["tiers"][tier] = {"range": [lo, hi], "n": 0, "hit_rate": None, "ci_low": None, "ci_high": None,
+                              "beats_break_even": None, "significant": None, "measurably_losing": None,
+                              "edge_band_reference": pooled}
     losing = len(out["losing_bands"])
     out["note"] = ("Tiers order by score: A+ is the largest qualifying disagreement. Band hit rates come from "
                    "out-of-sample spread plays in the walk-forward backtest and describe edge alone, since betting "
@@ -561,6 +647,12 @@ def assign_tiers(df: pd.DataFrame, calib: dict | None = None) -> pd.DataFrame:
     d["band_measurably_losing"] = d.score_edge_only.map(lambda sc: bool((band_for(bands, sc) or {}).get("measurably_losing")))
     # the caller drops these and reports the count, so an exclusion is never invisible
     d["tier"] = d.score.map(tier_of)
+    # A+ additionally requires real strength on both halves, not one carrying the other.
+    floors = getattr(config, "PICK_TOP_TIER_FLOORS", None)
+    if floors and "model_component" in d.columns and "market_component" in d.columns:
+        weak = (d.tier == "A+") & ((d.model_component < floors["model"]) | (d.market_component < floors["market"]))
+        d.loc[weak, "tier"] = "A"
+        d.loc[weak, "tier_note"] = "ranked A rather than A+: one half of the case is thin"
     return d[d.tier.notna()].sort_values("score", ascending=False)
 
 

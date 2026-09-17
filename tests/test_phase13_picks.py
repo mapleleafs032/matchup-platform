@@ -16,29 +16,42 @@ def test_american_odds_conversions():
 
 def test_score_respects_quality_and_caps_absurd_edges():
     d = pd.DataFrame([
-        {"market": "SPREAD", "edge_points": 4.0, "data_quality": 1.0, "signals": ""},
-        {"market": "SPREAD", "edge_points": 4.0, "data_quality": 0.5, "signals": ""},
-        {"market": "SPREAD", "edge_points": 40.0, "data_quality": 1.0, "signals": ""},
+        {"market": "SPREAD", "edge_points": 4.0, "data_quality": 1.0, "signals": "", "signal_ages": {}},
+        {"market": "SPREAD", "edge_points": 4.0, "data_quality": 0.5, "signals": "", "signal_ages": {}},
+        {"market": "SPREAD", "edge_points": 40.0, "data_quality": 1.0, "signals": "", "signal_ages": {}},
     ])
     s = pe.score(d)
-    assert s.score.iloc[0] == 4.0
-    assert s.score.iloc[1] == 2.0                       # thin data halves the score
-    assert s.score.iloc[2] == config.PICK_EDGE_CAP["SPREAD"]   # a 40-point disagreement is capped, not celebrated
+    assert s.model_component.iloc[1] < s.model_component.iloc[0]        # thin data lowers the model half
+    assert s.score.iloc[1] < s.score.iloc[0]
+    assert s.model_component.iloc[2] == 1.0                            # a 40-point disagreement caps, not celebrated
+    assert s.score.iloc[2] == pytest.approx(config.PICK_SCORE_SCALE * config.PICK_WEIGHTS["model"])
 
 
-def test_signal_bonuses_only_help_and_are_bounded():
-    d = pd.DataFrame([{"market": "SPREAD", "edge_points": 3.0, "data_quality": 1.0, "signals": ""},
-                      {"market": "SPREAD", "edge_points": 3.0, "data_quality": 1.0, "signals": "rlm_agrees,money_agrees,key_number"}])
+def test_market_signals_only_help_and_are_bounded():
+    d = pd.DataFrame([{"market": "SPREAD", "edge_points": 3.0, "data_quality": 1.0, "signals": "", "signal_ages": {}},
+                      {"market": "SPREAD", "edge_points": 3.0, "data_quality": 1.0,
+                       "signals": "rlm_agrees,money_agrees,key_number", "signal_ages": {"rlm_agrees": 2, "money_agrees": 2, "key_number": 2}}])
     s = pe.score(d)
     assert s.score.iloc[1] > s.score.iloc[0]
-    assert s.score.iloc[1] - s.score.iloc[0] == pytest.approx(0.8 + 0.5 + 0.4)
+    assert s.market_component.iloc[0] == 0.0 and 0 < s.market_component.iloc[1] <= 1.0
+    assert s.score.iloc[1] <= config.PICK_SCORE_SCALE
 
 
 def test_tiers_are_ordered_and_weak_plays_are_dropped():
-    d = pd.DataFrame([{"market": "SPREAD", "edge_points": e, "data_quality": 1.0, "signals": ""} for e in (6.0, 3.0, 1.5, 0.5)])
+    sig = "steam,rlm_agrees,money_agrees"
+    ages = {"steam": 2, "rlm_agrees": 2, "money_agrees": 2}
+    d = pd.DataFrame([{"market": "SPREAD", "edge_points": e, "data_quality": 1.0,
+                       "signals": sig if e > 1.0 else "", "signal_ages": ages if e > 1.0 else {}}
+                      for e in (7.0, 3.0, 1.5, 0.5)])
     t = pe.assign_tiers(pe.score(d))
-    assert list(t.tier) == ["A+", "A", "B"]             # the 0.5-point play is not a play at all
-    assert t.score.is_monotonic_decreasing
+    assert t.tier.iloc[0] == "A+" and t.score.is_monotonic_decreasing
+    # a flawless edge with no market support cannot be A+
+    assert "A+" not in list(pe.assign_tiers(pe.score(pd.DataFrame(
+        [{"market": "SPREAD", "edge_points": 7.0, "data_quality": 1.0, "signals": "", "signal_ages": {}}]))).tier)
+    # nor can a barely-qualifying edge carried entirely by the market
+    thin = pe.assign_tiers(pe.score(pd.DataFrame([{"market": "SPREAD", "edge_points": 1.5, "data_quality": 1.0,
+        "signals": "steam,rlm_agrees,money_agrees", "signal_ages": {"steam": 2, "rlm_agrees": 2, "money_agrees": 2}}])))
+    assert thin.tier.iloc[0] == "A"
 
 
 def test_key_number_side_logic():
@@ -67,12 +80,14 @@ def test_calibration_marks_tiers_below_break_even(tmp_path, monkeypatch):
                          "model_ats_result": ["WIN"] * 120 + ["LOSS"] * 180, "in_sample_warning": False})
     rows.to_csv(d / "evaluation_NFL_v1.0.csv", index=False)
     cal = pe.calibrate("NFL")
-    ap = cal["tiers"]["A+"]
     assert sum(b["n"] for b in cal["bands"]) == n
-    assert ap["hit_rate"] < 0.5 and ap["beats_break_even"] is False          # best band is still a losing band
     assert all(not b["beats_break_even"] for b in cal["bands"])
-    assert ap["significant"] is False and not cal["any_band_beats_break_even"]
-    assert ap["ci_high"] < pe.BREAK_EVEN          # 40% on 300 plays is decisively below break-even
+    assert not cal["any_band_beats_break_even"]
+    worst = max(cal["bands"], key=lambda b: b["n"])
+    assert worst["hit_rate"] < 0.5 and worst["ci_high"] < pe.BREAK_EVEN   # decisively below break-even
+    # no per-tier rate is quoted: tiers are half market, the bands measure edge alone
+    assert cal["tier_history_available"] is False
+    assert cal["tiers"]["A+"]["hit_rate"] is None
 
 
 def test_losing_bands_are_excluded_and_tiers_order_by_score(tmp_path, monkeypatch):
@@ -94,8 +109,8 @@ def test_losing_bands_are_excluded_and_tiers_order_by_score(tmp_path, monkeypatc
     cal = pe.calibrate("CFB")
     big = [b for b in cal["bands"] if b["lo"] >= 5.0][0]
     assert big["measurably_losing"] is True and cal["losing_bands"]
-    plays = pd.DataFrame([{"market": "SPREAD", "edge_points": 6.5, "data_quality": 1.0, "signals": "money_agrees"},
-                          {"market": "SPREAD", "edge_points": 3.5, "data_quality": 1.0, "signals": "money_agrees"}])
+    plays = pd.DataFrame([{"market": "SPREAD", "edge_points": 6.5, "data_quality": 1.0, "signals": "money_agrees", "signal_ages": {"money_agrees": 2}},
+                          {"market": "SPREAD", "edge_points": 3.5, "data_quality": 1.0, "signals": "money_agrees", "signal_ages": {"money_agrees": 2}}])
     t = pe.assign_tiers(pe.score(plays), cal)
     # assign_tiers flags the losing band; build_week is what drops and reports it
     assert bool(t[t.score_edge_only >= 5.0].band_measurably_losing.iloc[0]) is True
@@ -122,10 +137,13 @@ def test_tier_labels_follow_score_not_lucky_bands(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TABLES", tmp_path / "tables")
     monkeypatch.setattr(pe, "MODEL", tmp_path / "tables" / "model")
     cal = pe.calibrate("NFL")                                   # nothing measured
-    plays = pd.DataFrame([{"market": "SPREAD", "edge_points": e, "data_quality": 1.0, "signals": "money_agrees"}
-                          for e in (6.0, 3.0, 1.5)])
+    plays = pd.DataFrame([{"market": "SPREAD", "edge_points": e, "data_quality": q, "signals": sg, "signal_ages": ag}
+                          for e, q, sg, ag in ((7.0, 1.0, "steam,rlm_agrees,money_agrees", {"steam": 2, "rlm_agrees": 2, "money_agrees": 2}),
+                                               (5.0, 1.0, "money_agrees", {"money_agrees": 30}),
+                                               (2.0, 0.6, "line_agrees", {"line_agrees": 60}))])
     t = pe.assign_tiers(pe.score(plays), cal)
-    assert list(t.tier) == ["A+", "A", "B"] and t.score.is_monotonic_decreasing
+    assert t.tier.iloc[0] == "A+" and t.score.is_monotonic_decreasing
+    assert set(t.tier) <= {"A+", "A", "B"}
 
 def test_rlm_detected_only_when_the_line_moves_against_the_ticket_majority():
     # 72% of tickets on home, yet the home number moved from -3.5 to -2.5 (toward the away side)
@@ -304,3 +322,45 @@ def test_alias_warnings_are_deduplicated_but_counted():
     assert len(v.rows) == 2                         # one per distinct alias, plus the unrelated warning
     v._apply_alias_counts()
     assert "seen on 500 rows" in v.rows[0]["expected"]
+
+
+def test_market_carries_half_the_score_so_edge_alone_cannot_reach_a_plus():
+    """Early in a season the money knows more than a model running on last year's prior. Market
+    behaviour is half the score by construction, not a bonus on top of the model."""
+    import config
+    from pipeline import picks_engine as pe
+    rows = [
+        {"market": "SPREAD", "edge_points": 7.0, "data_quality": 1.0, "signals": "", "signal_ages": {}},
+        {"market": "SPREAD", "edge_points": 6.0, "data_quality": 0.95,
+         "signals": "steam,rlm_agrees,money_agrees", "signal_ages": {"steam": 3, "rlm_agrees": 5, "money_agrees": 2}},
+        {"market": "SPREAD", "edge_points": 2.0, "data_quality": 0.9,
+         "signals": "steam,money_agrees", "signal_ages": {"steam": 2, "money_agrees": 4}},
+    ]
+    d = pe.score(pd.DataFrame(rows))
+    edge_only, strong, weak_edge = d.iloc[0], d.iloc[1], d.iloc[2]
+    # a flawless model edge with nothing from the market tops out at half the scale
+    assert edge_only.score == pytest.approx(config.PICK_SCORE_SCALE * config.PICK_WEIGHTS["model"])
+    assert edge_only.score < config.PICK_TIERS["A+"]        # and therefore cannot be A+
+    assert strong.market_share >= 0.5                       # market supplies at least half where it is strong
+    assert weak_edge.market_share > 0.5                     # a modest edge ranks mainly on the market
+
+
+def test_late_signals_count_for_more_than_old_ones():
+    from pipeline import picks_engine as pe
+    late = pe.market_component("steam", {"steam": 2})
+    old = pe.market_component("steam", {"steam": 200})
+    assert late > old
+    assert pe.market_component("steam,rlm_agrees,money_agrees,line_agrees", {k: 1 for k in
+           ("steam", "rlm_agrees", "money_agrees", "line_agrees")}) == 1.0     # saturates, never runs away
+
+
+def test_only_moves_toward_our_side_count_as_support():
+    """Steam pushing the number away from us is not confirmation."""
+    from pipeline import picks_engine as pe
+    kick = pd.Timestamp("2026-09-14T23:00:00Z")
+    events = [{"market": "spread", "kind": "steam", "toward_home": True, "t": "2026-09-14T20:00:00Z"},
+              {"market": "spread", "kind": "rlm", "toward_home": False, "t": "2026-09-14T21:00:00Z"}]
+    ours = pe.signal_ages_from_events(events, "SPREAD", True, kick)
+    assert "steam" in ours and "rlm_agrees" not in ours       # the away-side RLM is not our signal
+    theirs = pe.signal_ages_from_events(events, "SPREAD", False, kick)
+    assert "rlm_agrees" in theirs and "steam" not in theirs

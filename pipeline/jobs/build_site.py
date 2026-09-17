@@ -525,7 +525,8 @@ def build_picks(S: Season, week: int) -> dict:
     cols = ("game_id", "market", "side", "line", "price", "tier", "score", "edge_points", "model_number", "market_number",
             "data_quality", "signals", "signal_notes", "tickets_pct_side", "money_pct_side", "expected_value",
             "model_version", "kickoff_utc", "home", "away", "week", "marquee_why", "rlm", "lopsided_side", "move_against",
-                                                  "band_hit_rate", "band_n", "band_ci_low", "band_ci_high", "score_edge_only")
+                                                  "band_hit_rate", "band_n", "band_ci_low", "band_ci_high", "score_edge_only",
+                                                  "model_component", "market_component", "market_share", "signal_ages")
     out = [{c: _j(k.get(c)) for c in cols} for _, k in picks.iterrows()] if not picks.empty else []
     rej_path = config.TABLES / "model" / "picks_rejected" / S.league / str(S.season) / f"W{week:02d}.parquet"
     rejected = storage.read_table(rej_path)

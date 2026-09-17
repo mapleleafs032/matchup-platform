@@ -180,6 +180,16 @@ PICK_EDGE_CAP = {"SPREAD": 7.0, "TOTAL": 8.0, "MONEYLINE": 7.0}   # beyond this,
 PICK_EV_TO_POINTS = 20.0            # converts moneyline expected value into the same scale as point edges
 PICK_SIGNAL = {"money_divergence": 0.12}
 PICK_SIGNAL_BONUS = {"rlm_agrees": 0.8, "money_agrees": 0.5, "key_number": 0.4, "line_agrees": 0.3}
+# How the score is split. Early in a season the market knows more than a model running on a prior, so
+# market behaviour carries at least half the reason a play is ranked where it is.
+PICK_WEIGHTS = {"model": 0.5, "market": 0.5}
+PICK_SCORE_SCALE = 10.0            # both components are normalised 0..1, then scaled to this
+# Market components, each 0..1 before weighting. They sum above 1 on purpose: a play showing several
+# independent signals saturates, which is the intent.
+PICK_MARKET_COMPONENTS = {"steam": 0.40, "rlm_agrees": 0.35, "money_agrees": 0.30,
+                          "line_agrees": 0.15, "key_number": 0.05}
+# A move hours before kickoff says more than one from Monday, so signals are aged.
+PICK_SIGNAL_RECENCY = [(6, 1.00), (24, 0.90), (72, 0.70), (9999, 0.50)]   # (hours before kickoff, weight)
 # A play must have a statistical edge AND market evidence supporting that side.
 PICK_REQUIRE_MARKET_CONFIRMATION = True
 PICK_MIN_CONFIRMATIONS = 1
@@ -189,7 +199,13 @@ PICK_CONFIRMING_SIGNALS = ("rlm_agrees", "money_agrees", "line_agrees")
 PICK_VETO_ON_OPPOSITION = True
 PICK_OPPOSE_MONEY_GAP = 0.15        # our side's money share trails its ticket share by this much
 PICK_OPPOSE_LINE_MOVE = 1.0         # the number moved this far away from our side
-PICK_TIERS = {"A+": 4.0, "A": 2.5, "B": 1.4}        # fallback floors, used only before anything has been measured
+# Floors on the 0-10 combined scale. A play needs real strength on BOTH halves to reach A+: with the
+# market weighted at 0.5, a perfect model edge and no market support tops out at 5.0.
+PICK_TIERS = {"A+": 6.0, "A": 4.5, "B": 3.0}
+# The top tier means strong on BOTH halves. Without these floors a barely-qualifying edge with every
+# market signal firing would reach A+, and so would a huge edge with token support -- neither is what
+# "edge AND market support" means.
+PICK_TOP_TIER_FLOORS = {"model": 0.40, "market": 0.50}
 # Bands used to MEASURE how disagreement relates to winning. Tiers are then named by measured performance,
 # so A+ means "the band that historically won most often", not "the biggest disagreement".
 PICK_SCORE_BANDS = [1.0, 1.8, 2.5, 3.2, 4.0, 5.0, float("inf")]
@@ -207,7 +223,7 @@ PICK_GATES = {
     "require_confirmation": True,
     "min_confirmations": 1,
     # Only market BEHAVIOUR confirms a side. A favourable key number is positional, not confirmation.
-    "confirming_signals": ("money_agrees", "rlm_agrees", "line_agrees"),
+    "confirming_signals": ("money_agrees", "rlm_agrees", "line_agrees", "steam"),
     "veto_rlm": True,                # reverse line movement kills the play...
     "rlm_only_against_us": True,     # ...but only when it runs AGAINST us; toward us it is confirmation
     "lopsided_threshold": 0.70,      # a side holding >= this share of BOTH tickets and money is lopsided

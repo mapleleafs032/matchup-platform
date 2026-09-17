@@ -63,6 +63,9 @@ async function picksMain() {
         has && v.range ? el("div", { class: "hon-n" }, `score ${v.range[0]}${v.range[1] ? "–" + v.range[1] : "+"}`) : null));
     }
     box.append(row);
+    if (cal.tier_history_available === false && cal.tier_history_note) {
+      box.append(el("p", { class: "hon-note" }, cal.tier_history_note));
+    }
     box.append(el("p", { class: "hon-note" },
       `Break-even at -110 pricing is ${be}%. `,
       cal.tier_basis === "unmeasured"
@@ -191,7 +194,9 @@ async function picksMain() {
         p.market === "MONEYLINE" ? (p.market_number * 100).toFixed(0) + "%" : fmt.num(p.market_number, 1))),
       el("div", {}, el("span", { class: "k" }, "edge"), el("span", { class: "num v" },
         p.market === "MONEYLINE" ? `${(p.expected_value * 100).toFixed(1)}% EV` : `${fmt.num(p.edge_points, 1)} pts`)),
-      el("div", {}, el("span", { class: "k" }, "data quality"), el("span", { class: "num v" }, (p.data_quality * 100).toFixed(0) + "%")));
+      el("div", {}, el("span", { class: "k" }, "data quality"), el("span", { class: "num v" }, (p.data_quality * 100).toFixed(0) + "%")),
+      p.market_share == null ? null : el("div", {}, el("span", { class: "k" }, "market share of score"),
+        el("span", { class: "num v" }, (p.market_share * 100).toFixed(0) + "%")));
     const split = (p.tickets_pct_side != null || p.money_pct_side != null)
       ? el("div", { class: "pk-split" },
           p.tickets_pct_side != null ? el("span", {}, `${(p.tickets_pct_side * 100).toFixed(0)}% of tickets on this side`) : null,
