@@ -258,7 +258,15 @@ ESPN_RANK_COLUMNS = {"__espn_power": "power_rank_espn", "__espn_off": "offense_r
 
 def _espn_ranks(S: "Season") -> pd.DataFrame:
     """ESPN power-index ranks per team, as stored by the context job. Empty when not pulled yet."""
-    return storage.read_table(config.TABLES / "context" / "espn_fpi" / f"{S.season}.parquet")
+    per_league = config.TABLES / "context" / "espn_fpi" / S.league / f"{S.season}.parquet"
+    t = storage.read_table(per_league)
+    if not t.empty:
+        return t
+    # tolerate the older single-file layout, filtering to this league's teams
+    legacy = storage.read_table(config.TABLES / "context" / "espn_fpi" / f"{S.season}.parquet")
+    if legacy.empty or "team_id" not in legacy.columns:
+        return legacy
+    return legacy[legacy.team_id.astype(str).str.startswith(S.league + "_")]
 
 
 def _espn_sos_table(S: "Season") -> dict:
@@ -266,7 +274,7 @@ def _espn_sos_table(S: "Season") -> dict:
     ESPN's strength-of-schedule ranks as stored by the context job. The job only writes these once the
     cross-sort check has shown the column really is a rank, so anything present here has been verified.
     """
-    f = storage.read_table(config.TABLES / "context" / "espn_fpi" / f"{S.season}.parquet")
+    f = _espn_ranks(S)
     if f.empty or "sos_rank_espn" not in f.columns:
         return {}
     f = f[f.sos_rank_espn.notna()]
@@ -439,6 +447,7 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
         qb_kind = "PASSER_RTG"          # never compare two teams on different scales
         qb = {t: (_team_qb_metric_passer(S, t, week), "PASSER_RTG") for t in (home, away)}
     rows, tally = [], {"home": 0, "away": 0}
+    note_missing = None
     for group, label, key in QUICK_ROWS:
         hib, unit = True, None
         if key == "__qbr":
@@ -449,6 +458,12 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
         elif key in ESPN_RANK_COLUMNS:
             col = ESPN_RANK_COLUMNS[key]
             tbl = _espn_ranks(S)
+            if tbl.empty:
+                espn_missing = "no ESPN power-index data pulled for this league yet"
+            elif col not in tbl.columns:
+                espn_missing = "ESPN data was pulled before these rank columns existed; re-run the fpi step"
+            else:
+                espn_missing = None
             def rk(t):
                 if tbl.empty or col not in tbl.columns:
                     return {"v": None, "rank": None, "pct": None}
@@ -459,6 +474,8 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
             a, h = rk(away), rk(home)
             hib = False            # a lower rank is better
             unit = "rank"
+            if espn_missing:
+                note_missing = espn_missing
         elif key == "__sos":
             manual = _espn_sos_manual(S)
             espn = _espn_sos_table(S)
@@ -495,7 +512,7 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
         rows.append({"group": group, "label": label, "metric_key": key, "unit": unit, "higher_is_better": hib,
                      "away": {"v": av, "rank": (a or {}).get("rank")}, "home": {"v": hv, "rank": (h or {}).get("rank")},
                      "edge": edge})
-    return {"rows": rows, "edge_count": tally,
+    return {"rows": rows, "edge_count": tally, "espn_note": note_missing,
             "winner": ("home" if tally["home"] > tally["away"] else "away" if tally["away"] > tally["home"] else None),
             "adjustment": adj, "edge_rule": f"An edge is credited when the two teams differ by at least "
                                             f"{int(QUICK_EDGE_PCT_GAP*100)} percentile points on that metric."}

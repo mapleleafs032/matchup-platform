@@ -43,6 +43,58 @@ _ORDINAL_TOTAL = re.compile(r"^-?\d+(st|nd|rd|th)$", re.I)
 
 # Order of the efficiency pairs ESPN returns. The ingest job prints a verification block so this can be
 # checked against the page rather than trusted.
+def identify_columns(payload, league: str = "CFB") -> dict:
+    """
+    Work out which array index holds which column, by comparing a live pull against ranks transcribed
+    from ESPN's own pages. For each category, every index is scored against every reference column and
+    the best exact-match rate wins. This replaces guessing at positions, which is how every previous
+    attempt at this went wrong.
+    """
+    from providers.espn_fpi_reference import REFERENCE
+    ref = REFERENCE.get(league) or {}
+    if not ref:
+        return {"available": False, "note": f"no reference data transcribed for {league}"}
+    entries = {(_team_name(e) or ""): e for e in _entries(payload)}
+    out = {"available": True, "categories": {}}
+    for cat, table in ref.items():
+        shared = [(n, table[n]) for n in table if n in entries]
+        if len(shared) < 5:
+            out["categories"][cat] = {"error": f"only {len(shared)} reference teams found in the pull"}
+            continue
+        # how many values does this category return?
+        widths = [len(c.get("values") or []) for n, _ in shared
+                  for c in (entries[n].get("categories") or []) if _norm(c.get("name") or "") == _norm(cat)]
+        width = max(widths) if widths else 0
+        cols = sorted({k for _, v in shared for k in v})
+        best = {}
+        for col in cols:
+            scores = []
+            for idx in range(width):
+                hits = tot = 0
+                for name, want in shared:
+                    if want.get(col) is None:
+                        continue
+                    vals = next((c.get("values") or [] for c in (entries[name].get("categories") or [])
+                                 if _norm(c.get("name") or "") == _norm(cat)), [])
+                    if idx >= len(vals):
+                        continue
+                    tot += 1
+                    try:
+                        if int(float(vals[idx])) == int(want[col]):
+                            hits += 1
+                    except (TypeError, ValueError):
+                        pass
+                if tot:
+                    scores.append((hits / tot, idx, hits, tot))
+            if scores:
+                scores.sort(reverse=True)
+                rate, idx, hits, tot = scores[0]
+                best[col] = {"index": idx, "match_rate": round(rate, 3), "matched": hits, "of": tot,
+                             "confident": rate >= 0.9}
+        out["categories"][cat] = {"width": width, "columns": best}
+    return out
+
+
 EFFICIENCY_ORDER = ("overall", "offense", "defense", "special_teams")
 UA = "matchup-platform/1.0 (personal football research project)"
 

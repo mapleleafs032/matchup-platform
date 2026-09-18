@@ -422,3 +422,54 @@ def test_nfl_and_cfb_use_different_endpoints_and_sort_keys():
     assert espn_fpi.ENDPOINTS["NFL"]["sos_sort"] == "fpi.avgsosrank"
     assert espn_fpi.ENDPOINTS["CFB"]["sos_sort"] == "resume.avgsosrank"
     assert "/nfl/" in espn_fpi.ENDPOINTS["NFL"]["fitt"] and "/college-football/" in espn_fpi.ENDPOINTS["CFB"]["fitt"]
+
+
+def test_espn_ranks_are_stored_per_league(tmp_path, monkeypatch):
+    """One file per season meant NFL and CFB overwrote each other, so whichever ran second won and the
+    other league fell back to our own ranks with no sign anything was wrong."""
+    import config
+    from pipeline import storage
+    from pipeline.jobs import build_site as bs
+    monkeypatch.setattr(config, "TABLES", tmp_path / "tables")
+    for lg, tid, sos in (("CFB", "CFB_TXST", 1), ("NFL", "NFL_BUF", 7)):
+        storage.write_parquet(config.TABLES / "context" / "espn_fpi" / lg / "2026.parquet",
+                              pd.DataFrame([{"team_id": tid, "season": 2026, "espn_team": tid,
+                                             "sos_rank_espn": sos, "power_rank_espn": 3,
+                                             "offense_rank_espn": 4, "defense_rank_espn": 5,
+                                             "special_teams_rank_espn": 6}]))
+
+    class S:
+        pass
+    for lg, tid, sos in (("NFL", "NFL_BUF", 7), ("CFB", "CFB_TXST", 1)):
+        s = S(); s.league = lg; s.season = 2026
+        t = bs._espn_ranks(s)
+        assert len(t) == 1 and t.team_id.iloc[0] == tid and int(t.sos_rank_espn.iloc[0]) == sos
+        assert bs._espn_sos_table(s) == {tid: sos}
+
+
+def test_column_identification_recovers_indices_from_published_ranks():
+    """Every previous attempt at this guessed at array positions and got it wrong. Comparing a pull
+    against ranks transcribed from ESPN's own pages identifies each column instead."""
+    from providers import espn_fpi
+    from providers.espn_fpi_reference import CFB_RESUME, CFB_EFFICIENCY
+    items = []
+    for name in list(CFB_RESUME)[:20]:
+        r, e = CFB_RESUME[name], CFB_EFFICIENCY.get(name)
+        resume_vals = [r["sor"], r["fpi"], r["sos"], r["rem_sos"], r["gc"], r["avgwp"]]
+        cats = [{"name": "resume", "values": [float(x) for x in resume_vals],
+                 "totals": [f"{x}th" for x in resume_vals]}]
+        if e:
+            ev = []
+            for k in ("overall", "offense", "defense", "special_teams"):
+                ev += [50.0, float(e[k])]
+            cats.append({"name": "efficiencies", "values": ev,
+                         "totals": [("50.0" if i % 2 == 0 else f"{int(v)}th") for i, v in enumerate(ev)]})
+        items.append({"team": {"displayName": name}, "categories": cats})
+    ident = espn_fpi.identify_columns({"items": items}, "CFB")
+    res = ident["categories"]["resume"]["columns"]
+    assert res["sos"]["index"] == 2 and res["sos"]["confident"]
+    assert res["fpi"]["index"] == 1 and res["sor"]["index"] == 0
+    assert not res["ap"]["confident"]          # AP is on the page but not in the array; flagged, not asserted
+    eff = ident["categories"]["efficiencies"]["columns"]
+    assert [eff[k]["index"] for k in ("overall", "offense", "defense", "special_teams")] == [1, 3, 5, 7]
+    assert all(eff[k]["confident"] for k in ("overall", "offense", "defense", "special_teams"))

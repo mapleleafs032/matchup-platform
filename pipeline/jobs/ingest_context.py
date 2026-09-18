@@ -128,7 +128,12 @@ def nfl(what: set[str], season: int, job: JobRun):
 
     if "fpi" in what:
         from pipeline.log import ValidationLog as _VL
-        espn_fpi_ingest("NFL", season, job, _VL(job.job_run_id, "espn_fpi"), ids.AliasResolver.load(), set())
+        _vl = _VL(job.job_run_id, "espn_fpi")
+        _unmatched: set = set()
+        espn_fpi_ingest("NFL", season, job, _vl, ids.AliasResolver.load(), _unmatched)
+        for _u in sorted(_unmatched):
+            _vl.warn("ALIAS_UNMATCHED", _u, "espn_team", _u, "known NFL team")
+        _vl.flush()          # without this a failure here left no trace anywhere
 
 
 # ---- CFB --------------------------------------------------------------------------
@@ -171,6 +176,19 @@ def espn_fpi_ingest(league: str, season: int, job: JobRun, vlog: ValidationLog,
     if payload is not None:
         _teams = storage.read_table(REF / "teams.parquet")
         _added, _unmapped = espn_fpi.seed_aliases(payload, league, resolver, _teams)
+        ident = espn_fpi.identify_columns(payload, league)
+        if ident.get("available"):
+            print("    column identification against ESPN's published ranks:")
+            for _cat, _info in ident["categories"].items():
+                if "error" in _info:
+                    print(f"      {_cat}: {_info['error']}")
+                    continue
+                print(f"      {_cat} ({_info['width']} values):")
+                for _col, _d in sorted(_info["columns"].items(), key=lambda kv: kv[1]["index"]):
+                    _mark = "OK " if _d["confident"] else "?? "
+                    print(f"        {_mark}{_col:14} -> index {_d['index']}  ({_d['matched']}/{_d['of']} exact)")
+        else:
+            print(f"    column identification unavailable: {ident.get('note')}")
         if _added:
             print(f"    learned {_added} ESPN team alias(es)")
         if _unmapped:
@@ -193,7 +211,9 @@ def espn_fpi_ingest(league: str, season: int, job: JobRun, vlog: ValidationLog,
                 for nm, vals in rv:
                     print(f"      {nm}: {vals}")
         else:
-            _merge_by_key(CONTEXT / "espn_fpi" / f"{season}.parquet", f, ["team_id", "season"])
+            # per league: one file per season would have NFL and CFB overwriting each other, leaving
+            # whichever ran last and silently dropping the other league back to our own ranks
+            _merge_by_key(CONTEXT / "espn_fpi" / league / f"{season}.parquet", f, ["team_id", "season"])
             # print a couple of teams so the rank columns can be checked against the page directly
             show = f.dropna(subset=["power_rank_espn"]).head(3)
             for _, rr in show.iterrows():

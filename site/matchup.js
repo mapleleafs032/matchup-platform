@@ -122,6 +122,7 @@ async function matchupMain() {
     qlWrap.replaceChildren();
     if (!q || !q.rows || !q.rows.length) { qlWrap.append(el("p", { class: "note" }, "Quick look is unavailable for this game.")); return; }
     qlWrap.append(el("div", { html: quickTableHTML(q) }));
+    if (q.espn_note) qlWrap.append(el("p", { class: "note" }, `Power / Offense / Defense / Spec Teams ranks: ${q.espn_note}.`));
     qlWrap.append(el("p", { class: "note" }, q.edge_rule + " Ranks are among all teams in the league as of this week; a blank rank means the metric is not ranked."));
   }
   paintQuick();
