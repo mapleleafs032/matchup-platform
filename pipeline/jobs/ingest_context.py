@@ -198,7 +198,7 @@ def espn_fpi_ingest(league: str, season: int, job: JobRun, vlog: ValidationLog,
     _prev = config.ESPN_SOS_RESUME_INDEX
     config.ESPN_SOS_RESUME_INDEX = verified_idx
     if payload is not None:
-        f, notes = espn_fpi.normalize(payload, season, resolver, __import__("pandas").Timestamp.now(tz="UTC"), unmatched)
+        f, notes = espn_fpi.normalize(payload, season, resolver, __import__("pandas").Timestamp.now(tz="UTC"), unmatched, league)
         for n in notes:
             vlog.warn("SHAPE", "espn_fpi", "", n[:200], "strength of schedule")
             print(f"    {n}")

@@ -95,6 +95,60 @@ def identify_columns(payload, league: str = "CFB") -> dict:
     return out
 
 
+# Verified against ESPN's published ranks on 2026-09-17 at 20/20 exact for every column below.
+# normalize() re-runs identify_columns on each pull and prefers whatever that confirms, so a reorder
+# by ESPN corrects itself rather than silently shifting every number.
+RESUME_INDEX = {"fpi": 0, "sor": 1, "sos": 2, "rem_sos": 3, "gc": 4, "avgwp": 5, "ap": 6}
+EFFICIENCY_INDEX = {"overall": 1, "offense": 3, "defense": 5, "special_teams": 7}
+
+
+def _category_values(entry: dict, name: str) -> list:
+    for c in (entry.get("categories") or []):
+        if isinstance(c, dict) and _norm(c.get("name") or "") == _norm(name):
+            return c.get("values") or []
+    return []
+
+
+def _at(entry: dict, category: str, idx) -> int | None:
+    """
+    Rank at an index. The live response leaves `ranks` as dashes and carries the ranks in `values`,
+    but a populated numeric `ranks` array is the more explicit source, so it wins where present.
+    """
+    if idx is None:
+        return None
+    for c in (entry.get("categories") or []):
+        if not isinstance(c, dict) or _norm(c.get("name") or "") != _norm(category):
+            continue
+        for key in ("ranks", "values"):
+            arr = c.get(key) or []
+            if idx >= len(arr):
+                continue
+            try:
+                return int(float(arr[idx]))
+            except (TypeError, ValueError):
+                continue        # dashes in `ranks`: fall through to `values`
+        return None
+    return None
+
+
+def resolved_indices(payload, league: str = "CFB") -> tuple[dict, dict, str]:
+    """Indices to read, preferring what this pull confirms over the stored defaults."""
+    resume, eff = dict(RESUME_INDEX), dict(EFFICIENCY_INDEX)
+    note = "using verified defaults"
+    ident = identify_columns(payload, league)
+    if ident.get("available"):
+        changed = []
+        for cat, target in (("resume", resume), ("efficiencies", eff)):
+            info = (ident.get("categories") or {}).get(cat) or {}
+            for col, d in (info.get("columns") or {}).items():
+                if d.get("confident") and col in target and d["index"] != target[col]:
+                    changed.append(f"{cat}.{col}: {target[col]}->{d['index']}")
+                    target[col] = d["index"]
+        note = ("confirmed against published ranks" if not changed
+                else "re-mapped from published ranks: " + ", ".join(changed))
+    return resume, eff, note
+
+
 EFFICIENCY_ORDER = ("overall", "offense", "defense", "special_teams")
 UA = "matchup-platform/1.0 (personal football research project)"
 
@@ -400,7 +454,8 @@ def seed_aliases(payload, league: str, resolver: ids.AliasResolver, teams: pd.Da
     return len(added), sorted(set(unmatched))
 
 
-def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: set[str]) -> tuple[pd.DataFrame, list[str]]:
+def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: set[str],
+              league: str = "CFB") -> tuple[pd.DataFrame, list[str]]:
     """Returns (rows, notes). Notes describe anything that could not be read, for the job log."""
     entries = _entries(payload)
     notes: list[str] = []
@@ -409,6 +464,8 @@ def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: 
         return pd.DataFrame(), [f"no team entries found; top-level keys were {top}"]
     ok, why = verify_sos_column(payload)
     notes.append(("strength-of-schedule column verified: " if ok else "strength-of-schedule column NOT verified: ") + why)
+    _ri, _ei, _idx_note = resolved_indices(payload, league)
+    notes.append(f"column indices: {_idx_note}")
     rows, no_sos = [], 0
     for e in entries:
         name = _team_name(e)
@@ -420,17 +477,23 @@ def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: 
             resolver.unmatched.pop(); unmatched.add(name); continue
         nums: dict = {}
         _collect(e, nums)
+        # A label always beats a position: where ESPN names the field, use the name. Positions are the
+        # fallback, and are the verified ones for the unlabelled shape the live endpoint returns.
         sos = _pick(nums, _SOS_NORM, "rank")
+        if sos is None:
+            sos = _at(e, "resume", _ri.get("sos"))
         if sos is None and ok:
             sos = _resume_by_index(e, __import__("config").ESPN_SOS_RESUME_INDEX)
         if sos is None:
             no_sos += 1
-        eff = efficiency_ranks(e)
         rows.append({"team_id": tid, "season": season, "espn_team": name,
-                     "power_rank_espn": fpi_rank(e),
-                     "offense_rank_espn": eff.get("offense_rank"), "defense_rank_espn": eff.get("defense_rank"),
-                     "special_teams_rank_espn": eff.get("special_teams_rank"),
-                     "overall_eff_rank_espn": eff.get("overall_rank"),
+                     "power_rank_espn": _at(e, "resume", _ri.get("fpi")),
+                     "offense_rank_espn": _at(e, "efficiencies", _ei.get("offense")),
+                     "defense_rank_espn": _at(e, "efficiencies", _ei.get("defense")),
+                     "special_teams_rank_espn": _at(e, "efficiencies", _ei.get("special_teams")),
+                     "overall_eff_rank_espn": _at(e, "efficiencies", _ei.get("overall")),
+                     "sor_rank_espn": _at(e, "resume", _ri.get("sor")),
+                     "gc_rank_espn": _at(e, "resume", _ri.get("gc")),
                      "sos_rank_espn": None if sos is None else int(sos),
                      "remaining_sos_rank_espn": (lambda v: None if v is None else int(v))(_pick(nums, _REM_NORM, "rank")),
                      "strength_of_record_rank": (lambda v: None if v is None else int(v))(_pick(nums, _SOR_NORM, "rank")),

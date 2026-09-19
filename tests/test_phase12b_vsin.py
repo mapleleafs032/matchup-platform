@@ -280,10 +280,9 @@ def test_espn_parallel_array_categories():
     assert row.sos_rank_espn != 500
 
 
-def test_unlabelled_resume_needs_both_a_pin_and_a_passing_check(monkeypatch):
-    """Unlabelled numbers are only trusted when the pinned column is confirmed against the sort order.
-    A single team cannot confirm anything, so nothing is stored -- a blank beats a wrong rank."""
-    import config
+def test_verified_indices_are_used_without_needing_a_pin():
+    """The column is now verified against ESPN's published ranks, so SOS is read directly. The old
+    pinning machinery remains only as a fallback for a shape the reference cannot identify."""
     from providers import espn_fpi
     r = ids.AliasResolver.load()
     r.add([{"provider": "espn", "alias": "Texas State Bobcats", "provider_id": None, "team_id": "CFB_TXST",
@@ -291,14 +290,10 @@ def test_unlabelled_resume_needs_both_a_pin_and_a_passing_check(monkeypatch):
     payload = {"items": [{"team": {"displayName": "Texas State Bobcats"}, "categories": [
         {"name": "resume", "ranks": ["-"] * 6, "values": [103.0, 97.0, 1.0, 93.0, 68.0, 132.0],
          "totals": ["103rd", "97th", "1st", "93rd", "68th", "132nd"]}]}]}
-    ts = pd.Timestamp("2026-09-12T04:00:00Z")
-    monkeypatch.setattr(config, "ESPN_SOS_RESUME_INDEX", 2)
-    df, notes = espn_fpi.normalize(payload, 2026, r, ts, set())
-    assert pd.isna(df.sos_rank_espn.iloc[0]) and any("NOT verified" in n for n in notes)
-    monkeypatch.setattr(config, "ESPN_SOS_RESUME_INDEX", None)
-    df2, notes2 = espn_fpi.normalize(payload, 2026, r, ts, set())
-    assert pd.isna(df2.sos_rank_espn.iloc[0])
-    assert espn_fpi.resume_values(payload)[0][1] == [103.0, 97.0, 1.0, 93.0, 68.0, 132.0]
+    df, _ = espn_fpi.normalize(payload, 2026, r, pd.Timestamp("2026-09-17T12:00:00Z"), set(), "CFB")
+    row = df.iloc[0]
+    assert int(row.sos_rank_espn) == 1        # index 2, verified at 20/20 against the published table
+    assert int(row.power_rank_espn) == 103    # index 0 is the FPI rank, not strength of record
 
 
 def _espn_payload(rows):
@@ -313,20 +308,22 @@ def _espn_resolver(rows):
     return r
 
 
-def test_positional_check_cannot_distinguish_a_rank_from_a_row_index():
-    """The mistake this guards against: resume[2] counting 1,2,3 down a list sorted by SOS looks
-    identical to a plain row index. A check against sort order therefore proves nothing, so an
-    unlabelled column is never trusted on that basis alone."""
-    import config
+def test_positional_check_alone_cannot_distinguish_a_rank_from_a_row_index():
+    """The mistake this guards against: a column counting 1,2,3 down a list sorted by that column looks
+    identical to a row index, so agreeing with the sort order proves nothing. Only a cross-sort — or a
+    comparison against published values — can tell them apart."""
     from providers import espn_fpi
-    rows = [("Texas State Bobcats", [103, 97, 1, 93, 68, 132]), ("Ball State Cardinals", [135, 97, 2, 127, 69, 133]),
-            ("Wisconsin Badgers", [52, 97, 3, 60, 22, 109]), ("Clemson Tigers", [42, 97, 4, 45, 63, 123])]
-    rows += [("Team %d" % i, [i, 97, i, i, i, i]) for i in range(5, 20)]
-    r = _espn_resolver(rows)
-    df, notes = espn_fpi.normalize(_espn_payload(rows), 2026, r, pd.Timestamp("2026-09-12T15:00:00Z"), set())
-    assert config.ESPN_SOS_RESUME_INDEX is None                 # unresolved, so nothing is pinned
-    assert int(df.sos_rank_espn.notna().sum()) == 0             # and nothing is stored
-    assert any("not pinned" in n or "NOT verified" in n for n in notes)
+    teams = [f"Team {i}" for i in range(1, 41)]
+    sos = {t: i + 1 for i, t in enumerate(teams)}
+    mk = lambda order, val: {"items": [{"team": {"displayName": t}, "categories": [
+        {"name": "resume", "ranks": ["-"] * 6, "values": [0.0, 0.0, float(val(t, i)), 0.0, 0.0, 0.0]}]}
+        for i, t in enumerate(order, start=1)]}
+    asc = mk(teams, lambda t, i: sos[t])
+    # sorted ascending, a real rank and a row index are indistinguishable
+    assert espn_fpi.verify_sos_column(asc)[0] in (True, False)
+    # reversing the sort separates them
+    assert espn_fpi.verify_across_sorts(asc, mk(teams[::-1], lambda t, i: sos[t]), 2)[0] is True
+    assert espn_fpi.verify_across_sorts(asc, mk(teams[::-1], lambda t, i: i), 2)[0] is False
 
 
 def test_labelled_response_still_resolves_without_any_pinning():
@@ -473,3 +470,61 @@ def test_column_identification_recovers_indices_from_published_ranks():
     eff = ident["categories"]["efficiencies"]["columns"]
     assert [eff[k]["index"] for k in ("overall", "offense", "defense", "special_teams")] == [1, 3, 5, 7]
     assert all(eff[k]["confident"] for k in ("overall", "offense", "defense", "special_teams"))
+
+
+def _espn_live_payload():
+    """A payload shaped like the live pull: 7-value resume, 8-value efficiencies, AP absent when unranked."""
+    from providers.espn_fpi_reference import CFB_RESUME, CFB_EFFICIENCY
+    items = []
+    for name in CFB_RESUME:
+        rr, ee = CFB_RESUME[name], CFB_EFFICIENCY.get(name)
+        res = [rr["fpi"], rr["sor"], rr["sos"], rr["rem_sos"], rr["gc"], rr["avgwp"]]
+        tot = [f"{v}th" for v in res]
+        if rr["ap"] is not None:
+            res.append(rr["ap"]); tot.append(f"{rr['ap']}th")
+        cats = [{"name": "resume", "values": [float(x) for x in res], "totals": tot}]
+        if ee:
+            ev, et = [], []
+            for k in ("overall", "offense", "defense", "special_teams"):
+                ev += [50.0, float(ee[k])]; et += ["50.0", f"{ee[k]}th"]
+            cats.append({"name": "efficiencies", "values": ev, "totals": et})
+        items.append({"team": {"displayName": name}, "categories": cats})
+    return {"items": items}
+
+
+def test_every_espn_rank_matches_the_published_value():
+    """The verified end state: SOS, Power, Offense, Defense and Special Teams all read correctly."""
+    from providers import espn_fpi
+    from providers.espn_fpi_reference import CFB_RESUME, CFB_EFFICIENCY
+    payload = _espn_live_payload()
+    teams = pd.DataFrame([{"team_id": f"CFB_T{i}", "league": "CFB", "school_or_city": n.rsplit(" ", 1)[0],
+                           "mascot": n.rsplit(" ", 1)[-1], "display_name": n, "abbr": f"T{i}"}
+                          for i, n in enumerate(CFB_RESUME)])
+    r = ids.AliasResolver.load()
+    espn_fpi.seed_aliases(payload, "CFB", r, teams)
+    df, notes = espn_fpi.normalize(payload, 2026, r, pd.Timestamp("2026-09-17T12:00:00Z"), set(), "CFB")
+    assert any("confirmed against published ranks" in n for n in notes)
+    chk = df.set_index("espn_team")
+    for name in ("Ohio State Buckeyes", "Notre Dame Fighting Irish", "LSU Tigers", "Texas A&M Aggies"):
+        want_r, want_e = CFB_RESUME[name], CFB_EFFICIENCY[name]
+        row = chk.loc[name]
+        assert int(row.sos_rank_espn) == want_r["sos"]
+        assert int(row.power_rank_espn) == want_r["fpi"]
+        assert int(row.offense_rank_espn) == want_e["offense"]
+        assert int(row.defense_rank_espn) == want_e["defense"]
+        assert int(row.special_teams_rank_espn) == want_e["special_teams"]
+
+
+def test_a_reordered_response_is_remapped_not_misread():
+    """If ESPN moves a column, the pull re-identifies it from the published ranks instead of shifting
+    every number by one."""
+    from providers import espn_fpi
+    from providers.espn_fpi_reference import CFB_RESUME
+    payload = _espn_live_payload()
+    for it in payload["items"]:                       # swap FPI and SOR
+        for c in it["categories"]:
+            if c["name"] == "resume":
+                c["values"][0], c["values"][1] = c["values"][1], c["values"][0]
+    resume, eff, note = espn_fpi.resolved_indices(payload, "CFB")
+    assert resume["fpi"] == 1 and resume["sor"] == 0 and "re-mapped" in note
+    assert resume["sos"] == 2                         # untouched columns stay put
