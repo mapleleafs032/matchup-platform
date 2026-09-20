@@ -1,0 +1,2 @@
+pick_id,game_id,league,season,week,market,side,line,price,tier,score,edge_points,signals,result,profit_units,actual_margin_home,actual_total,graded_at
+2026_NFL_W01_DEN_KC_MONEYLINE_DEN_NFL_v1.0,2026_NFL_W01_DEN_KC,NFL,2026,1,MONEYLINE,DEN,110.0,110.0,A+,4.223,3.87,money_agrees,LOSS,-1.0,21,41,2026-09-20T23:51:51.698188+00:00
