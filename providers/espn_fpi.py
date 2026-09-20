@@ -80,10 +80,16 @@ def identify_columns(payload, league: str = "CFB") -> dict:
                         continue
                     tot += 1
                     try:
-                        if int(float(vals[idx])) == int(want[col]):
-                            hits += 1
+                        got, expect = float(vals[idx]), float(want[col])
                     except (TypeError, ValueError):
-                        pass
+                        continue
+                    # Ranks are whole numbers and must match exactly; efficiency values are published
+                    # to one decimal, so they are compared with a tolerance for rounding.
+                    if float(expect).is_integer():
+                        if int(round(got)) == int(expect):
+                            hits += 1
+                    elif abs(got - expect) <= 0.051:
+                        hits += 1
                 if tot:
                     scores.append((hits / tot, idx, hits, tot))
             if scores:
@@ -91,6 +97,15 @@ def identify_columns(payload, league: str = "CFB") -> dict:
                 rate, idx, hits, tot = scores[0]
                 best[col] = {"index": idx, "match_rate": round(rate, 3), "matched": hits, "of": tot,
                              "confident": rate >= 0.9}
+        # A value column identifies its slot; the rank ESPN shows is the paired one. The pairing is
+        # value-then-rank, confirmed on the college response where both are published.
+        for col, d in list(best.items()):
+            if not d.get("confident"):
+                continue
+            sample = next((v[col] for _, v in shared if v.get(col) is not None), None)
+            if sample is not None and not float(sample).is_integer():
+                d["rank_index"] = d["index"] + 1
+                d["is_value"] = True
         out["categories"][cat] = {"width": width, "columns": best}
     return out
 
@@ -141,9 +156,12 @@ def resolved_indices(payload, league: str = "CFB") -> tuple[dict, dict, str]:
         for cat, target in (("resume", resume), ("efficiencies", eff)):
             info = (ident.get("categories") or {}).get(cat) or {}
             for col, d in (info.get("columns") or {}).items():
-                if d.get("confident") and col in target and d["index"] != target[col]:
-                    changed.append(f"{cat}.{col}: {target[col]}->{d['index']}")
-                    target[col] = d["index"]
+                if not d.get("confident") or col not in target:
+                    continue
+                idx = d.get("rank_index", d["index"])
+                if idx != target[col]:
+                    changed.append(f"{cat}.{col}: {target[col]}->{idx}")
+                    target[col] = idx
         note = ("confirmed against published ranks" if not changed
                 else "re-mapped from published ranks: " + ", ".join(changed))
     return resume, eff, note

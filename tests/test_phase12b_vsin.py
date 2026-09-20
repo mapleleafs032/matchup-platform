@@ -528,3 +528,34 @@ def test_a_reordered_response_is_remapped_not_misread():
     resume, eff, note = espn_fpi.resolved_indices(payload, "CFB")
     assert resume["fpi"] == 1 and resume["sor"] == 0 and "re-mapped" in note
     assert resume["sos"] == 2                         # untouched columns stay put
+
+
+def test_nfl_reference_identifies_efficiency_ranks_from_published_values():
+    """The NFL page publishes OFF / DEF / ST as efficiency VALUES, not ranks. Matching those values
+    locates each slot, and the rank ESPN shows is the paired one."""
+    from providers import espn_fpi
+    from providers.espn_fpi_reference import NFL_RANKS, NFL_EFFICIENCY_VALUES
+    def ranks_for(key):
+        order = sorted(NFL_EFFICIENCY_VALUES, key=lambda t: -NFL_EFFICIENCY_VALUES[t][key])
+        return {t: i + 1 for i, t in enumerate(order)}
+    rk = {k: ranks_for(k) for k in ("offense", "defense", "special_teams")}
+    items = []
+    for name, r in NFL_RANKS.items():
+        e = NFL_EFFICIENCY_VALUES[name]
+        res = [r["fpi"], 0, r["sos"], r["rem_sos"], 0, r["avgwp"]]
+        cats = [{"name": "resume", "values": [float(x) for x in res], "totals": [f"{x}th" for x in res]}]
+        ev, et = [e["fpi_value"], 1.0], [str(e["fpi_value"]), "1st"]
+        for k in ("offense", "defense", "special_teams"):
+            ev += [e[k], float(rk[k][name])]; et += [str(e[k]), f"{rk[k][name]}th"]
+        cats.append({"name": "efficiencies", "values": ev, "totals": et})
+        items.append({"team": {"displayName": name}, "categories": cats})
+    ident = espn_fpi.identify_columns({"items": items}, "NFL")
+    res_cols = ident["categories"]["resume"]["columns"]
+    assert res_cols["fpi"]["index"] == 0 and res_cols["sos"]["index"] == 2
+    assert res_cols["fpi"]["confident"] and res_cols["sos"]["confident"]
+    eff = ident["categories"]["efficiencies"]["columns"]
+    for k, want_rank_idx in (("offense", 3), ("defense", 5), ("special_teams", 7)):
+        assert eff[k]["confident"] and eff[k]["is_value"] and eff[k]["rank_index"] == want_rank_idx
+    resume, effi, note = espn_fpi.resolved_indices({"items": items}, "NFL")
+    assert effi["offense"] == 3 and effi["defense"] == 5 and effi["special_teams"] == 7
+    assert resume["sos"] == 2 and resume["fpi"] == 0

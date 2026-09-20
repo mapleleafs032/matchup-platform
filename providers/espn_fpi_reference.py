@@ -60,3 +60,60 @@ CFB_EFFICIENCY = {
 }
 
 REFERENCE = {"CFB": {"resume": CFB_RESUME, "efficiencies": CFB_EFFICIENCY}}
+
+
+# NFL. Note this view publishes OFF / DEF / ST as EFFICIENCY VALUES, not ranks, while FPI's RK column
+# and SOS / REM SOS / AVGWP are ranks. Both kinds are recorded: the values identify which array slot
+# holds each efficiency, and the rank paired with it is the one the table shows.
+# Source: https://www.espn.com/nfl/fpi/_/sort/fpi.epaoffense/dir/desc   Transcribed 2026-09-21.
+NFL_RANKS = {
+    "Buffalo Bills":         {"fpi": 2,  "sos": 10, "rem_sos": 26, "avgwp": 8},
+    "San Francisco 49ers":   {"fpi": 1,  "sos": 7,  "rem_sos": 21, "avgwp": 9},
+    "Baltimore Ravens":      {"fpi": 3,  "sos": 24, "rem_sos": 29, "avgwp": 2},
+    "Detroit Lions":         {"fpi": 9,  "sos": 12, "rem_sos": 30, "avgwp": 17},
+    "Dallas Cowboys":        {"fpi": 8,  "sos": 20, "rem_sos": 4,  "avgwp": 27},
+    "Chicago Bears":         {"fpi": 6,  "sos": 26, "rem_sos": 8,  "avgwp": 10},
+    "Cincinnati Bengals":    {"fpi": 11, "sos": 19, "rem_sos": 32, "avgwp": 3},
+    "Kansas City Chiefs":    {"fpi": 4,  "sos": 23, "rem_sos": 27, "avgwp": 7},
+    "Jacksonville Jaguars":  {"fpi": 5,  "sos": 31, "rem_sos": 17, "avgwp": 1},
+    "Green Bay Packers":     {"fpi": 14, "sos": 16, "rem_sos": 10, "avgwp": 14},
+    "Los Angeles Rams":      {"fpi": 7,  "sos": 1,  "rem_sos": 3,  "avgwp": 24},
+    "New York Giants":       {"fpi": 17, "sos": 11, "rem_sos": 14, "avgwp": 6},
+    "New England Patriots":  {"fpi": 13, "sos": 6,  "rem_sos": 18, "avgwp": 15},
+    "Washington Commanders": {"fpi": 18, "sos": 14, "rem_sos": 6,  "avgwp": 21},
+    "Philadelphia Eagles":   {"fpi": 12, "sos": 21, "rem_sos": 9,  "avgwp": 12},
+    "Tampa Bay Buccaneers":  {"fpi": 16, "sos": 13, "rem_sos": 23, "avgwp": 30},
+    "Houston Texans":        {"fpi": 10, "sos": 2,  "rem_sos": 24, "avgwp": 16},
+    "Indianapolis Colts":    {"fpi": 23, "sos": 3,  "rem_sos": 22, "avgwp": 31},
+    "Los Angeles Chargers":  {"fpi": 15, "sos": 27, "rem_sos": 5,  "avgwp": 22},
+    "Arizona Cardinals":     {"fpi": 24, "sos": 18, "rem_sos": 2,  "avgwp": 11},
+    "New Orleans Saints":    {"fpi": 21, "sos": 9,  "rem_sos": 31, "avgwp": 25},
+    "Carolina Panthers":     {"fpi": 26, "sos": 8,  "rem_sos": 19, "avgwp": 23},
+}
+
+NFL_EFFICIENCY_VALUES = {
+    "Buffalo Bills":         {"fpi_value": 5.6, "offense": 6.3,  "defense": -0.7, "special_teams": 0.1},
+    "San Francisco 49ers":   {"fpi_value": 5.6, "offense": 4.4,  "defense": 0.9,  "special_teams": 0.4},
+    "Baltimore Ravens":      {"fpi_value": 4.8, "offense": 3.6,  "defense": 1.2,  "special_teams": 0.0},
+    "Detroit Lions":         {"fpi_value": 2.0, "offense": 3.2,  "defense": -1.2, "special_teams": 0.0},
+    "Dallas Cowboys":        {"fpi_value": 2.0, "offense": 2.8,  "defense": -1.0, "special_teams": 0.2},
+    "Chicago Bears":         {"fpi_value": 2.9, "offense": 2.5,  "defense": 0.1,  "special_teams": 0.3},
+    "Cincinnati Bengals":    {"fpi_value": 1.6, "offense": 2.3,  "defense": -0.6, "special_teams": -0.1},
+    "Kansas City Chiefs":    {"fpi_value": 4.3, "offense": 2.2,  "defense": 2.2,  "special_teams": -0.1},
+    "Jacksonville Jaguars":  {"fpi_value": 3.5, "offense": 2.0,  "defense": 1.4,  "special_teams": 0.1},
+    "Green Bay Packers":     {"fpi_value": 1.1, "offense": 1.7,  "defense": -0.5, "special_teams": -0.1},
+    "Los Angeles Rams":      {"fpi_value": 2.6, "offense": 1.7,  "defense": 1.0,  "special_teams": -0.1},
+    "New York Giants":       {"fpi_value": -0.2, "offense": 1.3, "defense": -1.4, "special_teams": -0.1},
+    "New England Patriots":  {"fpi_value": 1.4, "offense": 0.5,  "defense": 1.0,  "special_teams": 0.0},
+    "Washington Commanders": {"fpi_value": -0.7, "offense": 0.3, "defense": -1.0, "special_teams": 0.0},
+    "Philadelphia Eagles":   {"fpi_value": 1.5, "offense": 0.3,  "defense": 1.4,  "special_teams": -0.2},
+    "Tampa Bay Buccaneers":  {"fpi_value": 0.0, "offense": 0.2,  "defense": -0.5, "special_teams": 0.3},
+    "Houston Texans":        {"fpi_value": 1.8, "offense": 0.1,  "defense": 1.6,  "special_teams": 0.2},
+    "Indianapolis Colts":    {"fpi_value": -1.9, "offense": -0.8, "defense": -1.1, "special_teams": 0.0},
+    "Los Angeles Chargers":  {"fpi_value": 0.4, "offense": -0.9, "defense": 1.0,  "special_teams": 0.2},
+    "Arizona Cardinals":     {"fpi_value": -3.0, "offense": -1.2, "defense": -1.8, "special_teams": 0.0},
+    "New Orleans Saints":    {"fpi_value": -1.5, "offense": -1.3, "defense": -0.1, "special_teams": -0.1},
+    "Carolina Panthers":     {"fpi_value": -3.2, "offense": -1.3, "defense": -1.6, "special_teams": -0.2},
+}
+
+REFERENCE["NFL"] = {"resume": NFL_RANKS, "efficiencies": NFL_EFFICIENCY_VALUES}
