@@ -1,13 +1,13 @@
 name: AI analysis
 on:
   schedule:
-    - cron: "30 12 * * *"        # 07:30 CT daily after market (07:20)
-    - cron: "0 22 * * 3,5"        # Wed/Fri evening refresh: injuries and lines have moved
+    - cron: "30 12 * * *"
+    - cron: "0 22 * * 3,5"
   workflow_dispatch:
     inputs:
       league: { description: "NFL, CFB, or BOTH", default: "BOTH", required: true }
       limit:  { description: "max games per league this run", default: "120", required: false }
-concurrency: { group: data-write, cancel-in-progress: false }
+concurrency: { group: ai, cancel-in-progress: false }
 permissions: { contents: write }
 jobs:
   ai:
@@ -32,7 +32,3 @@ jobs:
       - uses: ./.github/actions/commit
         if: ${{ github.event.inputs.league == 'CFB' || github.event.inputs.league == 'BOTH' || github.event.inputs.league == '' }}
         with: { message: "data: ai CFB ${{ github.run_id }}" }
-      - name: Sample
-        run: |
-          F=$(ls -t data/tables/model/ai_analyses/*/*/*.json 2>/dev/null | head -1)
-          if [ -n "$F" ]; then echo "=== $F"; python -c "import json; d=json.load(open('$F')); print('model:', d['llm_model'], '| validation_failed:', d['validation_failed'], '| violations:', d['validation'].get('violations')); s=d['sections'] or {}; [print(f'\n[{k}]\n{v}') for k,v in s.items()]"; fi
