@@ -1,0 +1,31 @@
+name: Model tuning
+on:
+  workflow_dispatch:
+    inputs:
+      action: { description: "audit | fix-sign | sweep | apply", default: "audit", required: true }
+      league: { description: "NFL, CFB, or BOTH", default: "BOTH", required: true }
+      season: { description: "season to correct (fix-sign only)", default: "", required: false }
+concurrency: { group: data-write, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  tune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Run
+        run: |
+          A="${{ github.event.inputs.action }}"; L="${{ github.event.inputs.league }}"; S="${{ github.event.inputs.season }}"
+          case "$A" in
+            audit)    python -m pipeline.jobs.audit_lines --league "$L" ;;
+            fix-sign) python -m pipeline.jobs.audit_lines --league "$L" --fix-sign "$S" ;;
+            sweep)    python -m pipeline.jobs.tune_blend --league "$L" ;;
+            apply)    python -m pipeline.jobs.tune_blend --league "$L" --apply ;;
+            *) echo "unknown action: $A"; exit 1 ;;
+          esac
+      - uses: ./.github/actions/commit
+        if: ${{ github.event.inputs.action == 'fix-sign' || github.event.inputs.action == 'apply' }}
+        with: { message: "model: ${{ github.event.inputs.action }} ${{ github.run_id }}" }
