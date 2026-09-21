@@ -32,13 +32,27 @@ BT = config.TABLES / "model" / "backtest"
 
 
 def closing(league: str, season: int) -> pd.DataFrame:
+    """
+    The closing line for every game, taking the highest-priority book AVAILABLE FOR THAT GAME.
+
+    This used to pick one book for the whole season and discard every game that book did not cover.
+    NFL was unaffected (its top source covers every game), but CFBD's college books vary in coverage
+    by year: in CFB 2023 the chosen book covered only a sliver of the schedule, so roughly 700 games
+    with perfectly good lines from other books lost them, and the season's ATS was scored on a few
+    dozen games. Spread and total are chosen independently, since a book can post one without the other.
+    """
     cl = storage.read_table(config.TABLES / "market" / "closing_lines" / league / f"{season}.parquet")
+    cols = ["game_id", "close_spread_home", "close_total"]
     if cl.empty:
-        return pd.DataFrame(columns=["game_id", "spread_home", "total"])
-    pref = [b for b in config.CLOSING_BOOK_PRIORITY if b in set(cl.book)]
-    if pref:
-        cl = cl[cl.book == pref[0]]
-    return cl.drop_duplicates("game_id")[["game_id", "spread_home", "total"]].rename(columns={"spread_home": "close_spread_home", "total": "close_total"})
+        return pd.DataFrame(columns=cols)
+    rank = {b: i for i, b in enumerate(config.CLOSING_BOOK_PRIORITY)}
+    cl = cl.assign(_rank=cl.book.map(rank).fillna(len(rank)))      # unlisted books rank last but still count
+    spread = (cl.dropna(subset=["spread_home"]).sort_values(["game_id", "_rank"])
+                .drop_duplicates("game_id")[["game_id", "spread_home"]])
+    total = (cl.dropna(subset=["total"]).sort_values(["game_id", "_rank"])
+               .drop_duplicates("game_id")[["game_id", "total"]]) if "total" in cl.columns else pd.DataFrame(columns=["game_id", "total"])
+    out = spread.merge(total, on="game_id", how="outer")
+    return out.rename(columns={"spread_home": "close_spread_home", "total": "close_total"})[cols]
 
 
 def evaluate(pred: pd.DataFrame, feats: pd.DataFrame, league: str) -> pd.DataFrame:
@@ -116,9 +130,10 @@ def report_md(league: str, mv: str, summ: dict, coefs: dict, sigma: float, warn_
               f"- model side vs closing spread when model differs by >= {config.ATS_EDGE_THRESHOLD[league]} pts: {o.get(f'ats_edge{config.ATS_EDGE_THRESHOLD[league]}_pct')} ({o['ats_edge_n']} decided)",
               f"- over/under: {o['ou_pct']}", f"- correlation model margin vs market margin: {o['corr_model_vs_close']}",
               "", "Break-even against -110 pricing is 52.4%. Anything below that is not an edge; anything above it on a few hundred games is not proof either."]
-    L += ["", "## By season", "| season | n | MAE | winner acc | market MAE | ATS all | ATS edge |", "|---|---|---|---|---|---|---|"]
+    L += ["", "## By season", "`games` is every game predicted; `ATS n` is the games scored against a closing line.",
+          "| season | games | MAE | winner acc | market MAE | ATS all | ATS n | ATS edge |", "|---|---|---|---|---|---|---|---|"]
     for s, b in summ["by_season"].items():
-        L.append(f"| {s}{' (in-sample)' if s == warn_season else ''} | {b.get('n')} | {b.get('mae_margin')} | {b.get('winner_acc')} | {b.get('market_mae_margin', '—')} | {b.get('ats_all_pct', '—')} | {b.get(f'ats_edge{config.ATS_EDGE_THRESHOLD[league]}_pct', '—')} |")
+        L.append(f"| {s}{' (in-sample)' if s == warn_season else ''} | {b.get('n')} | {b.get('mae_margin')} | {b.get('winner_acc')} | {b.get('market_mae_margin', '—')} | {b.get('ats_all_pct', '—')} | {b.get('ats_all_n', '—')} | {b.get(f'ats_edge{config.ATS_EDGE_THRESHOLD[league]}_pct', '—')} |")
     L += ["", "## By week bucket", "| weeks | n | MAE | winner acc |", "|---|---|---|---|"]
     for k, b in summ["by_week_bucket"].items():
         L.append(f"| {k} | {b.get('n')} | {b.get('mae_margin')} | {b.get('winner_acc')} |")

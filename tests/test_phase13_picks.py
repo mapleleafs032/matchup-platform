@@ -642,3 +642,21 @@ def test_starter_detection_only_considers_players_who_threw():
     from pipeline import roster_engine
     src = inspect.getsource(roster_engine)
     assert "pass_att" in src and "> 0]" in src
+
+
+def test_closing_line_is_chosen_per_game_not_per_season(tmp_path, monkeypatch):
+    """The CFB 2023 "anomaly": one book was chosen for the whole season and every game it did not cover
+    lost its closing line, so the season's ATS was scored on about three dozen games. The best book must
+    be chosen game by game."""
+    import config
+    from pipeline import storage
+    from pipeline.jobs import backtest as BT
+    monkeypatch.setattr(config, "TABLES", tmp_path / "t")
+    rows = [{"game_id": f"G{i}", "book": "bovada", "spread_home": -3.0, "total": 50.0} for i in range(800)]
+    rows += [{"game_id": f"G{i}", "book": "consensus", "spread_home": -3.5, "total": None} for i in range(36)]
+    storage.write_parquet(tmp_path / "t" / "market" / "closing_lines" / "CFB" / "2023.parquet", pd.DataFrame(rows))
+    c = BT.closing("CFB", 2023).set_index("game_id")
+    assert c.close_spread_home.notna().sum() == 800                      # the old rule kept 36
+    assert c.loc["G0"].close_spread_home == -3.5                          # the preferred book still wins where present
+    assert c.loc["G500"].close_spread_home == -3.0                        # and another book fills in where it is absent
+    assert c.loc["G0"].close_total == 50.0                                # a missing total is filled independently
