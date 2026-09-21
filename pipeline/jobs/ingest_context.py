@@ -177,16 +177,17 @@ def espn_fpi_ingest(league: str, season: int, job: JobRun, vlog: ValidationLog,
         _teams = storage.read_table(REF / "teams.parquet")
         _added, _unmapped = espn_fpi.seed_aliases(payload, league, resolver, _teams)
         ident = espn_fpi.identify_columns(payload, league)
+        inv = ident.get("inventory") or {}
+        print("    categories in this response: " + (", ".join(f"{k} ({v})" for k, v in inv.items()) or "none"))
         if ident.get("available"):
-            print("    column identification against ESPN's published ranks:")
-            for _cat, _info in ident["categories"].items():
-                if "error" in _info:
-                    print(f"      {_cat}: {_info['error']}")
-                    continue
-                print(f"      {_cat} ({_info['width']} values):")
-                for _col, _d in sorted(_info["columns"].items(), key=lambda kv: kv[1]["index"]):
-                    _mark = "OK " if _d["confident"] else "?? "
-                    print(f"        {_mark}{_col:14} -> index {_d['index']}  ({_d['matched']}/{_d['of']} exact)")
+            print("    column identification against ESPN's published values:")
+            for _col, _d in sorted((ident.get("columns") or {}).items(), key=lambda kv: (kv[1]["category"], kv[1]["index"])):
+                _mark = "OK " if _d["confident"] else "?? "
+                _kind = "value" if _d["is_value"] else "rank"
+                print(f"      {_mark}{_col:14} -> {_d['category']}[{_d['index']}] ({_kind}, {_d['matched']}/{_d['of']})")
+            missing = [c for c in ("fpi", "sos", "offense", "defense", "special_teams") if c not in (ident.get("columns") or {})]
+            if missing:
+                print(f"      not found anywhere in the response: {', '.join(missing)}")
         else:
             print(f"    column identification unavailable: {ident.get('note')}")
         if _added:

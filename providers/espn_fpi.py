@@ -43,127 +43,148 @@ _ORDINAL_TOTAL = re.compile(r"^-?\d+(st|nd|rd|th)$", re.I)
 
 # Order of the efficiency pairs ESPN returns. The ingest job prints a verification block so this can be
 # checked against the page rather than trusted.
+def category_inventory(payload) -> dict:
+    """Every category name present in the response, with the most values any team carries in it."""
+    inv: dict = {}
+    for e in _entries(payload):
+        for c in (e.get("categories") or []):
+            if isinstance(c, dict):
+                nm = c.get("name") or c.get("displayName") or "?"
+                inv[nm] = max(inv.get(nm, 0), len(c.get("values") or []))
+    return inv
+
+
 def identify_columns(payload, league: str = "CFB") -> dict:
     """
-    Work out which array index holds which column, by comparing a live pull against ranks transcribed
-    from ESPN's own pages. For each category, every index is scored against every reference column and
-    the best exact-match rate wins. This replaces guessing at positions, which is how every previous
-    attempt at this went wrong.
+    Locate every reference column by comparing a live pull against values transcribed from ESPN's own
+    pages. Each column is searched across EVERY category and index -- the NFL and college responses
+    file the same numbers under different categories, so naming the category in advance is itself a
+    guess, and that guess is what failed.
+
+    Returns {column: {category, index, matched, of, confident, is_value}}.
     """
     from providers.espn_fpi_reference import REFERENCE
     ref = REFERENCE.get(league) or {}
+    inv = category_inventory(payload)
+    out = {"available": bool(ref), "inventory": inv, "columns": {}}
     if not ref:
-        return {"available": False, "note": f"no reference data transcribed for {league}"}
+        out["note"] = f"no reference data transcribed for {league}"
+        return out
     entries = {(_team_name(e) or ""): e for e in _entries(payload)}
-    out = {"available": True, "categories": {}}
-    for cat, table in ref.items():
-        shared = [(n, table[n]) for n in table if n in entries]
+    # flatten the reference: column -> {team: expected}
+    wanted: dict = {}
+    for table in ref.values():
+        for team, cols in table.items():
+            for col, val in cols.items():
+                if val is not None:
+                    wanted.setdefault(col, {})[team] = val
+    for col, per_team in wanted.items():
+        shared = [t for t in per_team if t in entries]
         if len(shared) < 5:
-            out["categories"][cat] = {"error": f"only {len(shared)} reference teams found in the pull"}
             continue
-        # how many values does this category return?
-        widths = [len(c.get("values") or []) for n, _ in shared
-                  for c in (entries[n].get("categories") or []) if _norm(c.get("name") or "") == _norm(cat)]
-        width = max(widths) if widths else 0
-        cols = sorted({k for _, v in shared for k in v})
-        best = {}
-        for col in cols:
-            scores = []
+        is_value = any(not float(v).is_integer() for v in per_team.values())
+        best = None
+        for cat, width in inv.items():
             for idx in range(width):
                 hits = tot = 0
-                for name, want in shared:
-                    if want.get(col) is None:
-                        continue
-                    vals = next((c.get("values") or [] for c in (entries[name].get("categories") or [])
-                                 if _norm(c.get("name") or "") == _norm(cat)), [])
+                for t in shared:
+                    vals = next((c.get("values") or [] for c in (entries[t].get("categories") or [])
+                                 if isinstance(c, dict) and (c.get("name") or c.get("displayName")) == cat), [])
                     if idx >= len(vals):
                         continue
-                    tot += 1
                     try:
-                        got, expect = float(vals[idx]), float(want[col])
+                        got, want = float(vals[idx]), float(per_team[t])
                     except (TypeError, ValueError):
                         continue
-                    # Ranks are whole numbers and must match exactly; efficiency values are published
-                    # to one decimal, so they are compared with a tolerance for rounding.
-                    if float(expect).is_integer():
-                        if int(round(got)) == int(expect):
-                            hits += 1
-                    elif abs(got - expect) <= 0.051:
-                        hits += 1
-                if tot:
-                    scores.append((hits / tot, idx, hits, tot))
-            if scores:
-                scores.sort(reverse=True)
-                rate, idx, hits, tot = scores[0]
-                best[col] = {"index": idx, "match_rate": round(rate, 3), "matched": hits, "of": tot,
-                             "confident": rate >= 0.9}
-        # A value column identifies its slot; the rank ESPN shows is the paired one. The pairing is
-        # value-then-rank, confirmed on the college response where both are published.
-        for col, d in list(best.items()):
-            if not d.get("confident"):
-                continue
-            sample = next((v[col] for _, v in shared if v.get(col) is not None), None)
-            if sample is not None and not float(sample).is_integer():
-                d["rank_index"] = d["index"] + 1
-                d["is_value"] = True
-        out["categories"][cat] = {"width": width, "columns": best}
+                    tot += 1
+                    if is_value:
+                        hits += abs(got - want) <= 0.051
+                    else:
+                        hits += int(round(got)) == int(want)
+                if tot and (best is None or (hits / tot, tot) > (best[0], best[3])):
+                    best = (hits / tot, cat, idx, tot, hits)
+        if best:
+            rate, cat, idx, tot, hits = best
+            out["columns"][col] = {"category": cat, "index": idx, "matched": hits, "of": tot,
+                                   "confident": rate >= 0.9, "is_value": is_value}
     return out
 
 
-# Verified against ESPN's published ranks on 2026-09-17 at 20/20 exact for every column below.
-# normalize() re-runs identify_columns on each pull and prefers whatever that confirms, so a reorder
-# by ESPN corrects itself rather than silently shifting every number.
-RESUME_INDEX = {"fpi": 0, "sor": 1, "sos": 2, "rem_sos": 3, "gc": 4, "avgwp": 5, "ap": 6}
-EFFICIENCY_INDEX = {"overall": 1, "offense": 3, "defense": 5, "special_teams": 7}
+# Verified against ESPN's published ranks on 2026-09-17 at 20/20 for every column. The NFL response
+# files its numbers differently, so it has no fixed defaults: it is read from whatever the live
+# identification confirms, and a column it cannot confirm is left blank rather than guessed.
+DEFAULT_COLUMNS = {
+    "CFB": {"fpi": ("resume", 0), "sor": ("resume", 1), "sos": ("resume", 2), "rem_sos": ("resume", 3),
+            "gc": ("resume", 4), "avgwp": ("resume", 5),
+            "overall": ("efficiencies", 1), "offense": ("efficiencies", 3),
+            "defense": ("efficiencies", 5), "special_teams": ("efficiencies", 7)},
+    "NFL": {},
+}
+# kept for callers that still import the old names
+RESUME_INDEX = {k: v[1] for k, v in DEFAULT_COLUMNS["CFB"].items() if v[0] == "resume"}
+EFFICIENCY_INDEX = {k: v[1] for k, v in DEFAULT_COLUMNS["CFB"].items() if v[0] == "efficiencies"}
 
 
 def _category_values(entry: dict, name: str) -> list:
     for c in (entry.get("categories") or []):
-        if isinstance(c, dict) and _norm(c.get("name") or "") == _norm(name):
+        if isinstance(c, dict) and (c.get("name") == name or _norm(c.get("name") or "") == _norm(name)):
             return c.get("values") or []
     return []
 
 
-def _at(entry: dict, category: str, idx) -> int | None:
-    """
-    Rank at an index. The live response leaves `ranks` as dashes and carries the ranks in `values`,
-    but a populated numeric `ranks` array is the more explicit source, so it wins where present.
-    """
-    if idx is None:
+def _at(entry: dict, category: str, idx):
+    """Number at (category, index). A populated numeric `ranks` array wins over `values` for ranks."""
+    if idx is None or category is None:
         return None
     for c in (entry.get("categories") or []):
-        if not isinstance(c, dict) or _norm(c.get("name") or "") != _norm(category):
+        if not isinstance(c, dict):
+            continue
+        nm = c.get("name") or c.get("displayName") or ""
+        if nm != category and _norm(nm) != _norm(category):
             continue
         for key in ("ranks", "values"):
             arr = c.get(key) or []
             if idx >= len(arr):
                 continue
             try:
-                return int(float(arr[idx]))
+                return float(arr[idx])
             except (TypeError, ValueError):
-                continue        # dashes in `ranks`: fall through to `values`
+                continue
         return None
     return None
 
 
-def resolved_indices(payload, league: str = "CFB") -> tuple[dict, dict, str]:
-    """Indices to read, preferring what this pull confirms over the stored defaults."""
-    resume, eff = dict(RESUME_INDEX), dict(EFFICIENCY_INDEX)
-    note = "using verified defaults"
+def resolved_columns(payload, league: str = "CFB") -> tuple[dict, str]:
+    """{column: {category, index, is_value}} -- what this pull confirms, over the stored defaults."""
+    cols = {k: {"category": c, "index": i, "is_value": False} for k, (c, i) in DEFAULT_COLUMNS.get(league, {}).items()}
     ident = identify_columns(payload, league)
-    if ident.get("available"):
-        changed = []
-        for cat, target in (("resume", resume), ("efficiencies", eff)):
-            info = (ident.get("categories") or {}).get(cat) or {}
-            for col, d in (info.get("columns") or {}).items():
-                if not d.get("confident") or col not in target:
-                    continue
-                idx = d.get("rank_index", d["index"])
-                if idx != target[col]:
-                    changed.append(f"{cat}.{col}: {target[col]}->{idx}")
-                    target[col] = idx
-        note = ("confirmed against published ranks" if not changed
-                else "re-mapped from published ranks: " + ", ".join(changed))
+    remapped, found = [], []
+    for col, d in (ident.get("columns") or {}).items():
+        if not d.get("confident"):
+            continue
+        cur = cols.get(col)
+        new = {"category": d["category"], "index": d["index"], "is_value": d["is_value"]}
+        if cur is None:
+            found.append(col)                       # a column the defaults never had: not a remap
+        elif (cur["category"], cur["index"]) != (new["category"], new["index"]):
+            remapped.append(f"{col}: {(cur['category'], cur['index'])} -> {(new['category'], new['index'])}")
+        cols[col] = new
+    if not ident.get("available"):
+        note = "no reference for this league; using stored defaults"
+    elif remapped:
+        note = "re-mapped from published values: " + "; ".join(remapped)
+    elif DEFAULT_COLUMNS.get(league):
+        note = "confirmed against published values"
+    else:
+        note = "located from published values: " + ", ".join(sorted(found))
+    return cols, note
+
+
+def resolved_indices(payload, league: str = "CFB") -> tuple[dict, dict, str]:
+    """Back-compatible view of resolved_columns for the older resume/efficiency split."""
+    cols, note = resolved_columns(payload, league)
+    resume = {k: v["index"] for k, v in cols.items() if v["category"] == "resume"}
+    eff = {k: v["index"] for k, v in cols.items() if v["category"] == "efficiencies"}
     return resume, eff, note
 
 
@@ -482,8 +503,11 @@ def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: 
         return pd.DataFrame(), [f"no team entries found; top-level keys were {top}"]
     ok, why = verify_sos_column(payload)
     notes.append(("strength-of-schedule column verified: " if ok else "strength-of-schedule column NOT verified: ") + why)
-    _ri, _ei, _idx_note = resolved_indices(payload, league)
-    notes.append(f"column indices: {_idx_note}")
+    _cols, _idx_note = resolved_columns(payload, league)
+
+    def _col(e, name):
+        d = _cols.get(name)
+        return None if d is None else _at(e, d["category"], d["index"])
     rows, no_sos = [], 0
     for e in entries:
         name = _team_name(e)
@@ -499,23 +523,38 @@ def normalize(payload, season: int, resolver: ids.AliasResolver, ts, unmatched: 
         # fallback, and are the verified ones for the unlabelled shape the live endpoint returns.
         sos = _pick(nums, _SOS_NORM, "rank")
         if sos is None:
-            sos = _at(e, "resume", _ri.get("sos"))
+            sos = _col(e, "sos")
         if sos is None and ok:
             sos = _resume_by_index(e, __import__("config").ESPN_SOS_RESUME_INDEX)
         if sos is None:
             no_sos += 1
         rows.append({"team_id": tid, "season": season, "espn_team": name,
-                     "power_rank_espn": _at(e, "resume", _ri.get("fpi")),
-                     "offense_rank_espn": _at(e, "efficiencies", _ei.get("offense")),
-                     "defense_rank_espn": _at(e, "efficiencies", _ei.get("defense")),
-                     "special_teams_rank_espn": _at(e, "efficiencies", _ei.get("special_teams")),
-                     "overall_eff_rank_espn": _at(e, "efficiencies", _ei.get("overall")),
-                     "sor_rank_espn": _at(e, "resume", _ri.get("sor")),
-                     "gc_rank_espn": _at(e, "resume", _ri.get("gc")),
+                     "power_rank_espn": _col(e, "fpi"),
+                     # raw readings; value-published columns become ranks after every team is read
+                     "offense_rank_espn": _col(e, "offense"),
+                     "defense_rank_espn": _col(e, "defense"),
+                     "special_teams_rank_espn": _col(e, "special_teams"),
+                     "overall_eff_rank_espn": _col(e, "overall"),
+                     "sor_rank_espn": _col(e, "sor"),
+                     "gc_rank_espn": _col(e, "gc"),
                      "sos_rank_espn": None if sos is None else int(sos),
                      "remaining_sos_rank_espn": (lambda v: None if v is None else int(v))(_pick(nums, _REM_NORM, "rank")),
                      "strength_of_record_rank": (lambda v: None if v is None else int(v))(_pick(nums, _SOR_NORM, "rank")),
                      "fpi": _pick(nums, {"fpi"}, "value"), "source": "espn_fpi", "retrieved_at": ts.isoformat()})
+    # Where ESPN published a VALUE (NFL offence / defence / special teams), rank every team by it.
+    # Higher is better for all three on ESPN's scale; ties share the better rank, as ESPN shows them.
+    frame = pd.DataFrame(rows)
+    for col, out_col in (("offense", "offense_rank_espn"), ("defense", "defense_rank_espn"),
+                         ("special_teams", "special_teams_rank_espn")):
+        d = _cols.get(col)
+        if d and d.get("is_value") and out_col in frame.columns and frame[out_col].notna().any():
+            frame[out_col] = frame[out_col].rank(ascending=False, method="min")
+    for c in ("power_rank_espn", "offense_rank_espn", "defense_rank_espn", "special_teams_rank_espn",
+              "overall_eff_rank_espn", "sor_rank_espn", "gc_rank_espn", "sos_rank_espn"):
+        if c in frame.columns:
+            frame[c] = pd.to_numeric(frame[c], errors="coerce").round().astype("Int64")
+    rows = frame.to_dict("records") if not frame.empty else rows
+    notes.append(f"column indices: {_idx_note}")
     if rows and no_sos == len(rows) and __import__("config").ESPN_SOS_RESUME_INDEX is None:
         notes.append("the response carries no field labels; set config.ESPN_SOS_RESUME_INDEX once the "
                      "strength-of-schedule position is confirmed against a team whose rank you can read")

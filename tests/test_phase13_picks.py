@@ -364,3 +364,103 @@ def test_only_moves_toward_our_side_count_as_support():
     assert "steam" in ours and "rlm_agrees" not in ours       # the away-side RLM is not our signal
     theirs = pe.signal_ages_from_events(events, "SPREAD", False, kick)
     assert "rlm_agrees" in theirs and "steam" not in theirs
+
+
+def _synthetic_league(prior_sd, seed=7, seasons=(2021, 2022, 2023, 2024, 2025)):
+    import numpy as np
+    from pipeline import model as M
+    rng = np.random.default_rng(seed)
+    out = {}
+    for season in seasons:
+        rows = []
+        for wk in range(1, 15):
+            for g in range(16):
+                th, ta = rng.normal(0, 6), rng.normal(0, 6)
+                noise = 8.0 / np.sqrt(wk)
+                r = {f: 0.0 for f in M.MARGIN_FEATURES}; r.update({f: 0.0 for f in M.TOTAL_FEATURES})
+                r.update({"game_id": f"{season}_{wk}_{g}", "season": season, "week": wk, "home_field": 1.0,
+                          "kickoff_utc": f"{season}-10-01T17:00:00Z", "league": "NFL",
+                          "cur_rating_home": th + rng.normal(0, noise), "cur_rating_away": ta + rng.normal(0, noise),
+                          "prior_rating_home": th + rng.normal(0, prior_sd), "prior_rating_away": ta + rng.normal(0, prior_sd),
+                          "continuity_home": 0.85, "continuity_away": 0.85,
+                          "margin_home": (th - ta) + 2.0 + rng.normal(0, 10), "total": 44.0})
+                rows.append(r)
+        out[season] = pd.DataFrame(rows)
+    return out
+
+
+def test_blend_sweep_finds_the_truth_in_either_direction():
+    """The sweep must pick what history supports, not what anyone hoped: slower decay where last
+    season is informative, faster where it is not."""
+    from pipeline import model as M
+    from pipeline.jobs import tune_blend as TB
+    base = M.blend_policy("NFL")["schedule"]
+    def mae(raw, k):
+        pol = {"schedule": TB.stretched_schedule(base, k), "continuity_strength": 0.0, "early_weeks": 0}
+        return TB.score(TB.walk_forward(raw, "NFL", pol))["mae"]
+    informative = _synthetic_league(prior_sd=1.5)
+    assert mae(informative, 2.0) < mae(informative, 1.0) < mae(informative, 0.75)
+    weak = _synthetic_league(prior_sd=9.0)
+    assert mae(weak, 0.75) < mae(weak, 1.0) < mae(weak, 2.0)
+
+
+def test_blend_sweep_keeps_current_policy_when_the_gain_is_noise(tmp_path, monkeypatch):
+    """With no real signal to find, nothing may be adopted: a candidate has to beat the current policy
+    by a meaningful margin AND in most seasons."""
+    import config
+    from pipeline.jobs import tune_blend as TB
+    from pipeline.log import JobRun
+    import pipeline.log as L
+    monkeypatch.setattr(config, "TABLES", tmp_path / "tables")
+    monkeypatch.setattr(L, "JOB_LOG", tmp_path / "tables" / "ops" / "job_log.csv")
+    flat = _synthetic_league(prior_sd=4.0, seed=11)
+    with JobRun("TUNE", "NFL") as job:
+        v = TB.run("NFL", apply=True, job=job, raw=flat, grid=[(1.0, 0.0, 0), (1.02, 0.0, 0)])
+    assert v["adopt"] is False                              # a near-identical curve is not an improvement
+    assert not (tmp_path / "tables" / "model" / "blend_policy.json").exists()
+
+
+def _write_lines(tmp_path, league, season, n, flip, seed=3):
+    import numpy as np
+    import config
+    from pipeline import storage
+    rng = np.random.default_rng(seed)
+    true = rng.normal(0, 10, n)
+    spread = -np.round(true + rng.normal(0, 7, n))            # honest line: negative when home is better
+    margin = np.round(true + rng.normal(0, 12, n))
+    if flip:
+        spread = -spread                                       # the bug: every favourite made an underdog
+    storage.write_parquet(config.TABLES / "market" / "closing_lines" / league / f"{season}.parquet",
+                          pd.DataFrame({"game_id": [f"G{i}" for i in range(n)], "spread_home": spread, "book": "x"}))
+    (config.TABLES / "results" / league).mkdir(parents=True, exist_ok=True)
+    pd.DataFrame({"game_id": [f"G{i}" for i in range(n)], "margin_home": margin}).to_csv(
+        config.TABLES / "results" / league / f"{season}.csv", index=False)
+
+
+def test_line_audit_detects_a_reversed_season_and_only_fixes_a_confirmed_one(tmp_path, monkeypatch):
+    """The CFB 2023 result (34.5% against the close on 730 games) is the signature of spreads stored
+    with their sign reversed. The audit must find it, and the fix must refuse a healthy season."""
+    import config
+    from pipeline.jobs import audit_lines as AL
+    monkeypatch.setattr(config, "TABLES", tmp_path / "tables")
+    monkeypatch.setattr(config, "ROOT", tmp_path)
+    _write_lines(tmp_path, "CFB", 2022, 600, flip=False)
+    _write_lines(tmp_path, "CFB", 2023, 600, flip=True)
+    healthy, reversed_ = AL.season_audit("CFB", 2022), AL.season_audit("CFB", 2023)
+    assert healthy["verdict"] == "healthy" and healthy["corr_market_vs_result"] > 0.3
+    assert reversed_["verdict"] == "SIGNS REVERSED" and reversed_["corr_market_vs_result"] < -0.3
+    assert AL.fix_sign("CFB", 2022) is False                   # a healthy season is never touched
+    assert AL.fix_sign("CFB", 2023) is True
+    assert AL.season_audit("CFB", 2023)["verdict"] == "healthy"
+    backups = list((tmp_path / "tables" / "market" / "closing_lines" / "CFB").glob("2023.before_sign_fix_*.parquet"))
+    assert len(backups) == 1                                  # the original is preserved
+
+
+def test_an_analysis_older_than_the_projection_is_withheld():
+    """The Giants at Rams contradiction: text written before Week 1 said Rams by 13.5 while the header,
+    rebuilt afterwards, said Rams by 4. An analysis may never sit under a projection it predates."""
+    from pipeline.jobs.build_site import ai_current_or_stale
+    ai = {"withheld": False, "sections": {"model_projection": "Rams by 13.49"}, "generated_at": "2026-09-08T12:00:00Z"}
+    stale = ai_current_or_stale(ai, {"predicted_at": "2026-09-19T12:00:00Z"})
+    assert stale["withheld"] is True and stale["stale"] is True and "sections" not in stale
+    assert ai_current_or_stale(ai, {"predicted_at": "2026-09-07T12:00:00Z"}) is ai    # current analysis still shown

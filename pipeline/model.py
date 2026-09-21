@@ -46,6 +46,71 @@ def _prior_final_ratings(league: str, season: int) -> pd.Series:
     return last.set_index("team_id").rating_overall
 
 
+def _continuity(league: str, season: int) -> pd.Series:
+    """Roster/coaching continuity per team (0..1). Empty when not built for that season."""
+    c = storage.read_table(config.TABLES / "roster" / "continuity" / league / f"{season}.parquet")
+    if c.empty or "continuity_index" not in c.columns:
+        return pd.Series(dtype=float)
+    return c.drop_duplicates("team_id", keep="last").set_index("team_id").continuity_index
+
+
+def blend_policy(league: str) -> dict:
+    """The active prior-blend policy: stored overrides from a sweep if present, else config defaults."""
+    import json as _json
+    base = {"schedule": {int(k) if str(k).isdigit() else k: v for k, v in config.PRIOR_WEIGHT_BY_WEEK[league].items()},
+            "continuity_strength": 0.0, "early_weeks": 0}
+    path = config.TABLES / "model" / "blend_policy.json"
+    if path.exists():
+        try:
+            over = _json.loads(path.read_text()).get(league) or {}
+            if "schedule" in over:
+                over["schedule"] = {int(k) if str(k).isdigit() else k: v for k, v in over["schedule"].items()}
+            base.update(over)
+        except Exception:
+            pass
+    return base
+
+
+def _week_weight(schedule: dict, week: int) -> float:
+    return float(schedule.get(int(week), schedule.get("default", 0.05)))
+
+
+def apply_blend(df: pd.DataFrame, league: str, policy: dict | None = None) -> pd.DataFrame:
+    """
+    Blend each team's prior-season rating with its current as-of rating.
+
+    The prior weight falls week by week on the policy's schedule. With continuity_strength > 0 it is
+    also scaled per team: a team returning the same quarterback and staff leans on last season for
+    longer, a rebuilt team for less. This is the "do not overreact to one game" lever, applied where
+    it is justified rather than uniformly.
+    """
+    if df.empty:
+        return df
+    pol = policy or blend_policy(league)
+    d = df.copy()
+    base = d.week.map(lambda w: _week_weight(pol["schedule"], w)).astype(float)
+    s = float(pol.get("continuity_strength", 0.0))
+    med = {"NFL": 0.85, "CFB": 0.35}.get(league, 0.5)
+
+    def team_weight(col):
+        if s == 0.0 or col not in d.columns:
+            return base
+        ci = pd.to_numeric(d[col], errors="coerce").fillna(med)
+        return (base * (1 + s * (ci - med) / med)).clip(0.0, 0.95)
+
+    wh, wa = team_weight("continuity_home"), team_weight("continuity_away")
+
+    def blended(cur, prior, w):
+        c, p = pd.to_numeric(d[cur], errors="coerce"), pd.to_numeric(d[prior], errors="coerce")
+        out = w * p + (1 - w) * c
+        out = out.where(c.notna(), p)           # no current rating yet: prior alone
+        return out.where(p.notna(), c)          # no prior (new program): current alone
+
+    d["rating_diff_blend"] = blended("cur_rating_home", "prior_rating_home", wh) - blended("cur_rating_away", "prior_rating_away", wa)
+    d["prior_weight"] = (wh + wa) / 2
+    return d
+
+
 def week_features(league: str, season: int, week: int) -> pd.DataFrame:
     """One row per game (home perspective) with margin + total features. Missing values -> NaN (imputed at fit/predict)."""
     edges = storage.read_table(AN / "matchup_edges" / league / str(season) / f"W{week:02d}.parquet")
@@ -58,20 +123,16 @@ def week_features(league: str, season: int, week: int) -> pd.DataFrame:
     games = storage.read_table(storage.games_path(league, season)).set_index("game_id")
     piv["home_team_id"] = games.home_team_id; piv["away_team_id"] = games.away_team_id
     piv["kickoff_utc"] = games.kickoff_utc; piv["season"] = season; piv["week"] = week; piv["league"] = league
-    # blended rating diff: prior-season final rating and current as-of rating, mixed by the early-season prior schedule
+    # Raw blend ingredients, kept separate so a blend policy can be applied (and swept) afterwards
+    # without rebuilding any metrics.
     rat = storage.read_table(AN / "team_ratings" / league / f"{season}.parquet")
     cur = rat[rat.as_of_week == week].set_index("team_id").rating_overall if not rat.empty and (rat.as_of_week == week).any() else pd.Series(dtype=float)
     prior = _prior_final_ratings(league, season)
-    w = asof.prior_weight(league, week) if not prior.empty else 0.0
-    def blend(t):
-        c = cur.get(t); p = prior.get(t)
-        if c is None or pd.isna(c):
-            return p if (p is not None and not pd.isna(p)) else np.nan
-        if p is None or pd.isna(p):
-            return c
-        return w * p + (1 - w) * c
-    piv["rating_diff_blend"] = [blend(h) - blend(a) if not (pd.isna(blend(h)) or pd.isna(blend(a))) else np.nan for h, a in zip(piv.home_team_id, piv.away_team_id)]
-    piv["prior_weight"] = w
+    cont = _continuity(league, season)
+    piv["cur_rating_home"] = piv.home_team_id.map(cur); piv["cur_rating_away"] = piv.away_team_id.map(cur)
+    piv["prior_rating_home"] = piv.home_team_id.map(prior); piv["prior_rating_away"] = piv.away_team_id.map(prior)
+    piv["continuity_home"] = piv.home_team_id.map(cont); piv["continuity_away"] = piv.away_team_id.map(cont)
+    piv = apply_blend(piv, league)
     # total features from team_metrics_asof BLEND / OPP_ADJ (prior-blended early season)
     m = storage.read_table(AN / "team_metrics_asof" / league / str(season) / f"W{week:02d}.parquet")
     vals = {}
@@ -174,16 +235,34 @@ def cv_lambda(df: pd.DataFrame, features: list[str], target: str, grid=(1, 3, 10
 
 
 # ---- model bundle ---------------------------------------------------------------------------
-def fit_models(train: pd.DataFrame, league: str) -> dict:
+MIN_EARLY_TRAIN = 150       # below this many early-season games, a separate early fit is not attempted
+
+
+def fit_models(train: pd.DataFrame, league: str, early_weeks: int | None = None) -> dict:
+    """
+    Fit the margin and total models. With early_weeks > 0, weeks up to that point also get their own
+    margin model: the opening weeks run mostly on last season and behave differently enough that one
+    set of weights for the whole year serves them poorly. The early model is only fit when there is
+    enough early-season history to support it; otherwise the full model is used everywhere.
+    """
     tr = train[train.margin_home.notna()].copy()
     lam_m = cv_lambda(tr, MARGIN_FEATURES, "margin_home"); lam_t = cv_lambda(tr, TOTAL_FEATURES, "total")
     mm = Ridge(MARGIN_FEATURES, lam_m).fit(tr, "margin_home"); tm = Ridge(TOTAL_FEATURES, lam_t).fit(tr, "total")
+    if early_weeks is None:
+        early_weeks = int(blend_policy(league).get("early_weeks", 0))
+    early = None
+    if early_weeks and "week" in tr.columns:
+        etr = tr[tr.week <= early_weeks]
+        if len(etr) >= MIN_EARLY_TRAIN:
+            lam_e = cv_lambda(etr, MARGIN_FEATURES, "margin_home")
+            early = Ridge(MARGIN_FEATURES, lam_e).fit(etr, "margin_home")
     resid = tr.margin_home.to_numpy() - mm.predict(tr)
     sigma = float(np.std(resid))
     # win-probability calibration: ridge compresses margins, so P(home win) = sigmoid(a + b * margin) is fit on training games (Platt)
     a, b = fit_platt(mm.predict(tr), (tr.margin_home.to_numpy() > 0).astype(float))
     return {"margin": mm, "total": tm, "sigma_margin": sigma, "platt_a": a, "platt_b": b, "n_train": int(len(tr)), "lam_margin": lam_m, "lam_total": lam_t,
-            "train_seasons": sorted(tr.season.unique().tolist())}
+            "train_seasons": sorted(tr.season.unique().tolist()),
+            "margin_early": early, "early_weeks": int(early_weeks or 0) if early is not None else 0}
 
 
 def fit_platt(margin: np.ndarray, won: np.ndarray, iters: int = 200) -> tuple[float, float]:
@@ -205,6 +284,11 @@ def predict_rows(models: dict, feats: pd.DataFrame, model_version: str, is_backt
         return pd.DataFrame()
     mm, tm = models["margin"], models["total"]
     margin = mm.predict(feats); total = np.clip(tm.predict(feats), config.TOTAL_FLOOR, None)
+    em, ew = models.get("margin_early"), int(models.get("early_weeks") or 0)
+    if em is not None and ew and "week" in feats.columns:
+        is_early = (pd.to_numeric(feats.week, errors="coerce") <= ew).to_numpy()
+        if is_early.any():
+            margin = np.where(is_early, em.predict(feats), margin)
     league = feats.league.iloc[0] if "league" in feats.columns else "NFL"
     total = np.maximum(total, np.abs(margin) + 2 * config.MIN_PROJ_SIDE[league])     # score-split consistency: blowouts run up the total
     sigma = models["sigma_margin"]
@@ -248,6 +332,9 @@ def save_model(models: dict, league: str, model_version: str, backtest_summary: 
         "features": MARGIN_FEATURES, "total_features": TOTAL_FEATURES, "trained_on_seasons": models["train_seasons"], "n_train": models["n_train"],
         "backtest_summary": backtest_summary, "created_at": datetime.now(timezone.utc).isoformat(), "is_active": is_active,
         "margin_model": models["margin"].to_dict(), "total_model": models["total"].to_dict(),
+        "margin_early_model": models["margin_early"].to_dict() if models.get("margin_early") is not None else None,
+        "early_weeks": int(models.get("early_weeks") or 0),
+        "blend_policy": blend_policy(league),
     }
     path.write_text(json.dumps(all_models, indent=1))
 
@@ -260,6 +347,8 @@ def load_active_model(league: str) -> tuple[str, dict] | tuple[None, None]:
     for k, v in all_models.items():
         if v.get("league") == league and v.get("is_active"):
             return k, {"margin": Ridge.from_dict(v["margin_model"]), "total": Ridge.from_dict(v["total_model"]), "sigma_margin": v["weights"]["sigma_margin"],
+                       "margin_early": Ridge.from_dict(v["margin_early_model"]) if v.get("margin_early_model") else None,
+                       "early_weeks": int(v.get("early_weeks") or 0),
                        "platt_a": v["weights"].get("platt_a"), "platt_b": v["weights"].get("platt_b"),
                        "n_train": v["n_train"], "lam_margin": v["weights"]["lam_margin"], "lam_total": v["weights"]["lam_total"], "train_seasons": v["trained_on_seasons"]}
     return None, None

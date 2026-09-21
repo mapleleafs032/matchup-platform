@@ -463,13 +463,13 @@ def test_column_identification_recovers_indices_from_published_ranks():
                          "totals": [("50.0" if i % 2 == 0 else f"{int(v)}th") for i, v in enumerate(ev)]})
         items.append({"team": {"displayName": name}, "categories": cats})
     ident = espn_fpi.identify_columns({"items": items}, "CFB")
-    res = ident["categories"]["resume"]["columns"]
-    assert res["sos"]["index"] == 2 and res["sos"]["confident"]
-    assert res["fpi"]["index"] == 1 and res["sor"]["index"] == 0
-    assert not res["ap"]["confident"]          # AP is on the page but not in the array; flagged, not asserted
-    eff = ident["categories"]["efficiencies"]["columns"]
-    assert [eff[k]["index"] for k in ("overall", "offense", "defense", "special_teams")] == [1, 3, 5, 7]
-    assert all(eff[k]["confident"] for k in ("overall", "offense", "defense", "special_teams"))
+    col = ident["columns"]
+    assert col["sos"]["category"] == "resume" and col["sos"]["index"] == 2 and col["sos"]["confident"]
+    assert col["fpi"]["index"] == 1 and col["sor"]["index"] == 0
+    assert "ap" not in col or not col["ap"]["confident"]   # AP is on the page but not in this array
+    assert [col[k]["index"] for k in ("overall", "offense", "defense", "special_teams")] == [1, 3, 5, 7]
+    assert all(col[k]["category"] == "efficiencies" and col[k]["confident"]
+               for k in ("overall", "offense", "defense", "special_teams"))
 
 
 def _espn_live_payload():
@@ -503,7 +503,7 @@ def test_every_espn_rank_matches_the_published_value():
     r = ids.AliasResolver.load()
     espn_fpi.seed_aliases(payload, "CFB", r, teams)
     df, notes = espn_fpi.normalize(payload, 2026, r, pd.Timestamp("2026-09-17T12:00:00Z"), set(), "CFB")
-    assert any("confirmed against published ranks" in n for n in notes)
+    assert any("confirmed against published values" in n for n in notes)
     chk = df.set_index("espn_team")
     for name in ("Ohio State Buckeyes", "Notre Dame Fighting Irish", "LSU Tigers", "Texas A&M Aggies"):
         want_r, want_e = CFB_RESUME[name], CFB_EFFICIENCY[name]
@@ -525,9 +525,9 @@ def test_a_reordered_response_is_remapped_not_misread():
         for c in it["categories"]:
             if c["name"] == "resume":
                 c["values"][0], c["values"][1] = c["values"][1], c["values"][0]
-    resume, eff, note = espn_fpi.resolved_indices(payload, "CFB")
-    assert resume["fpi"] == 1 and resume["sor"] == 0 and "re-mapped" in note
-    assert resume["sos"] == 2                         # untouched columns stay put
+    cols, note = espn_fpi.resolved_columns(payload, "CFB")
+    assert cols["fpi"]["index"] == 1 and cols["sor"]["index"] == 0 and "re-mapped" in note
+    assert cols["sos"]["index"] == 2                  # untouched columns stay put
 
 
 def test_nfl_reference_identifies_efficiency_ranks_from_published_values():
@@ -550,12 +550,29 @@ def test_nfl_reference_identifies_efficiency_ranks_from_published_values():
         cats.append({"name": "efficiencies", "values": ev, "totals": et})
         items.append({"team": {"displayName": name}, "categories": cats})
     ident = espn_fpi.identify_columns({"items": items}, "NFL")
-    res_cols = ident["categories"]["resume"]["columns"]
-    assert res_cols["fpi"]["index"] == 0 and res_cols["sos"]["index"] == 2
-    assert res_cols["fpi"]["confident"] and res_cols["sos"]["confident"]
-    eff = ident["categories"]["efficiencies"]["columns"]
-    for k, want_rank_idx in (("offense", 3), ("defense", 5), ("special_teams", 7)):
-        assert eff[k]["confident"] and eff[k]["is_value"] and eff[k]["rank_index"] == want_rank_idx
-    resume, effi, note = espn_fpi.resolved_indices({"items": items}, "NFL")
-    assert effi["offense"] == 3 and effi["defense"] == 5 and effi["special_teams"] == 7
-    assert resume["sos"] == 2 and resume["fpi"] == 0
+    col = ident["columns"]
+    assert col["fpi"]["index"] == 0 and col["sos"]["index"] == 2
+    assert col["fpi"]["confident"] and col["sos"]["confident"]
+    for k, want_value_idx in (("offense", 2), ("defense", 4), ("special_teams", 6)):
+        assert col[k]["confident"] and col[k]["is_value"] and col[k]["index"] == want_value_idx
+
+
+def test_columns_are_found_in_whatever_category_holds_them():
+    """The real NFL response had no `resume` category and did not keep OFF / DEF / ST under
+    `efficiencies`. Naming the category in advance was itself a guess, so every category is searched."""
+    from providers import espn_fpi
+    from providers.espn_fpi_reference import NFL_RANKS, NFL_EFFICIENCY_VALUES
+    items = []
+    for name, r in NFL_RANKS.items():
+        e = NFL_EFFICIENCY_VALUES[name]
+        items.append({"team": {"displayName": name}, "categories": [
+            {"name": "fpi", "values": [e["fpi_value"], float(r["fpi"]), 0.0, e["offense"], e["defense"], e["special_teams"]]},
+            {"name": "rankings", "values": [float(r["sos"]), float(r["rem_sos"]), float(r["avgwp"])]},
+            {"name": "efficiencies", "values": [60.0, 5.0, 61.0, 6.0, 62.0, 7.0, 63.0, 8.0]}]})
+    ident = espn_fpi.identify_columns({"items": items}, "NFL")
+    col = ident["columns"]
+    assert (col["sos"]["category"], col["sos"]["index"]) == ("rankings", 0)
+    assert (col["fpi"]["category"], col["fpi"]["index"]) == ("fpi", 1)
+    assert (col["offense"]["category"], col["offense"]["index"]) == ("fpi", 3)
+    assert col["offense"]["is_value"] and all(col[k]["confident"] for k in ("sos", "fpi", "offense", "defense"))
+    assert set(ident["inventory"]) == {"fpi", "rankings", "efficiencies"}

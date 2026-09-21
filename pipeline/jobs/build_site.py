@@ -139,6 +139,28 @@ class Season:
         return {"withheld": False, "sections": d["sections"], "model": d.get("llm_model"), "generated_at": d["generated_at"], "inputs_hash": d["inputs_hash"]}
 
 
+def ai_current_or_stale(ai: dict | None, model: dict | None) -> dict | None:
+    """
+    Never show an analysis that describes a different projection from the one above it.
+
+    An analysis is written from one set of inputs. When the projection is rebuilt from newer inputs --
+    a week of results, a line move -- the old text keeps describing the old numbers. Shown under the
+    new projection it contradicts it (Rams by 13.5 in the text, Rams by 4 in the header). If the current
+    prediction was made after the analysis was written, the analysis is withheld until it is redone.
+    """
+    if not ai or ai.get("withheld") or not model:
+        return ai
+    made, written = model.get("predicted_at"), ai.get("generated_at")
+    try:
+        if made and written and pd.Timestamp(made) > pd.Timestamp(written):
+            return {"withheld": True, "stale": True, "generated_at": written,
+                    "reason": ("This analysis was written before the current projection and describes different "
+                               "numbers, so it is hidden until it is regenerated from the latest inputs.")}
+    except (ValueError, TypeError):
+        pass
+    return ai
+
+
 def slate_entry(S: Season, g, mkt_row, edges: pd.DataFrame) -> dict:
     gid = g.game_id
     v = S.venue(g)
@@ -735,7 +757,7 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
                            else "this platform's own opponent-rating strength of schedule"),
             "splits": splits_engine.build_week(S.league, S.season, week, S.games[S.games.game_id == gid], S.teams).get(gid, {}).get("periods", {}),
             "market_state": _market_state_for(S, week, gid, entry),
-            "edges": edge_list, "model": model, "market": market, "market_history_url": f"json/market/{gid}.json", "weather": wx, "result": result, "ai": S.ai_block(gid),
+            "edges": edge_list, "model": model, "market": market, "market_history_url": f"json/market/{gid}.json", "weather": wx, "result": result, "ai": ai_current_or_stale(S.ai_block(gid), model),
             "sources": {"metrics": "CollegeFootballData (PPA, advanced stats, plays) and nflverse (nflfastR EPA, FTN charting, PFR pressures)" if S.league == "CFB" else "nflverse (nflfastR play-by-play EPA, FTN charting, PFR pressures)",
                         "lines": "CollegeFootballData lines" if S.league == "CFB" else "The Odds API (US books)", "weather": "Open-Meteo", "injuries": "official league report" if S.league == "NFL" else "manual entries",
                         "note": "Opponent-adjusted values are this platform's own ridge fits; early-season values blend the previous season's adjusted numbers."},
