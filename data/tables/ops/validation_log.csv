@@ -36308,3 +36308,23 @@ e4b31ea5348f4781,CONTEXT_20260921T110348_5a8607,context,ALIAS_UNMATCHED,WARN,You
 8e5b398e0d834a53,SPLITS_20260921T120159_eb3c22,betting_splits,GAME_LOCKED,WARN,2026_NFL_W02_PIT_NE_FULL_2026-09-21T12:02:00.290155+00:00,game_id,2026_NFL_W02_PIT_NE,splits after kickoff are ignored,2026-09-21T12:02:02+00:00
 1e9f1885adf741ec,SPLITS_20260921T122425_2b7f63,betting_splits,GAME_LOCKED,WARN,2026_NFL_W02_PIT_NE_FULL_2026-09-21T12:24:26.208269+00:00,game_id,2026_NFL_W02_PIT_NE,splits after kickoff are ignored,2026-09-21T12:24:28+00:00
 8d40fbf7277c4916,SPLITS_20260921T122526_302d21,betting_splits,GAME_LOCKED,WARN,2026_NFL_W02_PIT_NE_FULL_2026-09-21T12:25:27.855225+00:00,game_id,2026_NFL_W02_PIT_NE,splits after kickoff are ignored,2026-09-21T12:25:29+00:00
+3f3d930993af4ede,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Abilene Christian,team,ppa.team:Abilene Christian,known CFB team,2026-09-21T20:23:57+00:00
+20706ba8252542e7,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Alabama A&M,team,ppa.team:Alabama A&M,known CFB team,2026-09-21T20:23:57+00:00
+33591e3d8d9e4c84,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Alabama State,team,ppa.team:Alabama State,known CFB team,2026-09-21T20:23:57+00:00
+c50cc15ecaf54c27,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Albany State,team,ppa.team:Albany State,known CFB team,2026-09-21T20:23:57+00:00
+a030a64e27b24da8,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Alcorn State,team,ppa.team:Alcorn State,known CFB team,2026-09-21T20:23:57+00:00
+80dd8630d4984f22,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Anderson (SC),team,ppa.team:Anderson (SC),known CFB team,2026-09-21T20:23:57+00:00
+c9dfe5720da44c74,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Arkansas-Pine Bluff,team,ppa.team:Arkansas-Pine Bluff,known CFB team,2026-09-21T20:23:57+00:00
+fb5af9edfdab4877,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Austin Peay,team,ppa.team:Austin Peay,known CFB team,2026-09-21T20:23:57+00:00
+5a015f5890d74cf6,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Bethune-Cookman,team,ppa.team:Bethune-Cookman,known CFB team,2026-09-21T20:23:57+00:00
+8d2524d88fb54aae,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Bowie State,team,ppa.team:Bowie State,known CFB team,2026-09-21T20:23:57+00:00
+864577d27860401f,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Brown,team,ppa.team:Brown,known CFB team,2026-09-21T20:23:57+00:00
+d7376e80cc324d8d,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Bryant,team,ppa.team:Bryant,known CFB team,2026-09-21T20:23:57+00:00
+c4f875aa927a4e8f,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Bucknell,team,ppa.team:Bucknell,known CFB team,2026-09-21T20:23:57+00:00
+3f8ad2de5c4c451a,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Butler,team,ppa.team:Butler,known CFB team,2026-09-21T20:23:57+00:00
+6c6cab76fed947f0,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Cal Poly,team,ppa.team:Cal Poly,known CFB team,2026-09-21T20:23:57+00:00
+00b803e887a4485a,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Campbell,team,ppa.team:Campbell,known CFB team,2026-09-21T20:23:57+00:00
+d37407697b6b4ac5,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Central Arkansas,team,ppa.team:Central Arkansas,known CFB team,2026-09-21T20:23:57+00:00
+3847f40be4d148a9,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Central Connecticut,team,ppa.team:Central Connecticut,known CFB team,2026-09-21T20:23:57+00:00
+1c8a4f25d9f0446e,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Central Oklahoma,team,ppa.team:Central Oklahoma,known CFB team,2026-09-21T20:23:57+00:00
+459c9cb983e04721,CFB_STATS_20260921T202350_d4fd4b,stats,ALIAS_UNMATCHED,WARN,ppa.team:Central Washington,team,ppa.team:Central Washington,known CFB team,2026-09-21T20:23:57+00:00
