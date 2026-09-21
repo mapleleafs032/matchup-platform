@@ -2,7 +2,7 @@ name: Model tuning
 on:
   workflow_dispatch:
     inputs:
-      action: { description: "audit | fix-sign | sweep | apply", default: "audit", required: true }
+      action: { description: "audit | fix-sign | sweep | apply | edges", default: "edges", required: true }
       league: { description: "NFL, CFB, or BOTH", default: "BOTH", required: true }
       season: { description: "season to correct (fix-sign only)", default: "", required: false }
 concurrency: { group: data-write, cancel-in-progress: false }
@@ -24,6 +24,7 @@ jobs:
             fix-sign) python -m pipeline.jobs.audit_lines --league "$L" --fix-sign "$S" ;;
             sweep)    python -m pipeline.jobs.tune_blend --league "$L" ;;
             apply)    python -m pipeline.jobs.tune_blend --league "$L" --apply ;;
+            edges)    python -m pipeline.jobs.analyze_edges --league "$L" ;;
             *) echo "unknown action: $A"; exit 1 ;;
           esac
       - uses: ./.github/actions/commit
