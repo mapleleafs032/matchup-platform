@@ -1,20 +1,16 @@
 name: Betting splits (ingest)
 on:
   schedule:
-    # Week of the game: daily once lines are out.
-    - cron: "5 12 * * *"                  # 07:05 CT daily
-    # Day before: hourly.
-    - cron: "5 * * * *"                   # every hour, on the hour
-    # Game day: every 15 minutes. GitHub cron is best-effort, so the Apps Script timer
-    # (apps_script/OddsTimer.gs) dispatches this workflow on a precise 15-minute trigger as well.
-    - cron: "0,15,30,45 13-23 * * 0,4,6"  # Thu/Sat/Sun 08:00-18:45 CT
-    - cron: "0,15,30,45 0-4 * * 1,5,0"    # late windows for night kickoffs
+    - cron: "5 12 * * *"
+    - cron: "5 * * * *"
+    - cron: "0,15,30,45 13-23 * * 0,4,6"
+    - cron: "0,15,30,45 0-4 * * 1,5,0"
   workflow_dispatch:
     inputs:
       league:  { description: "NFL, CFB, or BOTH", default: "BOTH", required: true }
       dry_run: { description: "parse and report only (true/false)", default: "false", required: false }
       explain: { description: "print what the source published for games matching this team (blank = normal run)", default: "", required: false }
-concurrency: { group: data-write, cancel-in-progress: false }
+concurrency: { group: splits, cancel-in-progress: false }
 permissions: { contents: write }
 jobs:
   splits:
