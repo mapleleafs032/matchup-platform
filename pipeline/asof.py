@@ -58,6 +58,10 @@ def load_team_games(league: str, season: int) -> pd.DataFrame:
     tg["points_per_game"] = tg.points; tg["points_allowed_per_game"] = tg.points_allowed
     ypp_o = tg.total_yards / tg.plays.replace(0, np.nan); ypp_d = tg.d_total_yards / tg.d_plays.replace(0, np.nan)
     tg["net_yards_per_play"] = ypp_o - ypp_d
+    # Net EPA/play: offence's EPA per play minus the EPA per play its defence allows. It credits a
+    # dominant defence as much as a prolific offence and cannot be inflated by pace.
+    if "off_ppa_play" in tg.columns and "def_ppa_play" in tg.columns:
+        tg["net_epa_play"] = tg.off_ppa_play - tg.def_ppa_play
     tg["rush_yds_per_game"] = tg.rush_yds; tg["opp_rush_yds_per_game"] = tg.d_rush_yds
     tg["pass_yds_per_game"] = tg.pass_yds; tg["opp_pass_yds_per_game"] = tg.d_pass_yds
     tg["turnover_margin"] = tg.takeaways - tg.turnovers

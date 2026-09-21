@@ -379,6 +379,79 @@ def normalize_qb_box(payload: list[dict], games: pd.DataFrame, resolver: ids.Ali
     return pd.DataFrame(rows)
 
 
+def normalize_player_box(payload: list[dict], games: pd.DataFrame, resolver: ids.AliasResolver, retrieved_at: datetime,
+                         missing: set[str]) -> pd.DataFrame:
+    """
+    Every player's box line, one row per player per game, across passing, rushing, receiving and
+    defence. CFBD returns all of these in the same /games/players response the QB rows come from, so
+    capturing them costs no extra calls -- they were simply being discarded.
+    """
+    gm = _cfbd_game_map(games)
+    rows = []
+    for g in payload:
+        game = gm.get(_g(g, "id"))
+        if game is None:
+            continue
+        for t in (_g(g, "teams") or []):
+            tid = _resolve_team(resolver, _g(t, "team"), _g(t, "teamId"), game)
+            if tid is None:
+                continue
+            players: dict = {}
+            for cat in (_g(t, "categories") or []):
+                cname = (cat.get("name") or "").lower()
+                for typ in (_g(cat, "types") or []):
+                    for a in (_g(typ, "athletes") or []):
+                        aid = str(a.get("id"))
+                        rec = players.setdefault(aid, {"name": a.get("name"), "cats": set()})
+                        rec["cats"].add(cname)
+                        rec[f"{cname}.{typ.get('name')}"] = a.get("stat")
+            for aid, st in players.items():
+                c, a = _pair(st.get("passing.C/ATT"))
+                cats = st["cats"]
+                rows.append({
+                    "game_id": game.game_id, "team_id": tid, "player_id": f"CFB_P_{aid}",
+                    "position": "QB" if "passing" in cats else None, "started": None,
+                    "snaps_off": None, "snaps_def": None,
+                    "pass_att": a, "pass_cmp": c, "pass_yds": _num(st.get("passing.YDS")),
+                    "pass_td": _num(st.get("passing.TD")), "pass_int": _num(st.get("passing.INT")),
+                    "sacks_taken": None, "dropbacks": None, "ppa_dropback": None, "qbr": _num(st.get("passing.QBR")),
+                    "cpoe": None, "int_worthy": None, "pressured_dropbacks": None, "pressured_ppa": None, "clean_ppa": None,
+                    "rush_att": _num(st.get("rushing.CAR")), "rush_yds": _num(st.get("rushing.YDS")),
+                    "rush_td": _num(st.get("rushing.TD")), "rush_long": _num(st.get("rushing.LONG")),
+                    "targets": None, "receptions": _num(st.get("receiving.REC")), "rec_yds": _num(st.get("receiving.YDS")),
+                    "rec_td": _num(st.get("receiving.TD")), "rec_long": _num(st.get("receiving.LONG")),
+                    "tackles": _num(st.get("defensive.TOT")), "tfl": _num(st.get("defensive.TFL")),
+                    "sacks": _num(st.get("defensive.SACKS")), "pressures": _num(st.get("defensive.QB HUR")),
+                    "ints": _num(st.get("interceptions.INT")), "pbu": _num(st.get("defensive.PD")), "ff": None,
+                    "player_name": st.get("name"),
+                    "source": "cfbd", "retrieved_at": retrieved_at.isoformat(), "effective_at": _effective_at(game),
+                })
+    return pd.DataFrame(rows)
+
+
+def fetch_player_ppa(rm: RequestManager, season: int):
+    """Season EPA (CFBD's PPA) for every player, split by passing and rushing. One call per season."""
+    return rm.get(f"{BASE}/ppa/players/season", params={"year": season, "excludeGarbageTime": "true"},
+                  headers=_headers())
+
+
+def normalize_player_ppa(payload, season: int, resolver: ids.AliasResolver, retrieved_at: datetime,
+                         missing: set[str]) -> pd.DataFrame:
+    rows = []
+    for r in payload or []:
+        avg, tot = _g(r, "averagePPA") or {}, _g(r, "totalPPA") or {}
+        team = _g(r, "team")
+        try:
+            tid = resolver.resolve("cfbd", alias=team) if team else None
+        except ids.UnmatchedAlias:
+            resolver.unmatched.pop(); missing.add(f"ppa.team:{team}"); continue
+        rows.append({"season": season, "player_id": f"CFB_P_{_g(r, 'id')}", "team_id": tid,
+                     "player_name": _g(r, "name"), "position": _g(r, "position"),
+                     "epa_play": _num(_g(avg, "all")), "epa_pass": _num(_g(avg, "pass")), "epa_rush": _num(_g(avg, "rush")),
+                     "epa_total": _num(_g(tot, "all")), "source": "cfbd_ppa", "retrieved_at": retrieved_at.isoformat()})
+    return pd.DataFrame(rows)
+
+
 def schema_report(name: str, payload, missing: set[str]) -> list[str]:
     out = [f"{name}: {len(payload) if isinstance(payload, list) else 'n/a'} records"]
     if missing:

@@ -184,10 +184,74 @@ async function matchupMain() {
   }
   paintSched();
 
+  /* ---- key players: value and national rank for the metrics that describe each role ---- */
+  function keyPlayersSection() {
+    const kp = d.key_players || {};
+    if (!kp.home && !kp.away) return null;
+    const pc = v => (v == null ? "—" : (v * 100).toFixed(1) + "%");
+    const n1 = v => (v == null ? "—" : Number(v).toFixed(1));
+    const n2 = v => (v == null ? "—" : (v > 0 ? "+" : "") + Number(v).toFixed(2));
+    const whole = v => (v == null ? "—" : Math.round(v).toLocaleString());
+    const isNfl = d.game.league === "NFL";
+    // [label, field, formatter, rank field] per role; college shows box stats, NFL shows EPA-based ones
+    const COLS = isNfl ? {
+      qb: [["Dropbacks", "dropbacks", whole], ["EPA/dropback", "epa_per_dropback", n2, "epa_per_dropback_rank"],
+           ["Success", "success_rate", pc, "success_rate_rank"], ["CPOE", "cpoe", n1, "cpoe_rank"],
+           ["Sack rate", "sack_rate", pc, "sack_rate_rank"], ["aDOT", "adot", n1]],
+      rusher: [["Carries", "carries", whole], ["EPA/rush", "epa_per_rush", n2, "epa_per_rush_rank"],
+               ["Success", "success_rate", pc, "success_rate_rank"], ["Explosive", "explosive_rate", pc, "explosive_rate_rank"],
+               ["Yds/carry", "yards_per_carry", n1, "yards_per_carry_rank"]],
+      receiver: [["Targets", "targets", whole], ["Tgt share", "target_share", pc, "target_share_rank"],
+                 ["EPA/target", "epa_per_target", n2, "epa_per_target_rank"], ["Catch", "catch_rate", pc, "catch_rate_rank"],
+                 ["Air yd share", "air_yard_share", pc, "air_yard_share_rank"]],
+    } : {
+      qb: [["Att", "pass_att", whole], ["Comp", "comp_pct", pc], ["Yds", "pass_yds", whole, "pass_yds_rank"],
+           ["TD-INT", null, null], ["Y/A", "yards_per_att", n1], ["Pass eff", "pass_rating", n1, "pass_rating_rank"],
+           ["EPA/pass", "epa_pass", n2, "epa_pass_rank"]],
+      rusher: [["Carries", "carries", whole], ["Yds", "rush_yds", whole, "rush_yds_rank"],
+               ["Yds/carry", "yards_per_carry", n1, "yards_per_carry_rank"], ["TD", "rush_td", whole],
+               ["EPA/rush", "epa_rush", n2, "epa_rush_rank"]],
+      receiver: [["Rec", "receptions", whole], ["Yds", "rec_yds", whole, "rec_yds_rank"],
+                 ["Yds/rec", "yards_per_rec", n1, "yards_per_rec_rank"], ["TD", "rec_td", whole]],
+    };
+    const ROLE = { qb: "Quarterback", rusher: "Rushers", receiver: "Receivers" };
+    const cell = (p, col) => {
+      const [, field, f, rk] = col;
+      if (field === null) return `${whole(p.pass_td)}-${whole(p.pass_int)}`;
+      const v = f(p[field]);
+      return rk && p[rk] != null ? `${v} <span class="kp-rk">#${Math.round(p[rk])}</span>` : v;
+    };
+    const esc = t => String(t == null ? "" : t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+    const teamBlock = (side, abbr) => {
+      const t = kp[side] || {};
+      let h = `<div class="kp-team"><h3 class="kp-team-h ${side}">${esc(abbr)}</h3>`;
+      for (const role of ["qb", "rusher", "receiver"]) {
+        const ps = t[role] || [];
+        if (!ps.length) continue;
+        const cols = COLS[role];
+        h += `<table class="kp"><caption>${ROLE[role]}</caption><thead><tr><th>Player</th>`
+           + cols.map(c => `<th>${c[0]}</th>`).join("") + `</tr></thead><tbody>`;
+        for (const p of ps) {
+          h += `<tr><th scope="row">${esc(p.name || p.player_id)}${p.qualified === false ? ' <span class="kp-low">low volume</span>' : ""}</th>`
+             + cols.map(c => `<td>${cell(p, c)}</td>`).join("") + `</tr>`;
+        }
+        h += `</tbody></table>`;
+      }
+      return h + `</div>`;
+    };
+    const wrap = el("div", { class: "kp-wrap", html: teamBlock("away", A.identity.abbr) + teamBlock("home", H.identity.abbr) });
+    const note = isNfl
+      ? "Season to date before this game, from play-by-play. Rates exclude garbage time; #ranks are national, among players with enough volume to be meaningful."
+      : "Season to date before this game, from the box score. EPA comes from CFBD and is shown for the current week only, since it is a season total. #ranks are national among qualified players.";
+    return el("div", {}, wrap, el("p", { class: "sub-note" }, note));
+  }
+  const kpEl = keyPlayersSection();
+
   sec("Quick look", null,
     el("div", { class: "ql-row" },
       el("div", { class: "ql-col" }, el("div", { class: "toolbar" }, el("label", {}, "Basis ", qlToggle)), qlWrap),
       el("div", { class: "sched-col" }, schedBar, schedWrap)));
+  if (kpEl) sec("Key players", null, kpEl);
   const tabs = el("div", { class: "tabs" });
   for (const w of d.metrics.windows) { const b = el("button", { "aria-pressed": String(w === state.window) }, ({ SEASON: "Season", LAST5: "Last 5", LAST3: "Last 3", HOME: "Home", AWAY: "Away", CONF: "Conference" })[w] || w); b.addEventListener("click", () => { state.window = w; paintGrid(); }); tabs.append(b); }
   const adjTabs = el("div", { class: "tabs" });
@@ -390,6 +454,16 @@ async function matchupMain() {
         el("td", { class: "num" }, fn("home"))));
     }
     t.append(tb);
+    if (d.winprob) {
+      const sm = d.winprob.summary || {};
+      const note = [
+        d.winprob.final ? null : "Game in progress.",
+        sm.biggest_swing != null ? `Biggest single swing: ${Math.round(sm.biggest_swing * 100)} points.` : null,
+        sm.home_favoured_share != null ? `${H.identity.abbr} was favoured for ${Math.round(sm.home_favoured_share * 100)}% of the game.` : null,
+        `Source: ${d.winprob.source}.`,
+      ].filter(Boolean).join(" ");
+      sec("Win probability", note, App.winProbChart(d.winprob, H.identity.abbr, A.identity.abbr));
+    }
     sec("How it played out", "Actual production in this game, from the official box score.",
         el("div", { class: "ql-wrap" }, t));
   }

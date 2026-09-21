@@ -6,7 +6,7 @@ Inputs (tables built by ingest_context / build_roster --what fetch):
   roster_snapshots      who is on the team now (per week)
   player_season_usage   prior season: snaps/usage + production per player per team (both leagues)
   transfers, draft_picks, recruits, recruiting_classes, team_talent, coaches, injuries, depth_charts (NFL)
-  player_game_stats     current season QB game rows (for in-season starter detection)
+  player_game_stats     current season player game rows; only passers are used for starter detection
 
 Rules that matter for accuracy:
   * "returning" means the same player_id on the same team_id; a transfer-in is NEW even if productive elsewhere
@@ -195,6 +195,10 @@ def qb_status(league: str, season: int, week: int, cutoff: pd.Timestamp, team_id
         cand, basis, conf, flags = None, "UNKNOWN", 0.35, []
         # 1) in-season: last game's primary passer for this team
         t_cur = cur[cur.team_id == tid] if not cur.empty else cur
+        # The box table now carries every player, not just quarterbacks. Only someone who actually threw
+        # can be the starter -- otherwise a game missing its QB row would crown the top receiver.
+        if not t_cur.empty and "pass_att" in t_cur.columns:
+            t_cur = t_cur[pd.to_numeric(t_cur.pass_att, errors="coerce").fillna(0) > 0]
         if not t_cur.empty:
             last_gid = t_cur.sort_values("effective_at").game_id.iloc[-1]
             lg = t_cur[t_cur.game_id == last_gid].sort_values("pass_att", ascending=False)

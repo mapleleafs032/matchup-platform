@@ -195,6 +195,11 @@ async function picksMain() {
       el("div", {}, el("span", { class: "k" }, "edge"), el("span", { class: "num v" },
         p.market === "MONEYLINE" ? `${(p.expected_value * 100).toFixed(1)}% EV` : `${fmt.num(p.edge_points, 1)} pts`)),
       el("div", {}, el("span", { class: "k" }, "data quality"), el("span", { class: "num v" }, (p.data_quality * 100).toFixed(0) + "%")),
+      p.books_compared > 1 && p.best_line != null ? el("div", { class: p.line_gain > 0 ? "shop-better" : "" },
+        el("span", { class: "k" }, `best of ${p.books_compared} books`),
+        el("span", { class: "num v" }, `${p.market === "MONEYLINE" ? (p.best_line > 0 ? "+" : "") + Math.round(p.best_line)
+                                         : (p.market === "TOTAL" ? p.best_line : (p.best_line > 0 ? "+" : "") + p.best_line)} at ${p.best_book}`
+                                        + (p.line_gain > 0 ? ` (${p.line_gain} better)` : ""))) : null,
       p.market_share == null ? null : el("div", {}, el("span", { class: "k" }, "market share of score"),
         el("span", { class: "num v" }, (p.market_share * 100).toFixed(0) + "%")));
     const split = (p.tickets_pct_side != null || p.money_pct_side != null)

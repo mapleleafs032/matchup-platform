@@ -16,6 +16,62 @@ from pipeline.log import JobRun
 MODEL = config.TABLES / "model"
 
 
+def _implied(ml) -> float | None:
+    if ml is None or pd.isna(ml):
+        return None
+    ml = float(ml)
+    return 100 / (ml + 100) if ml > 0 else -ml / (-ml + 100)
+
+
+def closing_number(league: str, season: int, week: int, game_id: str, kickoff, cache: dict) -> dict | None:
+    """The last number posted before kickoff: the market's final, sharpest estimate."""
+    key = (league, season, week)
+    if key not in cache:
+        cache[key] = storage.read_table(config.TABLES / "market" / "snapshots" / league / str(season) / f"W{week:02d}.csv")
+    snaps = cache[key]
+    if snaps.empty:
+        return None
+    g = snaps[snaps.game_id == game_id].copy()
+    if g.empty:
+        return None
+    g["retrieved_at"] = pd.to_datetime(g.retrieved_at, utc=True, errors="coerce")
+    if kickoff is not None and not pd.isna(kickoff):
+        g = g[g.retrieved_at < pd.Timestamp(kickoff)]
+    if g.empty:
+        return None
+    last = g.sort_values("retrieved_at").iloc[-1]
+    return {"spread_home": last.get("spread_home"), "total": last.get("total"),
+            "ml_home": last.get("ml_home"), "ml_away": last.get("ml_away"), "at": last.retrieved_at.isoformat()}
+
+
+def closing_line_value(k, close: dict | None) -> dict:
+    """
+    How the number we took compares with where the market finished, from our side's point of view.
+    Positive means we beat the close. It is the fastest honest measure of skill: win-loss needs
+    hundreds of plays to mean anything, while a model that keeps beating the closing line shows it
+    within weeks, because the close is the sharpest price there is.
+    """
+    out = {"close_line": None, "clv_points": None, "clv_prob": None, "beat_close": None}
+    if not close:
+        return out
+    if k.market == "SPREAD" and close.get("spread_home") is not None and not pd.isna(close["spread_home"]):
+        close_side = float(close["spread_home"]) if k.side_is_home else -float(close["spread_home"])
+        clv = float(k.line) - close_side               # more points taken, or fewer laid, than the close
+        out.update({"close_line": close_side, "clv_points": round(clv, 2)})
+    elif k.market == "TOTAL" and close.get("total") is not None and not pd.isna(close["total"]):
+        over = str(k.side).lower().startswith("o")
+        clv = (float(close["total"]) - float(k.line)) if over else (float(k.line) - float(close["total"]))
+        out.update({"close_line": float(close["total"]), "clv_points": round(clv, 2)})
+    elif k.market == "MONEYLINE":
+        cml = close.get("ml_home") if k.side_is_home else close.get("ml_away")
+        taken, closed = _implied(k.price), _implied(cml)
+        if taken is not None and closed is not None:
+            out.update({"close_line": float(cml), "clv_prob": round(closed - taken, 4)})
+    v = out["clv_points"] if out["clv_points"] is not None else out["clv_prob"]
+    out["beat_close"] = None if v is None else bool(v > 0)
+    return out
+
+
 def grade(league: str, season: int, job: JobRun) -> int:
     """
     Grade every stored pick whose game has finished, in any week, however long ago.
@@ -32,6 +88,7 @@ def grade(league: str, season: int, job: JobRun) -> int:
     done = storage.read_table(MODEL / "picks_evaluation" / league / f"{season}.csv")
     graded = set(done.pick_id) if not done.empty else set()
     rows, scanned, waiting = [], [], 0
+    close_cache: dict = {}
     pick_dir = MODEL / "picks" / league / str(season)
     for p in sorted(pick_dir.glob("W*.parquet")) if pick_dir.exists() else []:
         picks = pd.read_parquet(p)
@@ -59,7 +116,15 @@ def grade(league: str, season: int, job: JobRun) -> int:
                 profit = picks_engine.american_profit(k.price)
             elif outcome == "LOSS":
                 profit = -1.0
-            rows.append({"pick_id": k.pick_id, "game_id": k.game_id, "league": league, "season": season, "week": int(k.week),
+            kick = k.get("kickoff_utc") if hasattr(k, "get") else None
+            clv = closing_line_value(k, closing_number(league, season, int(k.week), k.game_id, kick, close_cache))
+            made = k.get("built_at") if hasattr(k, "get") else None
+            try:
+                hrs_before = round((pd.Timestamp(kick) - pd.Timestamp(made)).total_seconds() / 3600, 1) if kick and made else None
+            except (ValueError, TypeError):
+                hrs_before = None
+            rows.append({**clv, "hours_before_kick": hrs_before,
+                         "pick_id": k.pick_id, "game_id": k.game_id, "league": league, "season": season, "week": int(k.week),
                          "market": k.market, "side": k.side, "line": k.line, "price": k.price, "tier": k.tier, "score": k.score,
                          "edge_points": k.edge_points, "signals": k.signals, "result": outcome, "profit_units": round(profit, 3),
                          "actual_margin_home": int(r.margin_home), "actual_total": int(r.total),

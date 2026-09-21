@@ -463,3 +463,22 @@ table.mvt td.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.mvt td.chg { font-weight: 700; }
 table.mvt tr.carried td { color: var(--mute); background: rgba(138,143,134,.07); }
 table.ql tbody tr.g-ranks td, table.ql tbody tr.g-ranks th { background: rgba(31, 78, 154, .06); }
+
+/* ---------- in-game win probability ---------- */
+.wpchart svg { width: 100%; height: auto; touch-action: manipulation; cursor: crosshair; }
+.pick-compare .shop-better .v { color: var(--good); font-weight: 700; }
+
+/* ---------- key players ---------- */
+.kp-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.kp-team-h { font-family: var(--cond); font-size: 17px; margin: 0 0 6px; }
+.kp-team-h.away { color: var(--away); } .kp-team-h.home { color: var(--home); }
+table.kp { border-collapse: collapse; width: 100%; font-size: 12.5px; margin-bottom: 12px; }
+table.kp caption { text-align: left; font-family: var(--cond); font-weight: 700; font-size: 12px; color: var(--mute);
+  text-transform: uppercase; letter-spacing: .05em; padding-bottom: 3px; }
+table.kp th, table.kp td { padding: 4px 6px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+table.kp thead th { font-family: var(--cond); font-size: 11px; color: var(--mute); font-weight: 600; border-bottom: 1px solid var(--ink); }
+table.kp tbody th { text-align: left; font-weight: 600; white-space: normal; }
+table.kp td { font-variant-numeric: tabular-nums; }
+.kp-rk { color: var(--mute); font-size: 10.5px; margin-left: 2px; }
+.kp-low { color: var(--mute); font-size: 10px; font-weight: 400; }
+@media (max-width: 900px) { .kp-wrap { grid-template-columns: 1fr; } .kp-wrap { overflow-x: auto; } }

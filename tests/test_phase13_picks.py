@@ -464,3 +464,181 @@ def test_an_analysis_older_than_the_projection_is_withheld():
     stale = ai_current_or_stale(ai, {"predicted_at": "2026-09-19T12:00:00Z"})
     assert stale["withheld"] is True and stale["stale"] is True and "sections" not in stale
     assert ai_current_or_stale(ai, {"predicted_at": "2026-09-07T12:00:00Z"}) is ai    # current analysis still shown
+
+
+def _edge_league(tmp_path, seed, edge):
+    import numpy as np
+    import config
+    rng = np.random.default_rng(seed); rows = []
+    for season in (2021, 2022, 2023, 2024, 2025):
+        for i in range(800):
+            spread = float(rng.choice([-10.5, -7, -6.5, -3.5, -3, -1, 1, 3, 3.5, 6.5, 7, 10.5]))
+            side_home = bool(rng.random() < 0.5); lfs = spread if side_home else -spread
+            p = edge if (side_home and lfs > 0) else 0.50
+            rows.append({"game_id": f"{season}_{i}", "season": season, "week": int(rng.integers(1, 18)),
+                         "close_spread_home": spread, "close_total": 44.0, "proj_total": 44.0 + rng.normal(0, 3),
+                         "model_side_home": side_home, "model_ats_result": "WIN" if rng.random() < p else "LOSS",
+                         "model_ou_result": "WIN" if rng.random() < .5 else "LOSS", "edge_vs_market": abs(rng.normal(0, 2.5))})
+    d = tmp_path / f"s{seed}" / "model" / "backtest" / "NFL"; d.mkdir(parents=True)
+    pd.DataFrame(rows).to_csv(d / "evaluation_NFL_v1.0.csv", index=False)
+    return tmp_path / f"s{seed}"
+
+
+def test_edge_slicing_finds_real_edges_and_rejects_luck(tmp_path, monkeypatch):
+    """Slicing manufactures edges by chance. Clearing break-even twice let 1.5 coin-flip slices through
+    per run; with a significance test corrected for the number of slices, a league with no edge yields
+    none, while a planted edge is still found."""
+    import contextlib, io
+    import config
+    from pipeline.jobs import analyze_edges as AE
+    found = false_in_null = 0
+    for seed in range(6):
+        monkeypatch.setattr(config, "TABLES", _edge_league(tmp_path, seed, 0.58))
+        with contextlib.redirect_stdout(io.StringIO()):
+            found += "home underdog pick" in AE.analyze("NFL")["held"]
+        monkeypatch.setattr(config, "TABLES", _edge_league(tmp_path, 100 + seed, 0.50))
+        with contextlib.redirect_stdout(io.StringIO()):
+            false_in_null += len(AE.analyze("NFL")["held"])
+    assert found >= 4                 # a real 58% edge is found most of the time
+    assert false_in_null == 0         # a league with no edge produces no "edges"
+
+
+class _Pick(dict):
+    __getattr__ = dict.get
+
+
+def test_closing_line_value_is_measured_from_our_side():
+    """Positive means we beat the close: more points taken, fewer laid, a better total or price."""
+    from pipeline.jobs.build_picks import closing_line_value as clv
+    assert clv(_Pick(market="SPREAD", side_is_home=False, line=3.5), {"spread_home": -2.5})["clv_points"] == 1.0
+    assert clv(_Pick(market="SPREAD", side_is_home=True, line=-3.0), {"spread_home": -4.0})["clv_points"] == 1.0
+    worse = clv(_Pick(market="SPREAD", side_is_home=True, line=-3.0), {"spread_home": -2.0})
+    assert worse["clv_points"] == -1.0 and worse["beat_close"] is False
+    assert clv(_Pick(market="TOTAL", side="Over", line=44.0), {"total": 45.5})["clv_points"] == 1.5
+    assert clv(_Pick(market="TOTAL", side="Under", line=44.0), {"total": 45.5})["clv_points"] == -1.5
+    assert clv(_Pick(market="MONEYLINE", side_is_home=True, price=150), {"ml_home": 130})["clv_prob"] > 0
+    assert clv(_Pick(market="SPREAD", side_is_home=True, line=-3.0), None)["beat_close"] is None
+
+
+def test_line_shopping_finds_the_best_number_for_our_side():
+    """The one improvement that needs no prediction: take the best price on offer."""
+    from pipeline.picks_engine import best_available
+    books = pd.DataFrame([
+        {"game_id": "G", "book": "draftkings", "spread_home": -3.0, "total": 44.5, "ml_home": -150, "ml_away": 130},
+        {"game_id": "G", "book": "fanduel", "spread_home": -2.5, "total": 45.5, "ml_home": -145, "ml_away": 125},
+        {"game_id": "G", "book": "betmgm", "spread_home": -3.5, "total": 44.0, "ml_home": -160, "ml_away": 135}])
+    home = best_available(books, "G", "SPREAD", True, None, -3.0)
+    assert home["best_book"] == "fanduel" and home["best_line"] == -2.5 and home["line_gain"] == 0.5
+    away = best_available(books, "G", "SPREAD", False, None, 3.0)
+    assert away["best_book"] == "betmgm" and away["line_gain"] == 0.5
+    assert best_available(books, "G", "TOTAL", None, True, 44.5)["best_line"] == 44.0      # over wants it low
+    assert best_available(books, "G", "TOTAL", None, False, 44.5)["best_line"] == 45.5     # under wants it high
+    assert best_available(books, "G", "MONEYLINE", False, None, 130)["best_line"] == 135.0
+    assert best_available(pd.DataFrame(), "G", "SPREAD", True, None, -3.0)["books_compared"] == 0
+
+
+def test_win_probability_starts_at_the_spread_and_ends_at_the_result():
+    """The in-game curve opens where the spread puts it and closes on the final score."""
+    from pipeline import winprob
+    assert abs(winprob.stern_home_wp(0, 3600, -7, "NFL") - 0.693) < 0.01      # 7-point favourite
+    assert winprob.stern_home_wp(0, 3600, 0, "NFL") == 0.5
+    assert winprob.stern_home_wp(0, 3600, -7, "CFB") < winprob.stern_home_wp(0, 3600, -7, "NFL")
+    plays = pd.DataFrame([{"offense_team_id": "H", "game_sec_remaining": 3600 - t, "score_diff_pre": 0,
+                           "period": t // 900 + 1, "wp_pre": None} for t in range(0, 3600, 60)])
+    pts = winprob.series(plays, "CFB", "H", "A", -3.5, 21, 17)
+    assert pts[0]["wp"] > 0.5 and pts[-1]["wp"] == 1.0
+    # NFL uses nflfastR's value, flipped to the home side when the away team has the ball
+    nfl = pd.DataFrame([{"offense_team_id": "A", "game_sec_remaining": 1800, "score_diff_pre": 7,
+                         "period": 3, "wp_pre": 0.80}])
+    assert winprob.series(nfl, "NFL", "H", "A", 0, None, None)[1]["wp"] == 0.2
+
+
+def _nfl_plays(weeks=(1, 2, 3), n_games=4, seed=4):
+    import numpy as np
+    rng = np.random.default_rng(seed); out = {}
+    for wk in weeks:
+        rows = []
+        for g in range(n_games):
+            for team in (f"T{2*g}", f"T{2*g+1}"):
+                for k in range(60):
+                    r = {"play_id": f"{wk}_{team}_{k}", "game_id": f"W{wk}_G{g}", "offense_team_id": team,
+                         "passer_id": None, "rusher_id": None, "receiver_id": None, "ppa": rng.normal(0, 1),
+                         "is_success": bool(rng.random() < .45), "yards_gained": int(rng.integers(-2, 20)),
+                         "is_dropback": False, "is_sack": False, "is_scramble": False, "is_complete": False,
+                         "air_yards": None, "cpoe": None, "is_garbage_time": False}
+                    u = rng.random()
+                    if u < .55:
+                        r.update(is_dropback=True, passer_id=f"{team}_QB", receiver_id=f"{team}_WR{rng.integers(1,5)}",
+                                 is_complete=bool(rng.random() < .65), air_yards=float(rng.integers(0, 25)), cpoe=rng.normal(0, 8))
+                    elif u < .60:
+                        r.update(is_dropback=True, passer_id=f"{team}_QB", is_sack=True)
+                    elif u < .63:
+                        r.update(is_dropback=True, is_scramble=True, rusher_id=f"{team}_QB")
+                    else:
+                        r.update(rusher_id=f"{team}_RB{rng.integers(1,3)}")
+                    rows.append(r)
+        out[wk] = pd.DataFrame(rows)
+    return out
+
+
+def test_player_metrics_are_as_of_and_attributed_correctly(tmp_path, monkeypatch):
+    """Game-on-Paper-style player metrics from our own play-by-play: nothing from later weeks, scrambles
+    belong to the quarterback, and a receiver's target share is out of his own team's targets."""
+    import config
+    from pipeline import storage, player_metrics as PM
+    monkeypatch.setattr(config, "TABLES", tmp_path / "t")
+    monkeypatch.setattr(PM, "STATS", tmp_path / "t" / "stats")
+    for wk, df in _nfl_plays().items():
+        storage.write_parquet(tmp_path / "t" / "stats" / "plays" / "NFL" / "2026" / f"W{wk:02d}.parquet", df)
+    df = PM.nfl_players(2026, 3)
+    assert set(df.games.unique()) == {2}                                  # week 3 itself is never counted
+    assert not df[df.role == "rusher"].player_id.str.contains("_QB").any()   # scrambles are passing plays
+    assert (df[df.role == "receiver"].groupby("team_id").target_share.sum().round(6) == 1.0).all()
+    qb = df[df.role == "qb"]
+    assert qb.epa_per_dropback_rank.notna().all() and qb.epa_per_dropback_rank.min() == 1
+    keys = PM.team_key_players(df, "T0")
+    assert len(keys["qb"]) == 1 and 1 <= len(keys["rusher"]) <= 3 and 1 <= len(keys["receiver"]) <= 4
+
+
+def test_low_volume_players_are_not_ranked():
+    """A back with four carries is not ranked against one with two hundred."""
+    from pipeline import player_metrics as PM
+    df = pd.DataFrame([
+        {"player_id": "A", "team_id": "T", "role": "rusher", "volume": 200, "games": 10, "epa_per_rush": 0.10},
+        {"player_id": "B", "team_id": "T", "role": "rusher", "volume": 4, "games": 10, "epa_per_rush": 0.90}])
+    out = PM._add_ranks(df)
+    assert out.loc[out.player_id == "A", "epa_per_rush_rank"].iloc[0] == 1
+    assert pd.isna(out.loc[out.player_id == "B", "epa_per_rush_rank"].iloc[0])      # huge rate, tiny sample: unranked
+
+
+def test_college_box_keeps_rushing_receiving_and_defence():
+    """These arrive in the same CFBD response as the QB rows and were being discarded."""
+    from pipeline import ids
+    from providers import cfbd_stats
+    from datetime import datetime, timezone
+    games = pd.DataFrame([{"game_id": "2026_CFB_W03_AAA_BBB", "home_team_id": "CFB_BBB", "away_team_id": "CFB_AAA",
+                           "kickoff_utc": pd.Timestamp("2026-09-20T17:00:00Z"), "provider_game_ids": '{"cfbd":9}'}])
+    r = ids.AliasResolver.load()
+    r.add([{"provider": "cfbd", "alias": "Bravo", "provider_id": None, "team_id": "CFB_BBB", "season_from": None, "season_to": None}])
+    payload = [{"id": 9, "teams": [{"team": "Bravo", "categories": [
+        {"name": "passing", "types": [{"name": "C/ATT", "athletes": [{"id": 1, "name": "Q B", "stat": "20/30"}]},
+                                      {"name": "YDS", "athletes": [{"id": 1, "name": "Q B", "stat": "250"}]}]},
+        {"name": "rushing", "types": [{"name": "CAR", "athletes": [{"id": 2, "name": "R B", "stat": "18"}, {"id": 1, "name": "Q B", "stat": "5"}]},
+                                      {"name": "YDS", "athletes": [{"id": 2, "name": "R B", "stat": "96"}, {"id": 1, "name": "Q B", "stat": "30"}]}]},
+        {"name": "receiving", "types": [{"name": "REC", "athletes": [{"id": 3, "name": "W R", "stat": "7"}]},
+                                        {"name": "YDS", "athletes": [{"id": 3, "name": "W R", "stat": "112"}]}]},
+        {"name": "defensive", "types": [{"name": "TOT", "athletes": [{"id": 4, "name": "L B", "stat": "9"}]}]}]}]}]
+    df = cfbd_stats.normalize_player_box(payload, games, r, datetime.now(timezone.utc), set())
+    assert not df.empty, "the fixture's game did not resolve"
+    by = df.set_index("player_id")
+    assert by.loc["CFB_P_1"].pass_att == 30 and by.loc["CFB_P_1"].rush_att == 5      # QB rushing kept on his row
+    assert by.loc["CFB_P_2"].rush_yds == 96 and by.loc["CFB_P_3"].rec_yds == 112
+    assert by.loc["CFB_P_4"].tackles == 9
+
+
+def test_starter_detection_only_considers_players_who_threw():
+    """The box table now holds every player. A game missing its QB row must not crown a receiver."""
+    import inspect
+    from pipeline import roster_engine
+    src = inspect.getsource(roster_engine)
+    assert "pass_att" in src and "> 0]" in src

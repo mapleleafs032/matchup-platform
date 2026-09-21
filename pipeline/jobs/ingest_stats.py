@@ -153,7 +153,7 @@ def run_cfb(season: int, weeks: list[int], season_type: str, verify: bool, job: 
         drives = cfbd_stats.normalize_drives(r_drives.payload, wk_games, resolver, r_drives.retrieved_at, missing)
         box = cfbd_stats.normalize_team_box(r_box.payload, wk_games, resolver, r_box.retrieved_at, missing)
         adv_native = cfbd_stats.normalize_advanced(r_adv.payload, wk_games, resolver, r_adv.retrieved_at, True, missing)
-        qb = cfbd_stats.normalize_qb_box(r_qb.payload, wk_games, resolver, r_qb.retrieved_at, missing)
+        qb = cfbd_stats.normalize_player_box(r_qb.payload, wk_games, resolver, r_qb.retrieved_at, missing)
         if verify:
             for line in (cfbd_stats.schema_report("plays", r_plays.payload, missing) + cfbd_stats.schema_report("drives", r_drives.payload, set())
                          + cfbd_stats.schema_report("box", r_box.payload, set()) + cfbd_stats.schema_report("advanced", r_adv.payload, set())):
@@ -187,7 +187,22 @@ def run_cfb(season: int, weeks: list[int], season_type: str, verify: bool, job: 
         for m in sorted(missing):
             vlog.warn("FIELD_MISSING", f"{season}_W{wk}", m, "", "present")
         _store_all("CFB", season, plays, drives, box, adv, qb, job)
-        print(f"CFB {season} W{wk}: games={wk_games.shape[0]} plays={len(plays)} drives={len(drives)} box={len(box)} adv={len(adv)} qb={len(qb)} calls_left={rm.remaining_monthly()}")
+        print(f"CFB {season} W{wk}: games={wk_games.shape[0]} plays={len(plays)} drives={len(drives)} box={len(box)} adv={len(adv)} players={len(qb)} calls_left={rm.remaining_monthly()}")
+    # Season EPA per player: CFBD's play feed names no players, so this is the only per-player EPA we
+    # can get for college. One call covers every player in the season.
+    try:
+        res = cfbd_stats.fetch_player_ppa(rm, season)
+        miss: set = set()
+        ppa = cfbd_stats.normalize_player_ppa(res.payload, season, resolver, res.retrieved_at, miss)
+        if not ppa.empty:
+            storage.write_parquet(STATS / "player_ppa" / "CFB" / f"{season}.parquet", ppa)
+            job.rows_written += len(ppa)
+            print(f"CFB {season} player EPA: {len(ppa)} players")
+        for m in sorted(miss)[:20]:
+            vlog.warn("ALIAS_UNMATCHED", m, "team", m, "known CFB team")
+    except Exception as e:
+        vlog.warn("PROVIDER_FAIL", "cfbd_player_ppa", "", str(e)[:160], "200")
+        print(f"CFB {season} player EPA: unavailable ({str(e)[:100]})")
     vlog.flush()
     job.api_calls = rm.calls_this_run
 

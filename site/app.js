@@ -274,6 +274,81 @@ App.byPlayFirst = function (a, b) {
   return d !== 0 ? d : String(a.kickoff_utc || "9999").localeCompare(String(b.kickoff_utc || "9999"));
 };
 
+/* In-game win probability: home side's chance of winning, play by play. Area above 50% is shaded
+   in the home colour, below in the away colour, so who was in control reads at a glance. */
+App.winProbChart = function (wp, homeAbbr, awayAbbr) {
+  const pts = (wp && wp.points) || [];
+  const wrap = document.createElement("div");
+  wrap.className = "wpchart";
+  if (pts.length < 3) {
+    const p = document.createElement("p"); p.className = "sub-note";
+    p.textContent = "Win probability appears once the game is under way.";
+    wrap.appendChild(p); return wrap;
+  }
+  const W = 880, H = 300, L = 46, R = 58, T = 26, B = 34;
+  const tMax = Math.max(3600, ...pts.map(p => p.t));
+  const x = t => L + (t / tMax) * (W - L - R);
+  const y = v => T + (1 - v) * (H - T - B);
+  const mid = y(0.5);
+  const o = [];
+  // quarter bands and gridlines
+  for (let q = 1; q <= 4; q++) {
+    const x0 = x((q - 1) * 900), x1 = x(q * 900);
+    if (q % 2 === 0) o.push(`<rect x="${x0.toFixed(1)}" y="${T}" width="${(x1 - x0).toFixed(1)}" height="${H - T - B}" fill="var(--chalk)" opacity=".55"/>`);
+    o.push(`<text x="${((x0 + x1) / 2).toFixed(1)}" y="${H - 12}" text-anchor="middle" font-size="11" fill="var(--mute)">Q${q}</text>`);
+  }
+  if (tMax > 3600) o.push(`<text x="${x((3600 + tMax) / 2).toFixed(1)}" y="${H - 12}" text-anchor="middle" font-size="11" fill="var(--mute)">OT</text>`);
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+    o.push(`<line x1="${L}" y1="${y(v).toFixed(1)}" x2="${W - R}" y2="${y(v).toFixed(1)}" stroke="var(--rule)" ${v === 0.5 ? 'stroke-width="1.4"' : 'stroke-dasharray="3 4"'}/>`);
+    o.push(`<text x="${L - 7}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--mute)">${Math.round(v * 100)}%</text>`);
+  }
+  // shaded areas: clip the curve against the 50% line
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${x(p.t).toFixed(1)},${y(p.wp).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(pts[pts.length - 1].t).toFixed(1)},${mid.toFixed(1)} L${x(pts[0].t).toFixed(1)},${mid.toFixed(1)} Z`;
+  o.push(`<defs><clipPath id="wpAbove"><rect x="0" y="0" width="${W}" height="${mid.toFixed(1)}"/></clipPath>`
+       + `<clipPath id="wpBelow"><rect x="0" y="${mid.toFixed(1)}" width="${W}" height="${H}"/></clipPath></defs>`);
+  o.push(`<path d="${area}" fill="var(--home)" opacity=".18" clip-path="url(#wpAbove)"/>`);
+  o.push(`<path d="${area}" fill="var(--away)" opacity=".18" clip-path="url(#wpBelow)"/>`);
+  o.push(`<path d="${line}" fill="none" stroke="var(--ink)" stroke-width="2.2" stroke-linejoin="round"/>`);
+  // team labels on the side each one owns
+  o.push(`<text x="${W - R + 8}" y="${(T + 12).toFixed(1)}" font-size="12.5" font-weight="700" fill="var(--home)">${homeAbbr}</text>`);
+  o.push(`<text x="${W - R + 8}" y="${(H - B - 4).toFixed(1)}" font-size="12.5" font-weight="700" fill="var(--away)">${awayAbbr}</text>`);
+  // final marker
+  const last = pts[pts.length - 1];
+  o.push(`<circle cx="${x(last.t).toFixed(1)}" cy="${y(last.wp).toFixed(1)}" r="5.5" fill="var(--ink)" stroke="var(--paper)" stroke-width="2"/>`);
+  const svgBox = document.createElement("div");
+  svgBox.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Win probability through the game">${o.join("")}</svg>`;
+  wrap.appendChild(svgBox);
+  // tap or hover anywhere for the moment
+  const ro = document.createElement("div");
+  ro.className = "mchart-readout";
+  ro.innerHTML = '<span class="ro-hint">Tap or hover the chart for the win probability at any moment.</span>';
+  wrap.appendChild(ro);
+  const clock = t => {
+    if (t >= 3600) return "OT";
+    const q = Math.min(4, Math.floor(t / 900) + 1), left = 900 - (t % 900);
+    return `Q${q} ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`;
+  };
+  const show = clientX => {
+    const svgEl = svgBox.querySelector && svgBox.querySelector("svg");
+    if (!svgEl) return;
+    const box = svgEl.getBoundingClientRect();
+    const t = ((((clientX - box.left) / box.width) * W) - L) / (W - L - R) * tMax;
+    let best = pts[0];
+    for (const p of pts) if (Math.abs(p.t - t) < Math.abs(best.t - t)) best = p;
+    const hw = Math.round(best.wp * 100);
+    const lead = best.home_diff === 0 ? "tied" : best.home_diff > 0 ? `${homeAbbr} by ${best.home_diff}` : `${awayAbbr} by ${-best.home_diff}`;
+    ro.innerHTML = `<span class="ro-when">${best.label === "final" ? "Final" : best.label === "kickoff" ? "Kickoff" : clock(best.t)}</span>`
+      + `<span class="ro-line">${homeAbbr} ${hw}% · ${awayAbbr} ${100 - hw}%</span>`
+      + `<span class="ro-split">${lead}</span>`;
+  };
+  const pick = ev => { const cx = ev.touches && ev.touches[0] ? ev.touches[0].clientX : ev.clientX; if (cx != null) show(cx); };
+  svgBox.addEventListener("click", pick);
+  svgBox.addEventListener("touchstart", pick, { passive: true });
+  svgBox.addEventListener("mousemove", pick);
+  return wrap;
+};
+
 App.marketChart = function (opts) {
   const el = App.el;
   const market = opts.market || "spread";

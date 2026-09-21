@@ -159,6 +159,57 @@ def apply_gates(play: dict, ctx: dict) -> list[str]:
 
 
 # ---- candidate generation ---------------------------------------------------------------------
+def latest_by_book(league: str, season: int, week: int) -> pd.DataFrame:
+    """The most recent pre-kickoff number from every book we hold, one row per game and book."""
+    snaps = storage.read_table(config.TABLES / "market" / "snapshots" / league / str(season) / f"W{week:02d}.csv")
+    if snaps.empty or "book" not in snaps.columns:
+        return pd.DataFrame()
+    snaps = snaps.copy()
+    snaps["retrieved_at"] = pd.to_datetime(snaps.retrieved_at, utc=True, errors="coerce")
+    return snaps.sort_values("retrieved_at").drop_duplicates(["game_id", "book"], keep="last")
+
+
+def best_available(books: pd.DataFrame, game_id: str, market: str, side_is_home, over: bool | None,
+                   priced_line: float | None) -> dict:
+    """
+    The best number available for our side across every book, and how much better it is than the line
+    the play was priced at. Half a point on a spread is worth more than it looks: shopping is the one
+    improvement that needs no prediction at all.
+    """
+    out = {"best_book": None, "best_line": None, "books_compared": 0, "line_gain": None}
+    if books is None or books.empty:
+        return out
+    g = books[books.game_id == game_id]
+    if g.empty:
+        return out
+    offers = []
+    for _, r in g.iterrows():
+        if market == "SPREAD" and pd.notna(r.get("spread_home")):
+            offers.append((float(r.spread_home) if side_is_home else -float(r.spread_home), r.book))
+        elif market == "TOTAL" and pd.notna(r.get("total")):
+            offers.append((float(r.total), r.book))
+        elif market == "MONEYLINE":
+            ml = r.get("ml_home") if side_is_home else r.get("ml_away")
+            if pd.notna(ml):
+                offers.append((float(ml), r.book))
+    if not offers:
+        return out
+    if market == "TOTAL" and over is not None:
+        best = min(offers) if over else max(offers)          # over wants the lowest total, under the highest
+    else:
+        best = max(offers)                                     # more points on a side; a longer price on a moneyline
+    out.update({"best_book": best[1], "best_line": best[0], "books_compared": len(offers)})
+    if priced_line is not None and not pd.isna(priced_line):
+        if market == "TOTAL" and over is not None:
+            gain = (priced_line - best[0]) if over else (best[0] - priced_line)
+        elif market == "MONEYLINE":
+            gain = None                                        # prices are not additive; the price itself is shown
+        else:
+            gain = best[0] - priced_line
+        out["line_gain"] = None if gain is None else round(gain, 2)
+    return out
+
+
 def candidates(league: str, season: int, week: int) -> pd.DataFrame:
     games = storage.read_table(storage.games_path(league, season))
     if games.empty:
@@ -250,7 +301,17 @@ def candidates(league: str, season: int, week: int) -> pd.DataFrame:
             for k in [k for k in pl if k.startswith("_")]:
                 pl[k.lstrip("_")] = pl.pop(k)          # promote gate internals to reportable fields
         rows += plays
-    return pd.DataFrame([r for r in rows if r])
+    out = pd.DataFrame([r for r in rows if r])
+    if out.empty:
+        return out
+    # line shopping: the best number for our side across every book we hold
+    books = latest_by_book(league, season, week)
+    shop = [best_available(books, r.game_id, r.market, r.side_is_home,
+                           (str(r.side).lower().startswith("o") if r.market == "TOTAL" else None), r.line)
+            for r in out.itertuples()]
+    for col in ("best_book", "best_line", "books_compared", "line_gain"):
+        out[col] = [x[col] for x in shop]
+    return out
 
 
 def _f(x):

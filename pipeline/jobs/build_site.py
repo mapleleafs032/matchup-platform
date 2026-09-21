@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 import config
-from pipeline import storage, market_engine, splits_engine, picks_engine
+from pipeline import storage, market_engine, splits_engine, picks_engine, winprob, player_metrics
 from pipeline.log import JobRun
 
 AN = config.TABLES / "analytics"
@@ -123,6 +123,19 @@ class Season:
                 "model_version": p.model_version, "predicted_at": p.predicted_at, "data_quality": float(p.data_quality), "quality_flags": _j(p.quality_flags) or "",
                 "why": json.loads(p.contributions) if isinstance(p.contributions, str) else []}
 
+    def players(self, week: int) -> pd.DataFrame:
+        """League-wide player metrics as of this week, computed once and shared by every matchup."""
+        if not hasattr(self, "_players"):
+            self._players = {}
+        if week not in self._players:
+            try:
+                cur = int(self.games[self.games.status == "SCHEDULED"].week.min()) if (self.games.status == "SCHEDULED").any() else week
+                self._players[week] = player_metrics.league_players(self.league, self.season, week, current_week=(week >= cur))
+            except Exception as e:
+                print(f"  player metrics unavailable for W{week}: {str(e)[:120]}")
+                self._players[week] = pd.DataFrame()
+        return self._players[week]
+
     def ai_block(self, gid: str) -> dict | None:
         if self.ai_idx.empty:
             return None
@@ -137,6 +150,26 @@ class Season:
             return None
         d = json.loads(p.read_text())
         return {"withheld": False, "sections": d["sections"], "model": d.get("llm_model"), "generated_at": d["generated_at"], "inputs_hash": d["inputs_hash"]}
+
+
+def _winprob_block(S: "Season", week: int, gid: str, home: str, away: str, spread_home) -> dict | None:
+    """The in-game win-probability curve for a game that has started. None before kickoff."""
+    plays = storage.read_table(config.TABLES / "stats" / "plays" / S.league / str(S.season) / f"W{week:02d}.parquet")
+    if plays.empty:
+        return None
+    g = plays[plays.game_id == gid]
+    if g.empty:
+        return None
+    hf = af = None
+    if not S.res.empty and gid in S.res.index:
+        hf, af = int(S.res.loc[gid].home_score), int(S.res.loc[gid].away_score)
+    pts = winprob.series(g, S.league, home, away, spread_home, hf, af)
+    if len(pts) < 3:
+        return None
+    return {"points": pts, "summary": winprob.summary(pts), "spread_home": spread_home,
+            "source": ("nflfastR pre-snap win probability" if S.league == "NFL"
+                       else "Stern's model from score, clock and the pregame spread"),
+            "final": hf is not None}
 
 
 def ai_current_or_stale(ai: dict | None, model: dict | None) -> dict | None:
@@ -591,7 +624,8 @@ def build_picks(S: Season, week: int) -> dict:
             "data_quality", "signals", "signal_notes", "tickets_pct_side", "money_pct_side", "expected_value",
             "model_version", "kickoff_utc", "home", "away", "week", "marquee_why", "rlm", "lopsided_side", "move_against",
                                                   "band_hit_rate", "band_n", "band_ci_low", "band_ci_high", "score_edge_only",
-                                                  "model_component", "market_component", "market_share", "signal_ages")
+                                                  "model_component", "market_component", "market_share", "signal_ages",
+                                                  "best_book", "best_line", "books_compared", "line_gain")
     out = [{c: _j(k.get(c)) for c in cols} for _, k in picks.iterrows()] if not picks.empty else []
     rej_path = config.TABLES / "model" / "picks_rejected" / S.league / str(S.season) / f"W{week:02d}.parquet"
     rejected = storage.read_table(rej_path)
@@ -750,7 +784,12 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
             "metrics": {"windows": WINDOWS, "default_window": "SEASON", "rows": metrics_rows, "quality_flags": qflags},
             "quick_look": {a: build_quick_look(S, week, gid, home, away, metrics_rows, a) for a in ("OPP_ADJ", "RAW")},
             "box": (_box_stats(S, gid, home, away) if g.status in ("FINAL", "LOCKED") else None),
+            "winprob": (_winprob_block(S, week, gid, home, away,
+                                       (entry.get("market") or {}).get("spread_home"))
+                        if g.status in ("FINAL", "LOCKED") else None),
             "schedules": {"away": _schedule_rows(S, away, week), "home": _schedule_rows(S, home, week)},
+            "key_players": {"away": player_metrics.team_key_players(S.players(week), away),
+                            "home": player_metrics.team_key_players(S.players(week), home)},
             "head_to_head": _head_to_head(S, home, away),
             "sos_source": ("ESPN FPI resume, entered manually" if _espn_sos_manual(S)
                            else "ESPN FPI resume (espn.com)" if _espn_sos_table(S)

@@ -32,6 +32,7 @@ _add("scoring_margin", "Scoring Margin", "Points scored minus points allowed, pe
 # ---- EFFICIENCY (box) ---------------------------------------------------------------
 _add("yards_per_play_off", "Yards/Play (Off)", "Offensive yards per scrimmage play.", "yards", True, "OFF", "ratio:total_yards/plays", lo=0, hi=15, group="EFFICIENCY")
 _add("yards_per_play_def", "Yards/Play (Def)", "Yards allowed per opponent scrimmage play.", "yards", False, "DEF", "ratio:d_total_yards/d_plays", lo=0, hi=15, group="EFFICIENCY")
+_add("net_epa_play", "Net EPA/Play", "Offensive EPA per play minus the EPA per play the defence allows. The single best play-by-play summary of how much better a team is than its opponents: it credits a dominant defence as much as a prolific offence and cannot be inflated by pace.", "points", True, "OFF", "mean", lo=-2.0, hi=2.0, group="EPA")
 _add("net_yards_per_play", "Net Yards/Play", "Offensive yards per play minus defensive yards per play allowed.", "yards", True, "OFF", "mean", lo=-10, hi=10, group="EFFICIENCY")
 # ---- RUSHING / PASSING ----------------------------------------------------------------
 _add("rush_yds_per_game", "Rush Yds/Game", "Rushing yards per game.", "yards", True, "OFF", "mean", lo=0, hi=500, group="RUSHING")
