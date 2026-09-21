@@ -1,6 +1,6 @@
 # Backtest report — NFL — NFL_v1.0
 
-Generated 2026-09-10T18:46+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
+Generated 2026-09-21T21:16+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
 **2021 has no earlier data; it was predicted by a model fit on the later seasons and is NOT out-of-sample. Treat it as a smoke test only.**
 
 ## Overall (out-of-sample seasons)
@@ -26,12 +26,13 @@ Baselines on the same games (lower MAE is better):
 Break-even against -110 pricing is 52.4%. Anything below that is not an edge; anything above it on a few hundred games is not proof either.
 
 ## By season
-| season | n | MAE | winner acc | market MAE | ATS all | ATS edge |
-|---|---|---|---|---|---|---|
-| 2022 | 271 | 8.98 | 0.613 | 8.74 | 0.548 | 0.531 |
-| 2023 | 272 | 10.41 | 0.621 | 9.9 | 0.465 | 0.523 |
-| 2024 | 272 | 10.06 | 0.676 | 9.61 | 0.496 | 0.525 |
-| 2025 | 272 | 10.21 | 0.624 | 9.72 | 0.506 | 0.478 |
+`games` is every game predicted; `ATS n` is the games scored against a closing line.
+| season | games | MAE | winner acc | market MAE | ATS all | ATS n | ATS edge |
+|---|---|---|---|---|---|---|---|
+| 2022 | 271 | 8.98 | 0.613 | 8.74 | 0.548 | 261 | 0.531 |
+| 2023 | 272 | 10.41 | 0.621 | 9.9 | 0.465 | 258 | 0.523 |
+| 2024 | 272 | 10.06 | 0.676 | 9.61 | 0.496 | 268 | 0.525 |
+| 2025 | 272 | 10.21 | 0.624 | 9.72 | 0.506 | 271 | 0.478 |
 
 ## By week bucket
 | weeks | n | MAE | winner acc |

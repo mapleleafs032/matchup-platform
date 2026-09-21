@@ -1,6 +1,6 @@
 # Backtest report — CFB — CFB_v1.0
 
-Generated 2026-09-10T18:46+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
+Generated 2026-09-21T21:17+00:00. Walk-forward by season: each season predicted by a model fit only on earlier seasons.
 **2021 has no earlier data; it was predicted by a model fit on the later seasons and is NOT out-of-sample. Treat it as a smoke test only.**
 
 ## Overall (out-of-sample seasons)
@@ -15,23 +15,24 @@ Baselines on the same games (lower MAE is better):
 - opponent-adjusted rating diff + HFA: 13.0
 - full model: 12.71
 
-## Versus the closing line (2215 games with a closing spread)
-- market MAE on those games: **12.04** vs model MAE **12.89**
-- market winner accuracy: 0.73 vs model 0.715
-- model side vs closing spread, all games: 0.502 (2178 decided)
-- model side vs closing spread when model differs by >= 3.0 pts: 0.495 (1184 decided)
-- over/under: 0.51
-- correlation model margin vs market margin: 0.91
+## Versus the closing line (3012 games with a closing spread)
+- market MAE on those games: **12.03** vs model MAE **12.71**
+- market winner accuracy: 0.732 vs model 0.715
+- model side vs closing spread, all games: 0.508 (2956 decided)
+- model side vs closing spread when model differs by >= 3.0 pts: 0.508 (1588 decided)
+- over/under: 0.519
+- correlation model margin vs market margin: 0.914
 
 Break-even against -110 pricing is 52.4%. Anything below that is not an edge; anything above it on a few hundred games is not proof either.
 
 ## By season
-| season | n | MAE | winner acc | market MAE | ATS all | ATS edge |
-|---|---|---|---|---|---|---|
-| 2022 | 741 | 13.43 | 0.698 | 12.05 | 0.471 | 0.479 |
-| 2023 | 754 | 12.34 | 0.735 | 11.5 | 0.345 | 0.391 |
-| 2024 | 756 | 12.95 | 0.705 | 12.22 | 0.497 | 0.482 |
-| 2025 | 763 | 12.14 | 0.723 | 11.87 | 0.546 | 0.541 |
+`games` is every game predicted; `ATS n` is the games scored against a closing line.
+| season | games | MAE | winner acc | market MAE | ATS all | ATS n | ATS edge |
+|---|---|---|---|---|---|---|---|
+| 2022 | 741 | 13.43 | 0.698 | 12.08 | 0.473 | 728 | 0.484 |
+| 2023 | 754 | 12.34 | 0.735 | 12.0 | 0.514 | 737 | 0.523 |
+| 2024 | 756 | 12.95 | 0.705 | 12.2 | 0.501 | 741 | 0.485 |
+| 2025 | 763 | 12.14 | 0.723 | 11.84 | 0.544 | 750 | 0.551 |
 
 ## By week bucket
 | weeks | n | MAE | winner acc |
