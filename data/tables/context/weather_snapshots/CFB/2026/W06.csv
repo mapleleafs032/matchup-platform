@@ -1,0 +1,2 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
+2026_CFB_W06_USM_TROY,2026-09-22T11:08:51.449202+00:00,2026-10-07T00:00:00+00:00,348.9,False,False,open_meteo,77.6,76.9,5.8,5.8,13.0,0.23,0.0,47.0,0.0
