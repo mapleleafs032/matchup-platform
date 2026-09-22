@@ -660,3 +660,70 @@ def test_closing_line_is_chosen_per_game_not_per_season(tmp_path, monkeypatch):
     assert c.loc["G0"].close_spread_home == -3.5                          # the preferred book still wins where present
     assert c.loc["G500"].close_spread_home == -3.0                        # and another book fills in where it is absent
     assert c.loc["G0"].close_total == 50.0                                # a missing total is filled independently
+
+
+def _cohort_rows(tmp_path, wins, losses, cid="cfb_totals_edge4"):
+    import config
+    from pipeline import cohorts as C
+    d = tmp_path / "t" / "model" / "cohorts"; d.mkdir(parents=True, exist_ok=True)
+    rows = [{"cohort_id": cid, "game_id": f"W{i}", "result": "WIN", "line_moved_toward_model": True} for i in range(wins)]
+    rows += [{"cohort_id": cid, "game_id": f"L{i}", "result": "LOSS", "line_moved_toward_model": False} for i in range(losses)]
+    pd.DataFrame(rows).to_csv(d / f"{cid}.csv", index=False)
+
+
+def test_forward_test_verdict_is_withheld_until_the_registered_sample(tmp_path, monkeypatch):
+    """Checking daily and stopping when the numbers look good 'confirms' noise. A hot start must not
+    produce a verdict before the pre-registered sample size."""
+    import config
+    from pipeline import cohorts as C
+    monkeypatch.setattr(config, "TABLES", tmp_path / "t")
+    monkeypatch.setattr(C, "COHORT_DIR", tmp_path / "t" / "model" / "cohorts")
+    cohort = next(c for c in config.COHORTS if c["id"] == "cfb_totals_edge4")
+    _cohort_rows(tmp_path, 40, 10)                                   # 80% on 50 games: looks spectacular
+    s = C.summary(cohort)
+    assert s["verdict"] == "collecting" and s["rate"] == 0.8 and "withheld" in s["verdict_text"]
+
+
+def test_forward_test_confirms_or_rejects_only_at_the_decision_point(tmp_path, monkeypatch):
+    import config
+    from pipeline import cohorts as C
+    monkeypatch.setattr(config, "TABLES", tmp_path / "t")
+    monkeypatch.setattr(C, "COHORT_DIR", tmp_path / "t" / "model" / "cohorts")
+    cohort = next(c for c in config.COHORTS if c["id"] == "cfb_totals_edge4")
+    _cohort_rows(tmp_path, 130, 70)                                  # 65% on 200: well clear of break-even
+    assert C.summary(cohort)["verdict"] == "confirmed"
+    _cohort_rows(tmp_path, 106, 94)                                  # 53% on 200: above break-even, but within luck
+    s = C.summary(cohort)
+    assert s["verdict"] == "not confirmed" and s["p_value"] > s["alpha"]
+
+
+def test_forward_test_membership_matches_how_the_backtest_measured_it(tmp_path, monkeypatch):
+    """Final pregame projection against the closing total, no market filter, and nothing predicted after
+    kickoff may count."""
+    import config
+    from pipeline import storage, cohorts as C
+    monkeypatch.setattr(config, "TABLES", tmp_path / "t")
+    monkeypatch.setattr(C, "COHORT_DIR", tmp_path / "t" / "model" / "cohorts")
+    K = "2026-09-26T17:00:00Z"                     # after the cohorts' 2026-09-21 registration
+    storage.write_parquet(storage.games_path("CFB", 2026), pd.DataFrame(
+        [{"game_id": g, "week": 3, "season": 2026, "season_type": "REG", "kickoff_utc": K} for g in ("A", "B", "F")]
+        + [{"game_id": "P", "week": 3, "season": 2026, "season_type": "REG", "kickoff_utc": "2026-09-13T17:00:00Z"}]))
+    (tmp_path / "t" / "model" / "predictions" / "CFB").mkdir(parents=True)
+    pd.DataFrame([{"prediction_id": "a", "game_id": "A", "predicted_at": "2026-09-25T12:00:00Z", "proj_total": 58.0, "proj_margin_home": 0},
+                  {"prediction_id": "b", "game_id": "B", "predicted_at": "2026-09-25T12:00:00Z", "proj_total": 52.0, "proj_margin_home": 0},
+                  {"prediction_id": "f", "game_id": "F", "predicted_at": "2026-09-26T19:00:00Z", "proj_total": 70.0, "proj_margin_home": 0},
+                  {"prediction_id": "p", "game_id": "P", "predicted_at": "2026-09-12T12:00:00Z", "proj_total": 60.0, "proj_margin_home": 0}]
+                 ).to_csv(tmp_path / "t" / "model" / "predictions" / "CFB" / "2026.csv", index=False)
+    (tmp_path / "t" / "market" / "snapshots" / "CFB" / "2026").mkdir(parents=True)
+    pd.DataFrame([{"game_id": g, "retrieved_at": "2026-09-26T16:00:00Z", "book": "draftkings", "total": 50.0, "spread_home": -3}
+                  for g in ("A", "B", "F")] + [{"game_id": "P", "retrieved_at": "2026-09-13T16:00:00Z", "book": "draftkings",
+                  "total": 50.0, "spread_home": -3}]).to_csv(tmp_path / "t" / "market" / "snapshots" / "CFB" / "2026" / "W03.csv", index=False)
+    (tmp_path / "t" / "results" / "CFB").mkdir(parents=True)
+    pd.DataFrame([{"game_id": g, "total": 60, "margin_home": 1} for g in ("A", "B", "F", "P")]
+                 ).to_csv(tmp_path / "t" / "results" / "CFB" / "2026.csv", index=False)
+    C.update("CFB", 2026)
+    g = storage.read_table(tmp_path / "t" / "model" / "cohorts" / "cfb_totals_edge4.csv").set_index("game_id")
+    assert list(g.index) == ["A"]   # B's edge is 2; F's only projection came after kickoff;
+                                    # P qualified (edge 10) but kicked off before the hypothesis was registered
+    assert g.loc["A"].side == "OVER" and g.loc["A"].result == "WIN"
+    assert C.update("CFB", 2026)["cfb_totals_edge4"]["newly_graded"] == 0      # graded once, never rewritten

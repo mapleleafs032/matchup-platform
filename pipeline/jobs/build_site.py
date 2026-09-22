@@ -633,8 +633,24 @@ def build_picks(S: Season, week: int) -> dict:
     if not rejected.empty:
         rejected = rejected.sort_values("score", ascending=False).head(80)
         rej = [{**{c: _j(k.get(c)) for c in cols}, "veto_reasons": _j(k.get("veto_reasons"))} for _, k in rejected.iterrows()]
+    # Leans: a real model edge with no market confirmation. Shown, never tiered, never graded into the
+    # record. (Bundle 35 wrote these to disk but never read them here, so they were invisible.)
+    leans_df = storage.read_table(lean_path)
+    leans = [{c: _j(k.get(c)) for c in cols} for _, k in leans_df.sort_values("edge_points", ascending=False).iterrows()] \
+        if not leans_df.empty and "edge_points" in leans_df.columns else []
+    # Forward tests: pre-registered hypotheses graded on new games, and which games are in them this week.
+    from pipeline import cohorts
+    watch = cohorts.watch_list(S.league, S.season, week)
+    forward = []
+    for c in [c for c in config.COHORTS if c["league"] == S.league]:
+        sm = cohorts.summary(c)
+        sm["watching"] = [{**w, "home": S.team(S.games.set_index("game_id").loc[w["game_id"]].home_team_id)["abbr"],
+                           "away": S.team(S.games.set_index("game_id").loc[w["game_id"]].away_team_id)["abbr"]}
+                          for w in watch.get(c["id"], []) if w["game_id"] in set(S.games.game_id)]
+        forward.append(sm)
     return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
-            "picks": out, "rejected": rej, "gates": config.PICK_GATES, "calibration": cal, "season_record": rec}
+            "picks": out, "leans": leans, "rejected": rej, "gates": config.PICK_GATES, "calibration": cal,
+            "season_record": rec, "forward_tests": forward}
 
 
 def _latest_splits(hist: pd.DataFrame, gid: str, kickoff) -> dict | None:

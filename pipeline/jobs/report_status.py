@@ -92,6 +92,15 @@ def main():
         print("  none yet")
     else:
         print(f"  {len(ai_idx)} analyses | validation failures: {int(ai_idx.validation_failed.sum())} | tokens in/out: {int(ai_idx.tokens_in.fillna(0).sum())}/{int(ai_idx.tokens_out.fillna(0).sum())} | model: {ai_idx.llm_model.dropna().iloc[-1] if ai_idx.llm_model.notna().any() else '?'}")
+    print("\nFORWARD TESTS (pre-registered; verdict withheld until the registered sample)")
+    try:
+        from pipeline import cohorts as _co
+        for _c in config.COHORTS:
+            _s = _co.summary(_c)
+            _rate = f" ({_s['rate']:.1%})" if _s["rate"] is not None else ""
+            print(f"  {_c['label']:38} {_s['wins']}-{_s['losses']}{_rate}  {_s['n']}/{_s['decide_at']}  {_s['verdict']}")
+    except Exception as _e:
+        print(f"  unavailable: {str(_e)[:100]}")
     print("\nPICKS")
     for lg in ("NFL", "CFB"):
         files = sorted(glob.glob(str(config.TABLES / f"model/picks/{lg}/*/W*.parquet")))

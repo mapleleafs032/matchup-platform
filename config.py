@@ -265,3 +265,31 @@ APPEND_ONLY_PATHS = [   # CI immutability check (Phase 3 §3) — relative to re
 RAW_ARCHIVE_PROVIDERS = {"cfbd", "odds_api", "espn", "open_meteo"}
 
 PIPELINE_VERSION = "ingest_v0.1"
+
+# ---- Forward tests (pipeline/cohorts.py) ---------------------------------------------------
+# A forward test only means something if the hypothesis is fixed BEFORE the games it is judged on are
+# played. These are registered once and not edited after the fact; to test something new, add an entry.
+#
+# Each cohort is rebuilt from stored data exactly as the backtest measured it: the final pregame
+# projection against the closing number, with no market filter. It is graded whether or not a pick was
+# made, so the market-confirmation gate cannot quietly shrink or bias the test.
+#
+# decide_at: the verdict is withheld until this many graded games. Checking every day and stopping the
+#            moment the numbers look good inflates false positives ("optional stopping"), so the running
+#            record is shown but the verdict waits.
+# alpha:     the significance bar for that single pre-registered decision, corrected across all primary
+#            cohorts registered here.
+COHORTS = [
+    {"id": "cfb_totals_edge4", "league": "CFB", "market": "TOTAL", "min_edge": 4.0, "primary": True,
+     "label": "College totals, model edge 4+ pts",
+     "hypothesis": "When the model's projected total differs from the closing total by 4 or more points, "
+                   "its over/under side wins more often than the 52.4% break-even.",
+     "evidence": "Backtest 2022-24: 54.7% on 918. Untouched 2025: 52.7% on 188. Not significant on its own.",
+     "registered": "2026-09-21", "decide_at": 200, "alpha": 0.05},
+    {"id": "cfb_totals_edge5", "league": "CFB", "market": "TOTAL", "min_edge": 5.0, "primary": False,
+     "label": "College totals, model edge 5+ pts",
+     "hypothesis": "The same effect, stronger at a higher threshold. Nested inside the 4+ cohort, so it is "
+                   "tracked for the dose-response shape, not as a separate test.",
+     "evidence": "Backtest 2022-24: 55.1% on 709. Untouched 2025: 53.0% on 117.",
+     "registered": "2026-09-21", "decide_at": 150, "alpha": 0.05},
+]

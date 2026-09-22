@@ -482,3 +482,21 @@ table.kp td { font-variant-numeric: tabular-nums; }
 .kp-rk { color: var(--mute); font-size: 10.5px; margin-left: 2px; }
 .kp-low { color: var(--mute); font-size: 10px; font-weight: 400; }
 @media (max-width: 900px) { .kp-wrap { grid-template-columns: 1fr; } .kp-wrap { overflow-x: auto; } }
+
+/* ---------- forward tests ---------- */
+.fwd { margin: 22px 0 8px; }
+.fwd h2 { font-family: var(--cond); font-size: 20px; margin: 0 0 4px; }
+.fwd-card { border: 1px solid var(--rule); border-left: 4px solid var(--mute); background: var(--paper); padding: 10px 14px; margin-top: 10px; }
+.fwd-card.v-confirmed { border-left-color: var(--good); }
+.fwd-card.v-not-confirmed { border-left-color: var(--bad); }
+.fwd-card.v-collecting { border-left-color: var(--warn); }
+.fwd-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.fwd-label { font-family: var(--cond); font-weight: 700; font-size: 16px; }
+.fwd-rec { font-weight: 700; font-variant-numeric: tabular-nums; }
+.fwd-bar { height: 6px; background: var(--chalk); border-radius: 3px; margin: 8px 0 6px; overflow: hidden; }
+.fwd-bar > span { display: block; height: 100%; background: var(--ink); }
+.fwd-verdict { margin: 4px 0; font-size: 14px; }
+.fwd-meta { margin: 4px 0; font-size: 12.5px; color: var(--ink-2); }
+.fwd-watch-h { margin: 8px 0 2px; font-size: 12.5px; font-weight: 600; }
+.fwd-watch { margin: 0; padding-left: 18px; font-size: 13px; }
+.gates-det.leans summary { color: var(--ink-2); }

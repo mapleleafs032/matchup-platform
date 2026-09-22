@@ -197,6 +197,25 @@ def run(league: str, season: int, weeks: list[int] | None, job: JobRun) -> None:
     job.rows_written = total + grade(league, season, job)
 
 
+def report_cohorts(league: str, season: int, job: JobRun) -> None:
+    """Grade the pre-registered forward tests and print where each stands."""
+    from pipeline import cohorts
+    try:
+        upd = cohorts.update(league, season)
+    except Exception as e:
+        print(f"{league} forward tests: could not update ({str(e)[:120]})")
+        return
+    for c in [c for c in config.COHORTS if c["league"] == league]:
+        sm = cohorts.summary(c)
+        u = upd.get(c["id"], {})
+        rec = f"{sm['wins']}-{sm['losses']}" + (f"-{sm['pushes']}" if sm["pushes"] else "")
+        rate = f" ({sm['rate']:.1%})" if sm["rate"] is not None else ""
+        print(f"{league} forward test [{c['label']}]: {rec}{rate}, {sm['n']}/{sm['decide_at']} graded"
+              f"{', +' + str(u.get('newly_graded')) + ' today' if u.get('newly_graded') else ''}"
+              f"; {len(u.get('watching', []))} on watch this week — {sm['verdict']}")
+        job.rows_written += int(u.get("newly_graded") or 0)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--league", default="BOTH", choices=["NFL", "CFB", "BOTH"])
@@ -212,6 +231,8 @@ def main(argv=None):
                 job.rows_written += grade(lg, a.season, job)
             else:
                 run(lg, a.season, a.weeks, job)
+            # Forward tests run on every picks job, so they grade themselves as games finish.
+            report_cohorts(lg, a.season, job)
 
 
 if __name__ == "__main__":

@@ -128,6 +128,8 @@ async function picksMain() {
       return;
     }
     root.append(gateSummary(data));
+    const lp = leansPanel(data); if (lp) root.append(lp);
+    const ft = forwardTests(data); if (ft) root.append(ft);
     for (const t of ["A+", "A", "B"]) {
       const group = plays.filter(p => p.tier === t);
       if (!group.length) continue;
@@ -141,6 +143,58 @@ async function picksMain() {
       for (const p of group) root.append(card(p));
     }
     document.getElementById("built").textContent = `Picks generated ${fmt.ago(data.generated_at)} from model ${data.picks[0].model_version}.`;
+  }
+
+  /* Leans: the model has an edge, but the market has not confirmed it. Shown for information only --
+     never tiered and never counted in the record, because the rule is edge AND market support. */
+  function leansPanel(data) {
+    const ls = data.leans || [];
+    if (!ls.length) return null;
+    const det = el("details", { class: "gates-det leans" },
+      el("summary", {}, `${ls.length} lean${ls.length > 1 ? "s" : ""} — model edge without market support (not ranked, not graded)`));
+    const tbl = el("table", { class: "band-tbl" });
+    tbl.append(el("tr", {}, el("th", {}, "lean"), el("th", {}, "game"), el("th", {}, "edge"), el("th", {}, "kickoff")));
+    for (const r of ls.slice(0, 30)) {
+      tbl.append(el("tr", {},
+        el("td", {}, `${r.side} ${r.market === "MONEYLINE" ? (r.price > 0 ? "+" : "") + r.price : fmt.num(r.line, 1)}`),
+        el("td", {}, `${r.away} at ${r.home}`),
+        el("td", { class: "num" }, fmt.num(r.edge_points, 1)),
+        el("td", {}, r.kickoff_utc ? fmt.kick(r.kickoff_utc, false) : "")));
+    }
+    det.append(tbl);
+    det.append(el("p", { class: "note" }, "A lean needs the market to confirm it before it becomes a play. If the line or money moves our way, it can graduate to a ranked pick on the next update."));
+    return det;
+  }
+
+  /* Forward tests: hypotheses registered in advance and graded on games played after that. The verdict
+     is withheld until the pre-registered sample size, so an early hot streak cannot pass for an edge. */
+  function forwardTests(data) {
+    const fts = data.forward_tests || [];
+    if (!fts.length) return null;
+    const box = el("section", { class: "fwd" }, el("h2", {}, "Forward tests"),
+      el("p", { class: "note" }, "Patterns the backtest suggested but could not prove, now being tested on games that had not been played when they were registered. Graded automatically every day, whether or not a pick was made."));
+    for (const t of fts) {
+      const pct = Math.round((t.progress || 0) * 100);
+      const rec = `${t.wins}-${t.losses}${t.pushes ? "-" + t.pushes : ""}`;
+      const card = el("div", { class: `fwd-card v-${t.verdict.replace(/\s+/g, "-")}` },
+        el("div", { class: "fwd-head" },
+          el("span", { class: "fwd-label" }, t.label + (t.primary ? "" : " (secondary)")),
+          el("span", { class: "fwd-rec num" }, t.n ? `${rec} · ${(t.rate * 100).toFixed(1)}%` : "no graded games yet")),
+        el("div", { class: "fwd-bar" }, el("span", { style: `width:${pct}%` })),
+        el("p", { class: "fwd-verdict" }, t.verdict_text),
+        el("p", { class: "fwd-meta" }, `${t.hypothesis} Registered ${t.registered}. ${t.evidence}`
+          + (t.line_moved_toward_model != null ? ` The line moved toward the model's side before kickoff in ${Math.round(t.line_moved_toward_model * 100)}% of these games.` : "")));
+      if (t.watching && t.watching.length) {
+        const ul = el("ul", { class: "fwd-watch" });
+        for (const w of t.watching.slice(0, 12)) {
+          ul.append(el("li", {}, `${w.away} at ${w.home} — ${w.side === "OVER" || w.side === "UNDER" ? w.side.toLowerCase() + " " + fmt.num(w.close_line, 1) : w.side}`
+            + ` (model ${fmt.num(w.projection, 1)}, edge ${fmt.num(w.edge, 1)})`));
+        }
+        card.append(el("p", { class: "fwd-watch-h" }, `In the test this week (provisional — fixed by the closing number):`), ul);
+      }
+      box.append(card);
+    }
+    return box;
   }
 
   function gateSummary(data) {
