@@ -2186,3 +2186,4 @@ snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_hom
 2026_NFL_W03_PHI_CHI_bovada_20260922T231440Z,2026_NFL_W03_PHI_CHI,2026-09-22T23:14:40.141406+00:00,2026-09-22T23:13:03Z,bovada,4.5,-110,-110,185.0,-225.0,41.5,-110,-110,,,,,,,False,,,odds_api,free
 2026_NFL_W03_ATL_GB_draftkings_20260922T231817Z,2026_NFL_W03_ATL_GB,2026-09-22T23:18:17.531459+00:00,,draftkings,-6.0,,,-278.0,225.0,43.5,,,0.65,0.71,0.83,0.47,0.55,0.6,False,,,vsin_dk,free
 2026_NFL_W03_ATL_GB_draftkings_20260923T002529Z,2026_NFL_W03_ATL_GB,2026-09-23T00:25:29.770784+00:00,,draftkings,-6.0,,,-278.0,225.0,43.5,,,0.65,0.7,0.83,0.47,0.55,0.59,False,,,vsin_dk,free
+2026_NFL_W03_ATL_GB_draftkings_20260923T011937Z,2026_NFL_W03_ATL_GB,2026-09-23T01:19:37.071886+00:00,,draftkings,-5.5,,,-270.0,220.0,43.5,,,0.65,0.7,0.83,0.48,0.55,0.59,False,,,vsin_dk,free
