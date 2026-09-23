@@ -1503,3 +1503,4 @@ snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_hom
 2026_CFB_W04_FAU_ULM_bovada_20260923T141651Z,2026_CFB_W04_FAU_ULM,2026-09-23T14:16:51.371438+00:00,,bovada,13.5,,,410.0,-585.0,57.0,,,,,,,,,False,13.5,57.0,cfbd,free
 2026_CFB_W04_MASS_SAC_draftkings_20260923T141651Z,2026_CFB_W04_MASS_SAC,2026-09-23T14:16:51.371438+00:00,,draftkings,4.5,,,154.0,-185.0,48.5,,,,,,,,,False,6.0,50.5,cfbd,free
 2026_CFB_W04_MASS_SAC_bovada_20260923T141651Z,2026_CFB_W04_MASS_SAC,2026-09-23T14:16:51.371438+00:00,,bovada,3.5,,,185.0,-225.0,49.0,,,,,,,,,False,6.0,48.5,cfbd,free
+2026_CFB_W04_LIB_CCU_draftkings_20260923T142203Z,2026_CFB_W04_LIB_CCU,2026-09-23T14:22:03.880281+00:00,,draftkings,2.5,,,114.0,-135.0,50.5,,,,,0.35,0.13,0.76,0.21,False,,,vsin_dk,free
