@@ -36922,3 +36922,5 @@ e2b57aadff92407b,CONTEXT_20260924T110409_0c18b0,context,ALIAS_UNMATCHED,WARN,Win
 f08d6a7b00334578,CONTEXT_20260924T110409_0c18b0,context,ALIAS_UNMATCHED,WARN,Wofford,team,Wofford,team_aliases row (non-FBS teams expected),2026-09-24T11:05:31+00:00
 ad3d3c37ac0e45d3,CONTEXT_20260924T110409_0c18b0,context,ALIAS_UNMATCHED,WARN,Yale,team,Yale,team_aliases row (non-FBS teams expected),2026-09-24T11:05:31+00:00
 d5bec9e89078475a,CONTEXT_20260924T110409_0c18b0,context,ALIAS_UNMATCHED,WARN,Youngstown State,team,Youngstown State,team_aliases row (non-FBS teams expected),2026-09-24T11:05:31+00:00
+b8020b54c3824a56,SPLITS_20260924T132543_bd89b3,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: 2026_CFB_W04_LIB_CCU: only 2 of 6 percentages usable | ,team + percentages,2026-09-24T13:25:47+00:00
+621ea6ef1f4b4c64,SPLITS_20260924T132543_bd89b3,betting_splits,SPLITS_UNREADABLE,WARN,,line,"None: these slugs resolve to a team but never matched a scheduled game, which is what a wrong mapping looks like: coastal-carolina-chanticleers -> CFB_CCU; liberty-flames -> CFB_LIB | ",team + percentages,2026-09-24T13:25:47+00:00
