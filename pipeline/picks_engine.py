@@ -531,7 +531,14 @@ def score(df: pd.DataFrame) -> pd.DataFrame:
     # kept for the historical bands, which were measured on edge alone because splits did not exist
     d["score_edge_only"] = (d.score_base * d.score_quality).round(3)
     d["model_component"] = (d.score_edge_only / cap).clip(0, 1).round(4)
-    ages = d.signal_ages if "signal_ages" in d.columns else pd.Series([None] * len(d), index=d.index)
+    def _ages(v):                       # stored as JSON once written to Parquet; a dict in memory
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (ValueError, TypeError):
+                return {}
+        return v if isinstance(v, dict) else {}
+    ages = d.signal_ages.map(_ages) if "signal_ages" in d.columns else pd.Series([{}] * len(d), index=d.index)
     d["market_component"] = [market_component(sg, ag) for sg, ag in zip(d.signals.fillna(""), ages)]
     wm, wk = config.PICK_WEIGHTS["model"], config.PICK_WEIGHTS["market"]
     d["score"] = ((wm * d.model_component + wk * d.market_component) * config.PICK_SCORE_SCALE).round(3)

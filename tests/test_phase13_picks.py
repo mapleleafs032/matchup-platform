@@ -727,3 +727,22 @@ def test_forward_test_membership_matches_how_the_backtest_measured_it(tmp_path, 
                                     # P qualified (edge 10) but kicked off before the hypothesis was registered
     assert g.loc["A"].side == "OVER" and g.loc["A"].result == "WIN"
     assert C.update("CFB", 2026)["cfb_totals_edge4"]["newly_graded"] == 0      # graded once, never rewritten
+
+
+def test_empty_dict_columns_do_not_break_the_parquet_write(tmp_path):
+    """Parquet cannot store a struct with no fields, so a dict column that is empty on every row failed
+    the whole write and took the picks job down. Dict and list columns are serialised instead."""
+    from pipeline import storage, picks_engine as pe
+    storage.write_parquet(tmp_path / "empty.parquet",
+                          pd.DataFrame([{"pick_id": "a", "signal_ages": {}}, {"pick_id": "b", "signal_ages": {}}]))
+    assert (tmp_path / "empty.parquet").exists()
+    storage.write_parquet(tmp_path / "mixed.parquet",
+                          pd.DataFrame([{"pick_id": "a", "signal_ages": {"steam": 2.0}, "signals": "steam"},
+                                        {"pick_id": "b", "signal_ages": {}, "signals": ""}]))
+    back = pd.read_parquet(tmp_path / "mixed.parquet")
+    assert back.signal_ages.iloc[0] == '{"steam": 2.0}'
+    # and the scorer accepts either the JSON text or a live dict
+    scored = pe.score(back.assign(market="SPREAD", edge_points=4.0, data_quality=1.0))
+    assert scored.market_component.iloc[0] > 0 and scored.market_component.iloc[1] == 0
+    storage.write_parquet(tmp_path / "lists.parquet", pd.DataFrame([{"a": []}, {"a": [1, 2]}]))
+    assert pd.read_parquet(tmp_path / "lists.parquet").a.tolist() == ["[]", "[1, 2]"]

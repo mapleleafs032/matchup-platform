@@ -10,6 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
+import json
+
 import pandas as pd
 
 import config
@@ -53,8 +55,21 @@ def read_table(path: Path) -> pd.DataFrame:
 
 
 def write_parquet(path: Path, df: pd.DataFrame) -> None:
+    """
+    Write a table, serialising any dict/list column to JSON first.
+
+    Parquet cannot store a struct with no fields, so a column of dicts that happen to be empty on every
+    row fails the whole write -- which took down the picks job the first week no play carried a timed
+    signal. Serialising sidesteps the whole class of failure and keeps the column readable.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(path, index=False)
+    out = df
+    for c in df.columns:
+        if df[c].dtype == object and df[c].map(lambda v: isinstance(v, (dict, list))).any():
+            if out is df:
+                out = df.copy()
+            out[c] = df[c].map(lambda v: json.dumps(v, default=str) if isinstance(v, (dict, list)) else v)
+    out.to_parquet(path, index=False)
 
 
 def append_csv(path: Path, df: pd.DataFrame, key_cols: list[str],
