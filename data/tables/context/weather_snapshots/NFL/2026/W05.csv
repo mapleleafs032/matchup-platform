@@ -1,0 +1,2 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
+2026_NFL_W05_TB_DAL,2026-09-24T11:06:04.494160+00:00,2026-10-09T00:15:00+00:00,349.1,False,True,open_meteo,85.8,82.1,5.5,5.1,117.0,0.03,0.0,24.0,0.0
