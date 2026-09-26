@@ -1,0 +1,2 @@
+cohort_id,game_id,league,season,week,kickoff_utc,side,projection,close_line,open_line,edge,line_moved_toward_model,predicted_at,result,graded_at
+cfb_totals_edge4,2026_CFB_W04_NAVY_UAB,CFB,2026,4,2026-09-25 23:00:00+00:00,OVER,56.27,51.5,51.5,4.77,,2026-09-25T12:30:16.148100+00:00,LOSS,2026-09-26T10:53:49.751957+00:00
