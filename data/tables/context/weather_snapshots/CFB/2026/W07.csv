@@ -1,0 +1,2 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
+2026_CFB_W07_DEL_MTSU,2026-09-28T23:04:04.598996+00:00,2026-10-13T23:00:00+00:00,359.9,False,False,open_meteo,64.4,58.8,6.7,5.8,354.0,0.01,0.0,38.0,0.0
