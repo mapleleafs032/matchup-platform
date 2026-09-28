@@ -1,0 +1,3 @@
+close_line,clv_points,clv_prob,beat_close,hours_before_kick,pick_id,game_id,league,season,week,market,side,line,price,tier,score,edge_points,signals,result,profit_units,actual_margin_home,actual_total,graded_at
+110.0,,0.0,False,6.3,2026_NFL_W01_DEN_KC_MONEYLINE_DEN_NFL_v1.0,2026_NFL_W01_DEN_KC,NFL,2026,1,MONEYLINE,DEN,110.0,110.0,A+,4.223,3.87,money_agrees,LOSS,-1.0,21,41,2026-09-28T16:58:32.340950+00:00
+240.0,,0.0,False,0.4,2026_NFL_W02_NYG_LAR_MONEYLINE_NYG_NFL_v1.0,2026_NFL_W02_NYG_LAR,NFL,2026,2,MONEYLINE,NYG,240.0,240.0,A,6.743,6.15,"money_agrees,steam",LOSS,-1.0,22,34,2026-09-28T16:58:32.367995+00:00
