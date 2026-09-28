@@ -423,9 +423,25 @@ def _moneyline_play(base, p, gid, league, season, week, last_split) -> list[dict
             pass
     if ml_home is None or ml_away is None:
         return []
+    # Spread first. A moneyline candidate is only considered for a favourite laying a short number:
+    # there the two bets are close in value, and the price still pays. Everywhere else the spread is
+    # the better expression of the same opinion.
+    sh = base.get("market_spread_home")
+    short_fav_home = short_fav_away = True
+    if config.PICK_MONEYLINE_ONLY_SHORT_FAVOURITE:
+        lo, hi = config.PICK_MONEYLINE_SPREAD_RANGE
+        if sh is None or pd.isna(sh):
+            return []
+        sh = float(sh)
+        short_fav_home = (-hi <= sh <= -lo)       # home favoured by 1 to 3.5
+        short_fav_away = (lo <= sh <= hi)         # away favoured by 1 to 3.5
+        if not (short_fav_home or short_fav_away):
+            return []
     wp = base["win_prob_home"]
     out = []
     for side_home, ml, wp_side in ((True, ml_home, wp), (False, ml_away, 1 - wp)):
+        if config.PICK_MONEYLINE_ONLY_SHORT_FAVOURITE and not (short_fav_home if side_home else short_fav_away):
+            continue                      # only the short favourite's side, never the dog
         implied = american_to_prob(ml)
         if implied is None:
             continue

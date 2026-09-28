@@ -500,3 +500,11 @@ table.kp td { font-variant-numeric: tabular-nums; }
 .fwd-watch-h { margin: 8px 0 2px; font-size: 12.5px; font-weight: 600; }
 .fwd-watch { margin: 0; padding-left: 18px; font-size: 13px; }
 .gates-det.leans summary { color: var(--ink-2); }
+
+/* ---------- picks results ---------- */
+.results { margin: 22px 0 8px; }
+.results h2 { font-family: var(--cond); font-size: 20px; margin: 0 0 4px; }
+.res-head { font-family: var(--cond); font-weight: 700; font-size: 22px; margin: 2px 0; }
+table.res-tbl td.good, table.res-tbl tr.good td:nth-child(5) { color: var(--good); font-weight: 600; }
+table.res-tbl td.bad, table.res-tbl tr.bad td:nth-child(5) { color: var(--bad); font-weight: 600; }
+table.res-tbl { width: 100%; }

@@ -25,7 +25,11 @@ def _write(league, season, wk, g, pkg, out):
         "model_version": pkg["model"]["model_version"], "llm_model": out["meta"].get("model"), "prompt_version": config.AI_PROMPT_VERSION,
         "sections": out["sections"], "validation": out["validation"], "validation_failed": out["validation_failed"], "attempts": out["attempts"],
         "generated_at": out["generated_at"], "tokens_in": out["meta"].get("tokens_in"), "tokens_out": out["meta"].get("tokens_out"),
-        "stop_reason": out["meta"].get("stop_reason"), "raw_text": out.get("raw_text")}, default=str, indent=0))
+        "stop_reason": out["meta"].get("stop_reason"), "raw_text": out.get("raw_text"),
+        # the numbers the analysis was written against, so the page can say so when the line has since
+        # moved within the rewrite tolerance
+        "market_at_write": {k: ((pkg.get("market") or {}).get("current") or {}).get(k) for k in ("spread_home", "total")},
+        }, default=str, indent=0))
     storage.repair_csv(INDEX, ["analysis_id", "game_id", "league", "season", "week", "inputs_hash", "llm_model",
                                "validation_failed", "violations", "tokens_in", "tokens_out", "generated_at"])
     storage.append_csv(INDEX, pd.DataFrame([{"analysis_id": aid, "game_id": g.game_id, "league": league, "season": season, "week": wk, "inputs_hash": pkg["inputs_hash"],

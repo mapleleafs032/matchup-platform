@@ -20,6 +20,14 @@ def _count(pattern: str) -> int:
     return n
 
 
+def _current_week(league: str):
+    g = storage.read_table(storage.games_path(league, config.SEASON))
+    if g.empty or "week" not in g.columns:
+        return None
+    done = g[pd.to_datetime(g.kickoff_utc, utc=True, errors="coerce") < pd.Timestamp.now(tz="UTC")]
+    return int(done.week.max()) if not done.empty else None
+
+
 def main():
     print("=" * 70)
     print("TABLE COUNTS")
@@ -92,6 +100,21 @@ def main():
         print("  none yet")
     else:
         print(f"  {len(ai_idx)} analyses | validation failures: {int(ai_idx.validation_failed.sum())} | tokens in/out: {int(ai_idx.tokens_in.fillna(0).sum())}/{int(ai_idx.tokens_out.fillna(0).sum())} | model: {ai_idx.llm_model.dropna().iloc[-1] if ai_idx.llm_model.notna().any() else '?'}")
+    print("\nMARKET DATA HEALTH (a pull that returns nothing is a failure, not a quiet success)")
+    try:
+        from pipeline import ingest_health as _ih
+        for _lg in ("NFL", "CFB"):
+            print("  " + _ih.summary_line("splits", _lg))
+            _wk = _current_week(_lg)
+            if _wk:
+                _c = _ih.observation_coverage(_lg, config.SEASON, _wk)
+                if _c and _c.get("started"):
+                    print(f"    W{_wk}: {_c['with_closing']}/{_c['started']} games had a snapshot within 3h of kickoff; "
+                          f"{_c['with_opening']} had one a day or more out")
+                    for _m in _c["missing_closing"][:5]:
+                        print(f"      missing close: {_m['game_id']} — {_m['why']}")
+    except Exception as _e:
+        print(f"  unavailable: {str(_e)[:120]}")
     print("\nFORWARD TESTS (pre-registered; verdict withheld until the registered sample)")
     try:
         from pipeline import cohorts as _co

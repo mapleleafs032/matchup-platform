@@ -120,15 +120,20 @@ async function picksMain() {
       : S.sort === "kick" ? String(a.kickoff_utc).localeCompare(String(b.kickoff_utc))
       : b.score - a.score);
     root.replaceChildren();
+    // A week with no qualifying plays is common now that the gates are strict. It used to return here,
+    // hiding the record, the leans and the forward tests on exactly the weeks with nothing else to show.
+    root.append(gateSummary(data));
+    const lp = leansPanel(data); if (lp) root.append(lp);
     if (!plays.length) {
       root.append(el("div", { class: "empty" }, data.picks.length
         ? "No plays match these filters."
-        : "No plays cleared the minimum edge this week. That is a normal outcome when the model and the market agree."));
+        : "No plays cleared the gates this week. That is a normal outcome when the model and the market agree."));
+      const rs0 = resultsPanel(data); if (rs0) root.append(rs0);
+      const ft0 = forwardTests(data); if (ft0) root.append(ft0);
       document.getElementById("built").textContent = `Picks generated ${fmt.ago(data.generated_at)}.`;
       return;
     }
-    root.append(gateSummary(data));
-    const lp = leansPanel(data); if (lp) root.append(lp);
+    const rs = resultsPanel(data); if (rs) root.append(rs);
     const ft = forwardTests(data); if (ft) root.append(ft);
     for (const t of ["A+", "A", "B"]) {
       const group = plays.filter(p => p.tier === t);
@@ -143,6 +148,44 @@ async function picksMain() {
       for (const p of group) root.append(card(p));
     }
     document.getElementById("built").textContent = `Picks generated ${fmt.ago(data.generated_at)} from model ${data.picks[0].model_version}.`;
+  }
+
+  /* Every play that has been graded, newest first, with the record it adds up to. */
+  function resultsPanel(data) {
+    const rows = data.results || [];
+    const rec = data.season_record;
+    if (!rows.length) return null;
+    const box = el("section", { class: "results" }, el("h2", {}, "Results"));
+    if (rec) {
+      const rate = rec.hit_rate != null ? ` · ${(rec.hit_rate * 100).toFixed(1)}%` : "";
+      const units = rec.profit_units != null ? ` · ${rec.profit_units > 0 ? "+" : ""}${rec.profit_units.toFixed(2)} units` : "";
+      box.append(el("p", { class: "res-head num" },
+        `${rec.wins}-${rec.losses}${rec.pushes ? "-" + rec.pushes : ""}${rate}${units}`));
+      const parts = [];
+      for (const [t, v] of Object.entries(rec.by_tier || {})) parts.push(`${t}: ${v.wins}-${v.n - v.wins} (${(v.hit_rate * 100).toFixed(0)}%)`);
+      if (rec.beat_close_n) parts.push(`beat the close on ${(rec.beat_close_rate * 100).toFixed(0)}% of ${rec.beat_close_n}`);
+      if (parts.length) box.append(el("p", { class: "note" }, parts.join(" · ")));
+      box.append(el("p", { class: "note" }, `Break-even at -110 is 52.4%. Graded at the number and price recorded when the play was made, not at the close.`));
+    }
+    const t = el("table", { class: "band-tbl res-tbl" });
+    t.append(el("tr", {}, el("th", {}, "wk"), el("th", {}, "game"), el("th", {}, "play"), el("th", {}, "tier"),
+      el("th", {}, "result"), el("th", {}, "units"), el("th", {}, "vs close")));
+    for (const r of rows.slice(0, 120)) {
+      const play = `${r.side} ${r.market === "MONEYLINE" ? (r.price > 0 ? "+" : "") + Math.round(r.price)
+        : (r.market === "TOTAL" ? r.line : (r.line > 0 ? "+" : "") + r.line)}`;
+      const cls = r.result === "WIN" ? "good" : r.result === "LOSS" ? "bad" : "";
+      t.append(el("tr", { class: cls },
+        el("td", {}, String(r.week ?? "")),
+        el("td", {}, r.away && r.home ? `${r.away} at ${r.home}` : r.game_id),
+        el("td", {}, play),
+        el("td", {}, r.tier || ""),
+        el("td", { class: cls }, r.result || ""),
+        el("td", { class: "num" }, r.profit_units == null ? "" : (r.profit_units > 0 ? "+" : "") + Number(r.profit_units).toFixed(2)),
+        el("td", { class: "num" }, r.clv_points == null ? "" : (r.clv_points > 0 ? "+" : "") + Number(r.clv_points).toFixed(1))));
+    }
+    box.append(t);
+    if (rows.length > 120) box.append(el("p", { class: "note" }, `Showing the most recent 120 of ${rows.length} graded plays.`));
+    return box;
   }
 
   /* Leans: the model has an edge, but the market has not confirmed it. Shown for information only --

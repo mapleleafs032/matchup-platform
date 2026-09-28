@@ -172,6 +172,25 @@ def _winprob_block(S: "Season", week: int, gid: str, home: str, away: str, sprea
             "final": hf is not None}
 
 
+def ai_line_note(ai: dict | None, market: dict | None) -> dict | None:
+    """Say which line the analysis was written against when the market has since moved."""
+    if not ai or ai.get("withheld") or not market:
+        return ai
+    at = ai.get("market_at_write") or {}
+    cur_s, cur_t = market.get("spread_home"), market.get("total")
+    bits = []
+    for label, was, now in (("spread", at.get("spread_home"), cur_s), ("total", at.get("total"), cur_t)):
+        try:
+            if was is not None and now is not None and abs(float(was) - float(now)) >= 0.5:
+                bits.append(f"{label} {float(was):+g} at the time, {float(now):+g} now" if label == "spread"
+                            else f"{label} {float(was):g} at the time, {float(now):g} now")
+        except (TypeError, ValueError):
+            pass
+    if bits:
+        ai = {**ai, "line_note": "Written against a " + "; ".join(bits) + "."}
+    return ai
+
+
 def ai_current_or_stale(ai: dict | None, model: dict | None) -> dict | None:
     """
     Never show an analysis that describes a different projection from the one above it.
@@ -597,7 +616,21 @@ def build_odds(S: Season, week: int, slate: dict) -> dict:
     _rank = {"SCHEDULED": 0, "LOCKED": 1, "FINAL": 2}
     games.sort(key=lambda e: (_rank.get(e["status"], 0), str(e["kickoff_utc"] or "9999")))
 
-    return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
+    results = []
+    if not ev.empty:
+        rcols = ("game_id", "week", "market", "side", "line", "price", "tier", "score", "result",
+                 "profit_units", "actual_margin_home", "actual_total", "clv_points", "beat_close", "close_line")
+        e = ev.sort_values(["week", "game_id"], ascending=[False, True])
+        gm = S.games.set_index("game_id")
+        for _, r in e.iterrows():
+            row = {c: _j(r.get(c)) for c in rcols if c in ev.columns}
+            if r.game_id in gm.index:
+                row["home"] = S.team(gm.loc[r.game_id].home_team_id)["abbr"]
+                row["away"] = S.team(gm.loc[r.game_id].away_team_id)["abbr"]
+                row["kickoff_utc"] = str(gm.loc[r.game_id].kickoff_utc)
+            results.append(row)
+    return {"results": results,
+            "league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
             "games": games, "coverage": {"with_splits": covered, "total": len(games)},
             "source_note": (f"{config.VSIN['attribution']}. Percentages are the share of tickets and of money on the home side "
                             "(over side for totals), captured on a schedule and stored with a timestamp."
@@ -620,6 +653,15 @@ def build_picks(S: Season, week: int) -> dict:
                "pushes": int((ev.result == "PUSH").sum()),
                "hit_rate": round(float((dec.result == "WIN").mean()), 4) if len(dec) else None,
                "profit_units": round(float(ev.profit_units.sum()), 3)}
+        by_tier = {}
+        for t, g in dec.groupby("tier"):
+            by_tier[str(t)] = {"n": int(len(g)), "wins": int((g.result == "WIN").sum()),
+                               "hit_rate": round(float((g.result == "WIN").mean()), 4)}
+        rec["by_tier"] = by_tier
+        if "beat_close" in ev.columns and ev.beat_close.notna().any():
+            b = ev[ev.beat_close.notna()]
+            rec["beat_close_rate"] = round(float(b.beat_close.astype(bool).mean()), 4)
+            rec["beat_close_n"] = int(len(b))
     cols = ("game_id", "market", "side", "line", "price", "tier", "score", "edge_points", "model_number", "market_number",
             "data_quality", "signals", "signal_notes", "tickets_pct_side", "money_pct_side", "expected_value",
             "model_version", "kickoff_utc", "home", "away", "week", "marquee_why", "rlm", "lopsided_side", "move_against",
@@ -648,7 +690,21 @@ def build_picks(S: Season, week: int) -> dict:
                            "away": S.team(S.games.set_index("game_id").loc[w["game_id"]].away_team_id)["abbr"]}
                           for w in watch.get(c["id"], []) if w["game_id"] in set(S.games.game_id)]
         forward.append(sm)
-    return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
+    results = []
+    if not ev.empty:
+        rcols = ("game_id", "week", "market", "side", "line", "price", "tier", "score", "result",
+                 "profit_units", "actual_margin_home", "actual_total", "clv_points", "beat_close", "close_line")
+        e = ev.sort_values(["week", "game_id"], ascending=[False, True])
+        gm = S.games.set_index("game_id")
+        for _, r in e.iterrows():
+            row = {c: _j(r.get(c)) for c in rcols if c in ev.columns}
+            if r.game_id in gm.index:
+                row["home"] = S.team(gm.loc[r.game_id].home_team_id)["abbr"]
+                row["away"] = S.team(gm.loc[r.game_id].away_team_id)["abbr"]
+                row["kickoff_utc"] = str(gm.loc[r.game_id].kickoff_utc)
+            results.append(row)
+    return {"results": results,
+            "league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
             "picks": out, "leans": leans, "rejected": rej, "gates": config.PICK_GATES, "calibration": cal,
             "season_record": rec, "forward_tests": forward}
 
@@ -692,7 +748,21 @@ def build_slate(S: Season, week: int) -> dict:
         else:
             entry["indicators"] = None
         games.append(entry)
-    return {"league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(), "games": games}
+    results = []
+    if not ev.empty:
+        rcols = ("game_id", "week", "market", "side", "line", "price", "tier", "score", "result",
+                 "profit_units", "actual_margin_home", "actual_total", "clv_points", "beat_close", "close_line")
+        e = ev.sort_values(["week", "game_id"], ascending=[False, True])
+        gm = S.games.set_index("game_id")
+        for _, r in e.iterrows():
+            row = {c: _j(r.get(c)) for c in rcols if c in ev.columns}
+            if r.game_id in gm.index:
+                row["home"] = S.team(gm.loc[r.game_id].home_team_id)["abbr"]
+                row["away"] = S.team(gm.loc[r.game_id].away_team_id)["abbr"]
+                row["kickoff_utc"] = str(gm.loc[r.game_id].kickoff_utc)
+            results.append(row)
+    return {"results": results,
+            "league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(), "games": games}
 
 
 def comparison_rows(S: Season, week: int, gid: str, home: str, away: str, snap_metrics: list | None) -> tuple[list[dict], list[str]]:
@@ -812,7 +882,7 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
                            else "this platform's own opponent-rating strength of schedule"),
             "splits": splits_engine.build_week(S.league, S.season, week, S.games[S.games.game_id == gid], S.teams).get(gid, {}).get("periods", {}),
             "market_state": _market_state_for(S, week, gid, entry),
-            "edges": edge_list, "model": model, "market": market, "market_history_url": f"json/market/{gid}.json", "weather": wx, "result": result, "ai": ai_current_or_stale(S.ai_block(gid), model),
+            "edges": edge_list, "model": model, "market": market, "market_history_url": f"json/market/{gid}.json", "weather": wx, "result": result, "ai": ai_line_note(ai_current_or_stale(S.ai_block(gid), model), (entry.get("market") or {})),
             "sources": {"metrics": "CollegeFootballData (PPA, advanced stats, plays) and nflverse (nflfastR EPA, FTN charting, PFR pressures)" if S.league == "CFB" else "nflverse (nflfastR play-by-play EPA, FTN charting, PFR pressures)",
                         "lines": "CollegeFootballData lines" if S.league == "CFB" else "The Odds API (US books)", "weather": "Open-Meteo", "injuries": "official league report" if S.league == "NFL" else "manual entries",
                         "note": "Opponent-adjusted values are this platform's own ridge fits; early-season values blend the previous season's adjusted numbers."},

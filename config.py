@@ -191,6 +191,12 @@ PICK_MARKET_COMPONENTS = {"steam": 0.40, "rlm_agrees": 0.35, "money_agrees": 0.3
 # A move hours before kickoff says more than one from Monday, so signals are aged.
 PICK_SIGNAL_RECENCY = [(6, 1.00), (24, 0.90), (72, 0.70), (9999, 0.50)]   # (hours before kickoff, weight)
 # A play must have a statistical edge AND market evidence supporting that side.
+# The spread is the primary market. A moneyline play is only worth making on a short favourite, where
+# laying the points and taking the win outright are close in value and the price is not prohibitive;
+# on bigger favourites the moneyline pays too little, and on underdogs it is a different bet entirely.
+PICK_MONEYLINE_ONLY_SHORT_FAVOURITE = True
+PICK_MONEYLINE_SPREAD_RANGE = (1.0, 3.5)    # the favourite must be laying between these many points
+
 PICK_REQUIRE_MARKET_CONFIRMATION = True
 PICK_MIN_CONFIRMATIONS = 1
 # Only market BEHAVIOUR confirms a side. A favourable key number is a positional bonus, not confirmation.

@@ -169,13 +169,38 @@ def clean(obj):
     return obj
 
 
+# How far a number must move before an analysis is worth rewriting. Lines are now sampled every 15
+# minutes, so hashing the raw number meant almost any tick invalidated the analysis and the page fell
+# back to "not generated for this version" within the hour. These are the moves that actually change
+# what there is to say about a game.
+HASH_TOLERANCE = {"spread_home": 1.0, "total": 1.0, "ml_home": 25.0, "ml_away": 25.0,
+                  "spread_away": 1.0, "over_price": 25.0, "under_price": 25.0}
+
+
+def _coarse(value, step: float):
+    try:
+        return round(float(value) / step) * step
+    except (TypeError, ValueError):
+        return value
+
+
 def package_hash(pkg: dict) -> str:
-    """Hash of everything that should trigger regeneration (excludes timestamps and the hash itself)."""
+    """
+    Hash of everything that should trigger a rewrite (excludes timestamps and the hash itself).
+
+    Market numbers are coarsened first: a half-point tick does not change the story of a game, and
+    treating it as a new version left every analysis permanently out of date once the line began
+    updating every quarter of an hour. A move past the tolerance still regenerates.
+    """
     core = {k: v for k, v in pkg.items() if k not in ("inputs_hash",)}
     if core.get("market"):
-        core["market"] = {k: v for k, v in core["market"].items() if k not in ("notes",)}
-        cur = core["market"].get("current") or {}
-        core["market"]["current"] = {k: v for k, v in cur.items() if k != "retrieved_at"}
+        core["market"] = {k: v for k, v in core["market"].items() if k not in ("notes", "steam", "movement")}
+        for block in ("current", "open"):
+            b = core["market"].get(block) or {}
+            core["market"][block] = {k: (_coarse(v, HASH_TOLERANCE[k]) if k in HASH_TOLERANCE else v)
+                                     for k, v in b.items() if k != "retrieved_at"}
+        imp = core["market"].get("implied") or {}
+        core["market"]["implied"] = {k: (round(float(v), 2) if isinstance(v, (int, float)) else v) for k, v in imp.items()}
     return hashlib.sha256(json.dumps(core, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 

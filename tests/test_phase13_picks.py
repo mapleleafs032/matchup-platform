@@ -746,3 +746,65 @@ def test_empty_dict_columns_do_not_break_the_parquet_write(tmp_path):
     assert scored.market_component.iloc[0] > 0 and scored.market_component.iloc[1] == 0
     storage.write_parquet(tmp_path / "lists.parquet", pd.DataFrame([{"a": []}, {"a": [1, 2]}]))
     assert pd.read_parquet(tmp_path / "lists.parquet").a.tolist() == ["[]", "[1, 2]"]
+
+
+def test_small_line_moves_do_not_invalidate_an_analysis():
+    """With the line sampled every 15 minutes, hashing the raw number left every analysis permanently
+    'not generated for this version' within the hour."""
+    import copy
+    from pipeline.ai_package import package_hash
+    base = {"teams": {"a": 1}, "market": {"available": True,
+            "current": {"spread_home": -6.5, "total": 51.5, "ml_home": -240, "retrieved_at": "2026-09-24T12:00:00Z"},
+            "open": {"spread_home": -11.5, "total": 53.5}, "movement": {"spread": 5.0}, "steam": None,
+            "notes": ["x"], "implied": {"home_wp": 0.70511}}}
+    def h(**kw):
+        p = copy.deepcopy(base); p["market"]["current"].update(kw); return package_hash(p)
+    assert h() == package_hash(base)
+    assert h(spread_home=-6.0) == h()                       # a half-point tick keeps the analysis
+    assert h(retrieved_at="2026-09-24T18:00:00Z") == h()    # a new snapshot alone is not a new version
+    assert h(total=52.0) == h()
+    assert h(spread_home=-8.5) != h()                       # a two-point move rewrites it
+    assert h(total=54.0) != h()
+
+
+def test_the_page_says_which_line_an_analysis_was_written_against():
+    from pipeline.jobs.build_site import ai_line_note
+    ai = {"withheld": False, "sections": {}, "market_at_write": {"spread_home": -6.5, "total": 51.5}}
+    assert "-6.5 at the time, -8.5 now" in ai_line_note(ai, {"spread_home": -8.5, "total": 51.5})["line_note"]
+    assert ai_line_note(ai, {"spread_home": -6.5, "total": 51.5}).get("line_note") is None
+    assert ai_line_note({"withheld": True}, {"spread_home": -8.5}).get("line_note") is None
+
+
+def test_moneyline_only_on_a_short_favourite(tmp_path, monkeypatch):
+    """The spread is the primary market. A moneyline is only worth making on a favourite laying a short
+    number; on bigger favourites it pays too little, and the dog side is a different bet."""
+    import json, config
+    from pipeline import picks_engine as pe
+    monkeypatch.setattr(config, "SITE_JSON", tmp_path)
+    (tmp_path / "market").mkdir()
+    (tmp_path / "market" / "G.json").write_text(json.dumps({"current": {"ml_home": -160, "ml_away": 135}}))
+    def base(sh, wp=0.74):
+        return {"market_spread_home": sh, "win_prob_home": wp, "home": "HM", "away": "AW",
+                "game_id": "G", "league": "NFL", "season": 2026, "week": 3}
+    play = lambda sh: [p["side"] for p in pe._moneyline_play(base(sh), None, "G", "NFL", 2026, 3, None)]
+    assert play(-2.5) == ["HM"] and play(-3.5) == ["HM"]      # inside the range
+    assert play(-7.5) == [] and play(-0.5) == []              # too big, too short
+    assert play(None) == []                                   # no spread posted: no moneyline
+    monkeypatch.setattr(config, "PICK_MONEYLINE_ONLY_SHORT_FAVOURITE", False)
+    assert play(-7.5) == ["HM"]                               # the policy, not the edge, was the filter
+
+
+def test_ingest_health_flags_silence_and_empty_pulls(tmp_path, monkeypatch):
+    """A pull returning nothing used to count as success, so a blocked scrape looked like a quiet week."""
+    import config
+    from pipeline import ingest_health as IH
+    monkeypatch.setattr(config, "TABLES", tmp_path / "t")
+    monkeypatch.setattr(IH, "HEARTBEAT", tmp_path / "t" / "ops" / "ingest_heartbeat.csv")
+    assert IH.gaps("splits", "CFB")["last_ok"] is None
+    IH.record("splits", "CFB", 2026, rows=0, games=0, note="source returned nothing")
+    g = IH.gaps("splits", "CFB")
+    assert g["attempts"] == 1 and g["empty_pulls"] == 1 and g["last_ok"] is None
+    IH.record("splits", "CFB", 2026, rows=120, games=40)
+    g2 = IH.gaps("splits", "CFB")
+    assert g2["last_ok"] is not None and g2["empty_pulls"] == 1 and g2["hours_since"] < 1
+    assert "last pull" in IH.summary_line("splits", "CFB")

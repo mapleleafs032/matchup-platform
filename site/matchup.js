@@ -473,10 +473,11 @@ async function matchupMain() {
     const s = d.ai.sections; const ai = el("div", { class: "ai" });
     const order = [["model_projection", "Model projection"], ["offensive_matchup", "Offensive matchups"], ["quarterback_edge", "Quarterback edge"], ["trenches", "Trenches"], ["explosive_play_edge", "Explosive plays"], ["third_down_red_zone", "Third down and red zone"], ["roster_talent", "Roster and talent"], ["recent_form", "Recent form"], ["market_movement", "Market movement"], ["key_advantages", "Key advantages"], ["key_concerns", "Key concerns"], ["expected_game_script", "Expected game script"]];
     for (const [k, lab] of order) { if (!s[k]) continue; ai.append(el("h3", {}, lab)); if (Array.isArray(s[k])) { const ul = el("ul", {}); s[k].forEach(x => ul.append(el("li", {}, x))); ai.append(ul); } else ai.append(el("p", {}, s[k])); }
+    if (d.ai.line_note) ai.append(el("p", { class: "sub-note" }, d.ai.line_note + " Small moves do not trigger a rewrite, so the figures quoted above are the ones it was given."));
     ai.append(el("p", { class: "prov" }, `Written by ${d.ai.model} from this page's data package only (${fmt.ago(d.ai.generated_at)}); every number was checked against the package before publishing.`));
     sec("Analysis", null, ai);
   } else if (d.ai && d.ai.withheld) sec("Analysis", null, el("span", { class: "badge warn" }, d.ai.reason));
-  else sec("Analysis", null, el("span", { class: "badge mute" }, "Not generated yet for this version of the data."));
+  else sec("Analysis", null, el("span", { class: "badge mute" }, "No analysis for this version of the data yet — the next scheduled run will write one."));
 
   // ---- result
   if (d.result && d.result.evaluation) { const e = d.result.evaluation; sec("How the projection did", null, el("p", { style: "font-size:15px" }, `Final ${d.result.away}–${d.result.home}. Margin error ${fmt.num(e.margin_error, 1)} (model ${e.winner_correct ? "had" : "did not have"} the winner)${e.model_ats_result ? `; against the closing spread: ${e.model_ats_result}` : ""}${e.model_ou_result ? `; total: ${e.model_ou_result}` : ""}.`)); }

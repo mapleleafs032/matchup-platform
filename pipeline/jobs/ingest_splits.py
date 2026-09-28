@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 import pandas as pd
 
 import config
-from pipeline import ids, storage
+from pipeline import ids, storage, ingest_health
 from pipeline.log import JobRun, ValidationLog
 from providers import splits_manual, splits_feed, vsin
 
@@ -283,8 +283,29 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
         written += storage.append_csv(out_path, part, ["split_id"], on_duplicate="skip")
     vlog.flush()
     job.rows_written = written
+    covered = int(clean.game_id.nunique()) if not clean.empty else 0
     print(f"{league} {season}: {written} splits rows{' (dry run, nothing written)' if dry else ''}; {len(problems)} unreadable lines; "
-          f"games covered: {clean.game_id.nunique()}; periods: {sorted(clean.period.unique())}")
+          f"games covered: {covered}; periods: {sorted(clean.period.unique()) if not clean.empty else []}")
+    if not dry:
+        ingest_health.record("splits", league, season, written, covered,
+                             note=f"{len(problems)} unreadable lines" if problems else "")
+        h = ingest_health.gaps("splits", league)
+        if h["longest_gap_h"] and h["longest_gap_h"] > 12:
+            print(f"    WARNING: longest gap with no successful pull in the last 7 days is {h['longest_gap_h']}h "
+                  f"({h['empty_pulls']} of {h['attempts']} attempts returned nothing)")
+    # An empty pull while games are on the board is a failure, not a quiet success. It used to go green,
+    # so a blocked scrape or a changed page looked identical to a quiet week.
+    if written == 0 and not dry and _games_upcoming(games):
+        raise RuntimeError(f"{league}: the source returned no usable splits while games are on the board. "
+                           f"This is reported as a failure so it cannot pass unnoticed.")
+
+
+def _games_upcoming(games: pd.DataFrame, days: int = 10) -> bool:
+    if games.empty or "kickoff_utc" not in games.columns:
+        return False
+    k = pd.to_datetime(games.kickoff_utc, utc=True, errors="coerce")
+    now = pd.Timestamp.now(tz="UTC")
+    return bool(((k > now) & (k < now + pd.Timedelta(days=days))).any())
 
 
 def explain(league: str, season: int, needle: str) -> None:
