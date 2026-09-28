@@ -616,21 +616,7 @@ def build_odds(S: Season, week: int, slate: dict) -> dict:
     _rank = {"SCHEDULED": 0, "LOCKED": 1, "FINAL": 2}
     games.sort(key=lambda e: (_rank.get(e["status"], 0), str(e["kickoff_utc"] or "9999")))
 
-    results = []
-    if not ev.empty:
-        rcols = ("game_id", "week", "market", "side", "line", "price", "tier", "score", "result",
-                 "profit_units", "actual_margin_home", "actual_total", "clv_points", "beat_close", "close_line")
-        e = ev.sort_values(["week", "game_id"], ascending=[False, True])
-        gm = S.games.set_index("game_id")
-        for _, r in e.iterrows():
-            row = {c: _j(r.get(c)) for c in rcols if c in ev.columns}
-            if r.game_id in gm.index:
-                row["home"] = S.team(gm.loc[r.game_id].home_team_id)["abbr"]
-                row["away"] = S.team(gm.loc[r.game_id].away_team_id)["abbr"]
-                row["kickoff_utc"] = str(gm.loc[r.game_id].kickoff_utc)
-            results.append(row)
-    return {"results": results,
-            "league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
+    return {            "league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
             "games": games, "coverage": {"with_splits": covered, "total": len(games)},
             "source_note": (f"{config.VSIN['attribution']}. Percentages are the share of tickets and of money on the home side "
                             "(over side for totals), captured on a schedule and stored with a timestamp."
@@ -748,21 +734,7 @@ def build_slate(S: Season, week: int) -> dict:
         else:
             entry["indicators"] = None
         games.append(entry)
-    results = []
-    if not ev.empty:
-        rcols = ("game_id", "week", "market", "side", "line", "price", "tier", "score", "result",
-                 "profit_units", "actual_margin_home", "actual_total", "clv_points", "beat_close", "close_line")
-        e = ev.sort_values(["week", "game_id"], ascending=[False, True])
-        gm = S.games.set_index("game_id")
-        for _, r in e.iterrows():
-            row = {c: _j(r.get(c)) for c in rcols if c in ev.columns}
-            if r.game_id in gm.index:
-                row["home"] = S.team(gm.loc[r.game_id].home_team_id)["abbr"]
-                row["away"] = S.team(gm.loc[r.game_id].away_team_id)["abbr"]
-                row["kickoff_utc"] = str(gm.loc[r.game_id].kickoff_utc)
-            results.append(row)
-    return {"results": results,
-            "league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(), "games": games}
+    return {            "league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(), "games": games}
 
 
 def comparison_rows(S: Season, week: int, gid: str, home: str, away: str, snap_metrics: list | None) -> tuple[list[dict], list[str]]:

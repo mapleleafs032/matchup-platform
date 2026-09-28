@@ -4,3 +4,4 @@ requests>=2.31
 duckdb>=1.0
 pytest>=8
 beautifulsoup4>=4.12
+pyflakes>=3.1

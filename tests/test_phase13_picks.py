@@ -808,3 +808,56 @@ def test_ingest_health_flags_silence_and_empty_pulls(tmp_path, monkeypatch):
     g2 = IH.gaps("splits", "CFB")
     assert g2["last_ok"] is not None and g2["empty_pulls"] == 1 and g2["hours_since"] < 1
     assert "last pull" in IH.summary_line("splits", "CFB")
+
+
+def test_no_undefined_names_anywhere():
+    """A name used but never defined only fails when that exact line runs, which for a site build can be
+    a week later. This has shipped three times (`ev`, a duplicated block, a bad anchor); pyflakes catches
+    the whole class at test time."""
+    import subprocess, sys, pathlib
+    root = pathlib.Path(__file__).resolve().parents[1]
+    r = subprocess.run([sys.executable, "-m", "pyflakes", "pipeline", "providers"],
+                       capture_output=True, text=True, cwd=root)
+    undefined = [l for l in (r.stdout + r.stderr).splitlines() if "undefined name" in l]
+    assert not undefined, "undefined names:\n" + "\n".join(undefined)
+
+
+def test_each_payload_builder_returns_its_own_keys():
+    """The `results` list belongs to the picks payload alone. A copy of it landed in build_odds and
+    build_slate, where the data it reads does not exist, and the site build died."""
+    import inspect
+    from pipeline.jobs import build_site as bs
+    picks_src = inspect.getsource(bs.build_picks)
+    assert '"results": results' in picks_src and "picks_evaluation" in picks_src
+    for fn in (bs.build_odds, bs.build_slate):
+        assert '"results": results' not in inspect.getsource(fn), f"{fn.__name__} should not build the picks results list"
+
+
+def test_every_site_payload_builder_runs(tmp_path, monkeypatch):
+    """Importing a module does not run its functions, so a bad name inside one only fails at build time.
+    This calls each payload builder on a minimal season, which is what would have caught the last three."""
+    import importlib
+    import config
+    from pipeline import storage
+    monkeypatch.setattr(config, "TABLES", tmp_path / "t")
+    monkeypatch.setattr(config, "SITE_JSON", tmp_path / "site")
+    from pipeline.jobs import build_site as bs
+    importlib.reload(bs)
+    monkeypatch.setattr(bs, "AN", tmp_path / "t" / "analytics")
+    monkeypatch.setattr(bs, "OUT", tmp_path / "site")
+    storage.write_parquet(tmp_path / "t" / "ref" / "teams.parquet", pd.DataFrame([
+        {"team_id": f"NFL_{a}", "league": "NFL", "abbr": a, "display_name": a, "school_or_city": a, "mascot": a,
+         "conference": "X", "division": "N", "primary_color": "#111", "logo_url": None} for a in ("AAA", "BBB")]))
+    storage.write_parquet(storage.games_path("NFL", 2026), pd.DataFrame([
+        {"game_id": "G1", "league": "NFL", "season": 2026, "week": 3, "season_type": "REG", "status": "SCHEDULED",
+         "kickoff_utc": pd.Timestamp("2026-09-27T17:00:00Z"), "kickoff_is_tba": False, "home_team_id": "NFL_AAA",
+         "away_team_id": "NFL_BBB", "neutral_site": False, "conference_game": True, "venue_id": None,
+         "venue_name": "V", "venue_city": "C", "venue_roof": "outdoors", "tv_network": None, "provider_game_ids": "{}"}]))
+    S = bs.Season("NFL", 2026)
+    slate = bs.build_slate(S, 3)
+    odds = bs.build_odds(S, 3, slate)
+    picks = bs.build_picks(S, 3)
+    matchup = bs.build_matchup(S, 3, slate["games"][0])
+    assert len(slate["games"]) == 1 and len(odds["games"]) == 1 and matchup["game"]["game_id"] == "G1"
+    assert "results" in picks and "results" not in slate and "results" not in odds
+    importlib.reload(bs)
