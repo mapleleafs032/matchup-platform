@@ -1,2 +1,3 @@
 job_run_id,job_name,league,started_at,finished_at,status,rows_written,api_calls,message,trigger
 SITE_20260928T172712_705116,SITE,NFL,2026-09-28T17:27:12+00:00,2026-09-28T17:27:12+00:00,SUCCESS,0,0,,manual
+SPLITS_20260929T182622_078763,SPLITS,BOTH,2026-09-29T18:26:22+00:00,2026-09-29T18:26:28+00:00,SUCCESS,1,0,,cron
