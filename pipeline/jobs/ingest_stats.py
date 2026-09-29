@@ -190,10 +190,16 @@ def run_cfb(season: int, weeks: list[int], season_type: str, verify: bool, job: 
         print(f"CFB {season} W{wk}: games={wk_games.shape[0]} plays={len(plays)} drives={len(drives)} box={len(box)} adv={len(adv)} players={len(qb)} calls_left={rm.remaining_monthly()}")
     # Season EPA per player: CFBD's play feed names no players, so this is the only per-player EPA we
     # can get for college. One call covers every player in the season.
+    ppa_path = STATS / "player_ppa" / "CFB" / f"{season}.parquet"
+    ppa_age_days = ((pd.Timestamp.now(tz="UTC") - pd.Timestamp(ppa_path.stat().st_mtime, unit="s", tz="UTC")).days
+                    if ppa_path.exists() else 999)
+    if ppa_age_days < 3:
+        print(f"CFB {season} player EPA: refreshed {ppa_age_days}d ago, skipping (a season total barely moves in a day)")
+        res = None
     try:
-        res = cfbd_stats.fetch_player_ppa(rm, season)
+        res = cfbd_stats.fetch_player_ppa(rm, season) if res is None and ppa_age_days >= 3 else res
         miss: set = set()
-        ppa = cfbd_stats.normalize_player_ppa(res.payload, season, resolver, res.retrieved_at, miss)
+        ppa = cfbd_stats.normalize_player_ppa(res.payload, season, resolver, res.retrieved_at, miss) if res is not None else pd.DataFrame()
         if not ppa.empty:
             storage.write_parquet(STATS / "player_ppa" / "CFB" / f"{season}.parquet", ppa)
             job.rows_written += len(ppa)

@@ -861,3 +861,69 @@ def test_every_site_payload_builder_runs(tmp_path, monkeypatch):
     assert len(slate["games"]) == 1 and len(odds["games"]) == 1 and matchup["game"]["game_id"] == "G1"
     assert "results" in picks and "results" not in slate and "results" not in odds
     importlib.reload(bs)
+
+
+def test_resetting_the_record_survives_the_next_grading_run(tmp_path, monkeypatch):
+    """Grading re-scans every stored pick, so clearing the table alone was undone on the next run and
+    the old longshot moneylines came straight back. A reset records when the record starts."""
+    import importlib
+    import config
+    from pipeline import storage
+    from pipeline.log import JobRun
+    import pipeline.log as L
+    monkeypatch.setattr(config, "TABLES", tmp_path / "t")
+    monkeypatch.setattr(L, "JOB_LOG", tmp_path / "t" / "ops" / "job_log.csv")
+    from pipeline.jobs import build_picks as bp
+    importlib.reload(bp)
+    monkeypatch.setattr(bp, "MODEL", tmp_path / "t" / "model")
+    monkeypatch.setattr(bp, "RECORD_START", tmp_path / "t" / "model" / "record_start.json")
+    (tmp_path / "t" / "results" / "NFL").mkdir(parents=True)
+    pd.DataFrame([{"game_id": g, "away_score": 10, "home_score": 20, "margin_home": 10, "total": 30}
+                  for g in ("OLD", "NEW")]).to_csv(tmp_path / "t" / "results" / "NFL" / "2026.csv", index=False)
+    d = tmp_path / "t" / "model" / "picks" / "NFL" / "2026"; d.mkdir(parents=True)
+    mk = lambda pid, gid, kick: {"pick_id": pid, "game_id": gid, "week": 1, "market": "MONEYLINE", "side": "H",
+        "side_is_home": True, "line": 450, "price": 450, "tier": "A", "score": 3.0, "edge_points": 3.0,
+        "signals": "", "kickoff_utc": kick, "built_at": kick}
+    pd.DataFrame([mk("old_longshot", "OLD", "2026-09-10T17:00:00Z"),
+                  mk("new_play", "NEW", "2026-10-05T17:00:00Z")]).to_parquet(d / "W01.parquet")
+    with JobRun("PICKS", "NFL") as job:
+        assert bp.grade("NFL", 2026, job) == 2
+    bp.set_record_start("NFL", pd.Timestamp("2026-09-29T00:00:00Z"))
+    (tmp_path / "t" / "model" / "picks_evaluation" / "NFL" / "2026.csv").unlink()
+    with JobRun("PICKS", "NFL") as job:
+        assert bp.grade("NFL", 2026, job) == 1
+    ev = storage.read_table(tmp_path / "t" / "model" / "picks_evaluation" / "NFL" / "2026.csv")
+    assert ev.pick_id.tolist() == ["new_play"]      # the pre-reset play never comes back
+    importlib.reload(bp)
+
+
+def test_a_rate_limit_is_retried_before_being_called_exhaustion():
+    """429 means 'too many requests', which is a short throttle as often as a spent quota. Treating
+    every one as exhaustion killed the college stats and schedules jobs outright."""
+    import providers.base as B
+
+    class R:
+        def __init__(self, code, hdr=None):
+            self.status_code, self.headers = code, hdr or {}
+            self.content, self.text = b'{"ok":1}', ""
+        def json(self):
+            return {"ok": 1}
+
+    class FakeSession:
+        def __init__(self, seq):
+            self.seq, self.n = seq, 0
+        def get(self, url, params=None, headers=None, timeout=None):
+            r = self.seq[min(self.n, len(self.seq) - 1)]; self.n += 1; return r
+
+    def run(seq):
+        rm = B.RequestManager("cfbd", "t", session=FakeSession(seq))
+        rm._check_budget = lambda cost: None
+        rm._record = lambda *a, **k: None
+        rm._archive = lambda *a, **k: None
+        return rm
+    rm = run([R(429, {"Retry-After": "0"}), R(429, {"Retry-After": "0"}), R(200)])
+    assert rm.get("https://x.test/a").payload == {"ok": 1}       # a passing throttle recovers
+    rm2 = run([R(429, {"Retry-After": "0"})])
+    with pytest.raises(B.BudgetExceeded) as e:
+        rm2.get("https://x.test/a")
+    assert "rate limit or an exhausted quota" in str(e.value)    # and no longer asserts which

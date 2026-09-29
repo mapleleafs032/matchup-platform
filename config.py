@@ -42,7 +42,7 @@ API_BUDGET = {
     "open_meteo": {"monthly": 200000, "daily_soft": 5000},
     "nflverse": {"monthly": 10**9, "daily_soft": 10**9},
     "espn":     {"monthly": 5000, "daily_soft": 200},
-    "vsin":     {"monthly": 3000, "daily_soft": 120},
+    "vsin":     {"monthly": 9000, "daily_soft": 260},   # 15-min cadence x 2 leagues is ~190/day
     "splits_feed": {"monthly": 10000, "daily_soft": 500},
 }
 BUDGET_DEGRADE_AT_PCT_REMAINING = 0.15   # below this, odds cadence halves automatically

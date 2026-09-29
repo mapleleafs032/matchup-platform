@@ -32,7 +32,11 @@ def reset(league: str, season: int, confirm: bool, job: JobRun) -> int:
     archive.parent.mkdir(parents=True, exist_ok=True)
     cur.to_csv(archive, index=False)
     path.unlink()
-    print(f"{league} {season}: archived {len(cur)} graded pick(s) to {archive.relative_to(config.ROOT)}; record reset to 0-0")
+    # Without this the next grading run rebuilds the record from the stored picks and the reset is undone.
+    from pipeline.jobs.build_picks import set_record_start
+    set_record_start(league, datetime.now(timezone.utc))
+    print(f"{league} {season}: archived {len(cur)} graded pick(s) to {archive.relative_to(config.ROOT)}; "
+          f"record reset to 0-0 and now starts from today. Games already played stay out of it.")
     return len(cur)
 
 

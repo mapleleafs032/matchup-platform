@@ -43,8 +43,8 @@ class ValidationLog:
     def _add(self, severity, rule, record_key, field, observed, expected):
         # An unmatched alias is one fact however many rows carry it. Logging every occurrence produced
         # tens of thousands of identical warnings and buried everything else.
-        if rule == "ALIAS_UNMATCHED":
-            key = str(observed)
+        if rule in ("ALIAS_UNMATCHED", "GAME_LOCKED"):
+            key = f"{rule}:{observed}"
             if key in self._seen_aliases:
                 self._alias_counts[key] = self._alias_counts.get(key, 1) + 1
                 return
@@ -63,8 +63,8 @@ class ValidationLog:
     def _apply_alias_counts(self):
         """Record how many rows each unmatched alias affected, so deduping loses no information."""
         for r in self.rows:
-            if r.get("rule") == "ALIAS_UNMATCHED":
-                n = self._alias_counts.get(str(r.get("observed")), 1)
+            if r.get("rule") in ("ALIAS_UNMATCHED", "GAME_LOCKED"):
+                n = self._alias_counts.get(f"{r.get('rule')}:{r.get('observed')}", 1)
                 if n > 1:
                     r["expected"] = f"{r.get('expected','')} (seen on {n} rows)".strip()
 

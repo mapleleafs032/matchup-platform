@@ -5,6 +5,7 @@ and grades finished picks into data/tables/model/picks_evaluation/{league}/{seas
 """
 from __future__ import annotations
 import argparse
+import json
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -72,6 +73,36 @@ def closing_line_value(k, close: dict | None) -> dict:
     return out
 
 
+RECORD_START = config.TABLES / "model" / "record_start.json"
+
+
+def record_start(league: str):
+    """
+    The date the current record began. Grading re-scans every stored pick, so clearing the evaluation
+    table alone did nothing: the next run rebuilt it from the old picks. A reset writes this instead,
+    and games that kicked off earlier stay out of the record for good while their picks remain on file.
+    """
+    if not RECORD_START.exists():
+        return None
+    try:
+        v = json.loads(RECORD_START.read_text()).get(league)
+        return pd.Timestamp(v) if v else None
+    except Exception:
+        return None
+
+
+def set_record_start(league: str, when) -> None:
+    RECORD_START.parent.mkdir(parents=True, exist_ok=True)
+    cur = {}
+    if RECORD_START.exists():
+        try:
+            cur = json.loads(RECORD_START.read_text())
+        except Exception:
+            cur = {}
+    cur[league] = pd.Timestamp(when).isoformat()
+    RECORD_START.write_text(json.dumps(cur, indent=1))
+
+
 def grade(league: str, season: int, job: JobRun) -> int:
     """
     Grade every stored pick whose game has finished, in any week, however long ago.
@@ -89,11 +120,21 @@ def grade(league: str, season: int, job: JobRun) -> int:
     graded = set(done.pick_id) if not done.empty else set()
     rows, scanned, waiting = [], [], 0
     close_cache: dict = {}
+    start = record_start(league)
+    if start is not None:
+        print(f"{league}: record runs from {start.date()}; picks on games before that stay out of it")
     pick_dir = MODEL / "picks" / league / str(season)
     for p in sorted(pick_dir.glob("W*.parquet")) if pick_dir.exists() else []:
         picks = pd.read_parquet(p)
         scanned.extend(picks.pick_id.tolist())
         for _, k in picks.iterrows():
+            if start is not None:
+                kick = k.get("kickoff_utc") if hasattr(k, "get") else None
+                try:
+                    if kick and pd.Timestamp(kick) < start:
+                        continue                      # played before the current record began
+                except (ValueError, TypeError):
+                    pass
             if k.pick_id in graded:
                 continue
             if k.game_id not in res.index:

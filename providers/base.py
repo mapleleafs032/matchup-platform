@@ -132,8 +132,27 @@ class RequestManager:
                 self._record(cost, failed=True, remaining=remaining)
                 raise ProviderError(f"{self.provider} auth error {resp.status_code}: check API key secret")
             if resp.status_code == 429:
+                # 429 means "too many requests", which is a short rate limit as often as an exhausted
+                # quota. Treating every one as exhaustion killed whole jobs over a throttle that would
+                # have cleared in seconds. Wait out the provider's own Retry-After and try again.
+                retry_after = resp.headers.get("Retry-After")
+                if attempt < max_retries - 1:
+                    try:
+                        wait = float(retry_after) if retry_after is not None else min(60.0, 5.0 * (2 ** attempt))
+                    except (TypeError, ValueError):
+                        wait = min(60.0, 5.0 * (2 ** attempt))
+                    wait = min(wait, 90.0)
+                    print(f"    {self.provider}: HTTP 429, waiting {wait:.0f}s and retrying "
+                          f"(attempt {attempt + 1} of {max_retries})")
+                    time.sleep(wait)
+                    last_err = BudgetExceeded(f"{self.provider} returned 429")
+                    continue
                 self._record(cost, failed=True, remaining=remaining)
-                raise BudgetExceeded(f"{self.provider} returned 429 (quota exhausted at provider)")
+                raise BudgetExceeded(
+                    f"{self.provider} still returning 429 after {max_retries} attempts"
+                    + (f" (it asked for {retry_after}s between calls)" if retry_after else "")
+                    + ". This is a rate limit or an exhausted quota; the monthly counter says "
+                    + f"{self._used('month')}/{config.API_BUDGET[self.provider]['monthly']} used this month.")
             if resp.status_code >= 500:
                 last_err = ProviderError(f"{self.provider} {resp.status_code}")
                 time.sleep(2 ** attempt)
