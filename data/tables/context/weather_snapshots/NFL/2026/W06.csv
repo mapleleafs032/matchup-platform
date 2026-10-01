@@ -1,0 +1,2 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
+2026_NFL_W06_SEA_DEN,2026-10-01T11:07:54.344629+00:00,2026-10-16T00:15:00+00:00,349.1,False,False,open_meteo,64.4,56.2,10.4,8.1,47.0,0.06,0.0,30.0,0.0
