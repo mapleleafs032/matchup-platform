@@ -163,6 +163,13 @@ ESPN_SOS_RESUME_INDEX = None        # set per-run by the cross-sort check below;
 ESPN_SOS_CANDIDATE_INDEX = 2
 ESPN_SOS_SORTED_REQUEST = True
 
+# Paste files are re-read on every run. Once their games have kicked off every row is rejected as
+# locked, so old files add nothing but noise -- they were still being reprocessed hourly weeks later.
+SPLITS_PASTE_MAX_AGE_DAYS = 4
+# The board carries every game on the slate. Parsing only a handful of team rows means the page changed
+# and the parser is reading almost none of it -- which looked like a successful run for four days.
+SPLITS_MIN_TEAM_ROWS = {"NFL": 16, "CFB": 40}
+
 MARKET_FROM_VSIN = True    # VSiN carries the DraftKings line with the splits: one source, one timestamp
 VSIN = {"enabled": True, "attribution": "Betting splits: DraftKings action via VSiN (data.vsin.com)"}
 SPLITS_PERIODS = ("FULL", "1H")

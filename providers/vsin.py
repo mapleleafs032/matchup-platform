@@ -84,6 +84,46 @@ def _num(s: str) -> float | None:
     return float(t) if _NUMBER.match(t.replace("-", "-", 1)) else None
 
 
+def describe_page(html: str) -> str:
+    """
+    What the fetched page actually contains, table by table.
+
+    Used when parsing returns far fewer rows than there are games: it shows whether the table is still
+    there, how many rows carry a team link, and what those links look like, which is enough to repair
+    the selector without guessing.
+    """
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return "beautifulsoup4 is not installed"
+    soup = BeautifulSoup(html, "html.parser")
+    out = [f"page length {len(html)} chars; {len(soup.find_all('table'))} table(s); "
+           f"{len(soup.find_all('tr'))} row(s) overall"]
+    hrefs = [a.get("href", "") for a in soup.find_all("a", href=True)]
+    matching = [h for h in hrefs if _TEAM_HREF.search(h)]
+    out.append(f"links: {len(hrefs)} total, {len(matching)} match the team-link pattern {_TEAM_HREF.pattern!r}")
+    out.append(f"  first links on the page: {hrefs[:6]}")
+    if matching:
+        out.append(f"  first matching links:    {matching[:6]}")
+    for i, tbl in enumerate(soup.find_all("table")[:4]):
+        trs = tbl.find_all("tr")
+        widths: dict = {}
+        linked = 0
+        for tr in trs:
+            n = len(tr.find_all(["td", "th"]))
+            widths[n] = widths.get(n, 0) + 1
+            if any(_TEAM_HREF.search(a.get("href", "")) for a in tr.find_all("a", href=True)):
+                linked += 1
+        out.append(f"  table {i}: {len(trs)} rows, {linked} with a team link, cell counts {dict(sorted(widths.items()))}")
+        for tr in trs[:3]:
+            cells = [_cell_text(c) for c in tr.find_all(["td", "th"])]
+            out.append(f"    sample row ({len(cells)} cells): {cells[:12]}")
+    if "<script" in html and len(soup.find_all("tr")) < 10:
+        out.append("  NOTE: very few rows and scripts present — the table may now be built in the browser, "
+                   "which this fetch cannot run.")
+    return "\n    ".join(out)
+
+
 def parse(html: str) -> tuple[list[TeamRow], list[dict]]:
     """Returns (team rows in page order, problems). Header mismatch aborts with a problem, not bad data."""
     try:

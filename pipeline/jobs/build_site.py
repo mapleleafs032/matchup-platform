@@ -959,12 +959,25 @@ def run(leagues: list[str], season: int, weeks: list[int] | None, job: JobRun) -
         S = Season(league, season)
         if S.games.empty:
             continue
-        sched = S.games[S.games.status == "SCHEDULED"]
-        cur = int(sched.week.min()) if not sched.empty else int(S.games.week.max())
+        # The current week is the earliest week still to be PLAYED, judged by the clock rather than by
+        # status. Taking the lowest week marked SCHEDULED meant one game that never received a result --
+        # a postponement, or a schedules job stopped by a rate limit -- pinned the whole site to that
+        # week indefinitely, so freshly collected splits were written to a week the site never built.
+        now = pd.Timestamp.now(tz="UTC")
+        kicks = pd.to_datetime(S.games.kickoff_utc, utc=True, errors="coerce")
+        future = S.games[kicks > now]
+        cur = int(future.week.min()) if not future.empty else int(S.games.week.max())
+        stale = S.games[(S.games.status == "SCHEDULED") & (kicks < now - pd.Timedelta(hours=12))]
+        if not stale.empty:
+            print(f"{league}: {len(stale)} game(s) still marked SCHEDULED more than 12h after kickoff "
+                  f"(weeks {sorted(set(stale.week.astype(int)))}) — results are not being ingested for them")
         wks = weeks or [w for w in (cur - 1, cur, cur + 1) if w >= 1 and w in set(S.games.week)]
+        print(f"{league}: current week {cur}; building weeks {wks}")
         manifest["leagues"].append(league); manifest["current_week"][league] = cur; manifest["weeks"][league] = wks; manifest["slates"][league] = {}
         for wk in wks:
             slate = build_slate(S, wk)
+            with_splits = sum(1 for g in slate["games"] if g.get("splits_available"))
+            print(f"  {league} W{wk}: {len(slate['games'])} games, {with_splits} with betting splits")
             (OUT / "slate" / league / str(season)).mkdir(parents=True, exist_ok=True)
             rel = f"json/slate/{league}/{season}/W{wk:02d}.json"
             (config.SITE_DIR / rel).write_text(dumps(slate))

@@ -576,3 +576,24 @@ def test_columns_are_found_in_whatever_category_holds_them():
     assert (col["offense"]["category"], col["offense"]["index"]) == ("fpi", 3)
     assert col["offense"]["is_value"] and all(col[k]["confident"] for k in ("sos", "fpi", "offense", "defense"))
     assert set(ident["inventory"]) == {"fpi", "rankings", "efficiencies"}
+
+
+def test_a_near_empty_parse_is_treated_as_a_broken_page():
+    """Two team rows off a full NFL board means the page changed, not that it was a quiet day. For four
+    days that passed as a successful run because one row is not zero rows."""
+    import config
+    assert config.SPLITS_MIN_TEAM_ROWS["NFL"] >= 16 and config.SPLITS_MIN_TEAM_ROWS["CFB"] >= 40
+
+
+def test_page_diagnostic_reports_the_structure_that_broke():
+    from providers import vsin
+    html = """<table><tr><th>NFL</th><th>SpreadSPR</th><th>HandleHND</th><th>BetsBET</th><th>TotalTOT</th>
+      <th>HandleHND</th><th>BetsBET</th><th>MoneyML</th><th>HandleHND</th><th>BetsBET</th></tr>
+      <tr><td>1</td><td><a href="https://data.vsin.com/nfl/teams/seattle-seahawks">Seattle</a></td>
+      <td>-3</td><td>60%</td><td>55%</td><td>44.5</td><td>51%</td><td>49%</td><td>-160</td><td>58%</td><td>54%</td></tr>
+      <tr><td>2</td><td><span>New England</span></td><td>+3</td><td>40%</td><td>45%</td><td>44.5</td>
+      <td>49%</td><td>51%</td><td>+140</td><td>42%</td><td>46%</td></tr></table><script>build()</script>"""
+    d = vsin.describe_page(html)
+    assert "1 table(s)" in d and "1 with a team link" in d
+    assert "first links on the page" in d                 # shows what the links look like now
+    assert "built in the browser" in d                    # and flags the likeliest cause

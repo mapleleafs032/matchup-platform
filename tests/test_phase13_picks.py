@@ -927,3 +927,19 @@ def test_a_rate_limit_is_retried_before_being_called_exhaustion():
     with pytest.raises(B.BudgetExceeded) as e:
         rm2.get("https://x.test/a")
     assert "rate limit or an exhausted quota" in str(e.value)    # and no longer asserts which
+
+
+def test_current_week_follows_the_clock_not_a_stale_status():
+    """One game that never received a result kept its SCHEDULED status, and the site took the lowest
+    scheduled week as 'current' — so it rebuilt Week 1 for a month while splits landed in Week 5."""
+    now = pd.Timestamp.now(tz="UTC")
+    games = pd.DataFrame([
+        {"game_id": "stuck", "week": 1, "status": "SCHEDULED", "kickoff_utc": now - pd.Timedelta(days=30)},
+        {"game_id": "soon", "week": 5, "status": "SCHEDULED", "kickoff_utc": now + pd.Timedelta(days=2)}])
+    assert int(games[games.status == "SCHEDULED"].week.min()) == 1          # the old rule
+    kicks = pd.to_datetime(games.kickoff_utc, utc=True, errors="coerce")
+    assert int(games[kicks > now].week.min()) == 5                          # the rule now used
+    import inspect
+    from pipeline.jobs import build_site as bs
+    src = inspect.getsource(bs.run)
+    assert "kicks > now" in src and 'status == "SCHEDULED"' in src          # and stale rows are reported

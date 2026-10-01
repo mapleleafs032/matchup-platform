@@ -63,11 +63,15 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
         print(f"  VSiN {league}: fetch failed ({str(e)[:80]})")
         return [], []
     rows, problems = vsin.parse(html)
-    if not rows:
-        for p in problems:
+    minimum = config.SPLITS_MIN_TEAM_ROWS.get(league, 10)
+    if len(rows) < minimum:
+        for p in problems[:5]:
             vlog.warn("SPLITS_UNREADABLE", "vsin", league, p.get("why", "")[:160], "parsed rows")
-        print(f"  VSiN {league}: no rows parsed — {problems[0].get('why') if problems else 'unknown'}")
-        return [], problems
+        vlog.warn("PARSE_TOO_FEW_ROWS", "vsin", league, f"{len(rows)} team rows", f"at least {minimum}")
+        print(f"  VSiN {league}: only {len(rows)} team rows parsed, expected at least {minimum}. "
+              f"The page has almost certainly changed. Structure follows:")
+        print("    " + vsin.describe_page(html))
+        return [], (problems or [{"why": f"only {len(rows)} team rows parsed"}])
     added, unmatched, conflicts = vsin.seed_aliases(rows, league, resolver, teams)
     for u in unmatched:
         vlog.warn("ALIAS_UNMATCHED", u, "vsin_slug", u, "add to team_aliases.csv (provider=vsin)")
@@ -99,7 +103,7 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
 
 
 def read_pastes(league: str, season: int, resolver: ids.AliasResolver, games: pd.DataFrame, vlog: ValidationLog) -> tuple[list[dict], list[dict]]:
-    recs, problems = [], []
+    recs, problems, skipped = [], [], []
     if not PASTE_DIR.exists():
         return recs, problems
     for path in sorted(PASTE_DIR.glob("*.txt")):
@@ -112,12 +116,20 @@ def read_pastes(league: str, season: int, resolver: ids.AliasResolver, games: pd
         m = _ISO.search(first)
         ts = (pd.Timestamp(m.group(0).replace(" ", "T"), tz="UTC") if m
               else pd.Timestamp(datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)))
+        age_days = (pd.Timestamp.now(tz="UTC") - ts).total_seconds() / 86400
+        if age_days > config.SPLITS_PASTE_MAX_AGE_DAYS:
+            skipped.append((path.name, round(age_days, 1)))
+            continue
         rows, probs = splits_manual.parse_paste(text, league, resolver)
         pairs, probs2 = splits_manual.pair_rows(rows, games, period, config.SPLITS_BOOK_DEFAULT, ts.isoformat(), "manual_paste")
         for p in probs + probs2:
             p["file"] = path.name
         problems += probs + probs2
         recs += pairs
+    if skipped:
+        print(f"    skipped {len(skipped)} paste file(s) older than {config.SPLITS_PASTE_MAX_AGE_DAYS} days "
+              f"(their games have kicked off): {', '.join(n for n, _ in skipped[:5])}"
+              + (" ..." if len(skipped) > 5 else ""))
         print(f"  {path.name}: {len(rows)} team rows -> {len(pairs)} games ({period}), {len(probs) + len(probs2)} unreadable lines")
     return recs, problems
 
@@ -286,18 +298,30 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
     covered = int(clean.game_id.nunique()) if not clean.empty else 0
     print(f"{league} {season}: {written} splits rows{' (dry run, nothing written)' if dry else ''}; {len(problems)} unreadable lines; "
           f"games covered: {covered}; periods: {sorted(clean.period.unique()) if not clean.empty else []}")
+    # A run can write plenty of rows and still be useless: rows for games that have already kicked off
+    # help nothing. What matters is splits for games still to come, so that is what is checked.
+    upcoming_rows = 0
+    if not clean.empty and not games.empty and "kickoff_utc" in games.columns:
+        future = set(games[pd.to_datetime(games.kickoff_utc, utc=True, errors="coerce")
+                           > pd.Timestamp.now(tz="UTC")].game_id)
+        upcoming_rows = int(clean[clean.game_id.isin(future)].game_id.nunique())
     if not dry:
+        print(f"    {upcoming_rows} upcoming game(s) got splits this run")
         ingest_health.record("splits", league, season, written, covered,
-                             note=f"{len(problems)} unreadable lines" if problems else "")
+                             note=f"{upcoming_rows} upcoming games covered")
         h = ingest_health.gaps("splits", league)
         if h["longest_gap_h"] and h["longest_gap_h"] > 12:
             print(f"    WARNING: longest gap with no successful pull in the last 7 days is {h['longest_gap_h']}h "
                   f"({h['empty_pulls']} of {h['attempts']} attempts returned nothing)")
-    # An empty pull while games are on the board is a failure, not a quiet success. It used to go green,
-    # so a blocked scrape or a changed page looked identical to a quiet week.
-    if written == 0 and not dry and _games_upcoming(games):
-        raise RuntimeError(f"{league}: the source returned no usable splits while games are on the board. "
-                           f"This is reported as a failure so it cannot pass unnoticed.")
+    # Two failures, both of which used to pass silently: nothing came back at all, or everything that
+    # came back was for games already played.
+    if not dry and _games_upcoming(games):
+        if written == 0:
+            raise RuntimeError(f"{league}: the source returned no usable splits while games are on the board.")
+        if upcoming_rows == 0:
+            raise RuntimeError(
+                f"{league}: {written} rows were written but none belong to a game that has not kicked off. "
+                f"Splits are being matched only to finished games, so nothing usable is being collected.")
 
 
 def _games_upcoming(games: pd.DataFrame, days: int = 10) -> bool:

@@ -272,3 +272,24 @@ def test_divergence_note_quotes_the_side_it_names():
     assert "66% of tickets are on DEN" in note        # not 34%, which is Kansas City's share
     assert "49% of the money" in note and "51% of the dollars are on KC" in note
     assert a["latest"]["spread"]["ticket_side"] == "DEN" and a["latest"]["spread"]["money_side"] == "KC"
+
+
+def test_stale_paste_files_are_not_reprocessed_forever(tmp_path, monkeypatch):
+    """Every .txt in the paste folder was re-read on every run. Weeks later those games have kicked off,
+    so every row was rejected as locked — the same two games warned hourly for days."""
+    import os, time
+    import config
+    from pipeline import ids
+    from pipeline.jobs import ingest_splits as isp
+    from pipeline.log import ValidationLog
+    monkeypatch.setattr(config, "SPLITS_PASTE_MAX_AGE_DAYS", 4)
+    monkeypatch.setattr(isp, "PASTE_DIR", tmp_path)
+    fresh, stale = tmp_path / "NFL_FULL_fresh.txt", tmp_path / "NFL_FULL_old.txt"
+    fresh.write_text("no parsable rows here\n")
+    stale.write_text("no parsable rows here\n")
+    old = time.time() - 30 * 86400
+    os.utime(stale, (old, old))
+    games = pd.DataFrame(columns=["game_id", "week", "home_team_id", "away_team_id", "kickoff_utc", "status"])
+    recs, probs = isp.read_pastes("NFL", 2026, ids.AliasResolver.load(), games, ValidationLog("t", "betting_splits"))
+    files = {p.get("file") for p in probs}
+    assert "NFL_FULL_old.txt" not in files        # the month-old file is skipped outright
