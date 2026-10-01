@@ -37757,3 +37757,5 @@ d72cfa7ca8ea445e,CONTEXT_20261001T110615_10f8a0,context,ALIAS_UNMATCHED,WARN,Wes
 5923f053d169441e,CONTEXT_20261001T110615_10f8a0,context,ALIAS_UNMATCHED,WARN,Wofford,team,Wofford,team_aliases row (non-FBS teams expected),2026-10-01T11:07:23+00:00
 3edd8f7dd62e47b1,CONTEXT_20261001T110615_10f8a0,context,ALIAS_UNMATCHED,WARN,Yale,team,Yale,team_aliases row (non-FBS teams expected),2026-10-01T11:07:23+00:00
 a804593622214b13,CONTEXT_20261001T110615_10f8a0,context,ALIAS_UNMATCHED,WARN,Youngstown State,team,Youngstown State,team_aliases row (non-FBS teams expected),2026-10-01T11:07:23+00:00
+fe30c5f24c1b4dbe,SPLITS_20261001T141837_217cee,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: 2026_NFL_W04_PIT_CLE: only 3 of 6 percentages usable | ,team + percentages,2026-10-01T14:18:38+00:00
+0fe0374ce41549c4,SPLITS_20261001T141837_217cee,betting_splits,SPLITS_UNREADABLE,WARN,,line,"None: these slugs resolve to a team but never matched a scheduled game, which is what a wrong mapping looks like: cleveland-browns -> NFL_CLE; pittsburgh-steelers -> NFL_PIT | ",team + percentages,2026-10-01T14:18:38+00:00
