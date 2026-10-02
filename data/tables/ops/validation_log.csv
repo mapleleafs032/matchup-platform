@@ -38190,3 +38190,7 @@ c3db8cdd5ed54d73,CONTEXT_20261002T110444_61cd19,context,ALIAS_UNMATCHED,WARN,Wil
 84b909b1e97240fa,CONTEXT_20261002T110444_61cd19,context,ALIAS_UNMATCHED,WARN,Wofford,team,Wofford,team_aliases row (non-FBS teams expected),2026-10-02T11:06:14+00:00
 7b0a85c4b9c7486b,CONTEXT_20261002T110444_61cd19,context,ALIAS_UNMATCHED,WARN,Yale,team,Yale,team_aliases row (non-FBS teams expected),2026-10-02T11:06:14+00:00
 53bc3b9fdcc845e0,CONTEXT_20261002T110444_61cd19,context,ALIAS_UNMATCHED,WARN,Youngstown State,team,Youngstown State,team_aliases row (non-FBS teams expected),2026-10-02T11:06:14+00:00
+d26fd61fd2124599,SPLITS_20261002T112215_49638c,betting_splits,PARSE_TOO_FEW_ROWS,WARN,vsin,NFL,2 team rows,at least 16,2026-10-02T11:22:17+00:00
+e87afb469be64fef,SPLITS_20261002T112215_49638c,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: only 2 team rows parsed | ,team + percentages,2026-10-02T11:22:17+00:00
+b80d4e4a18c04c1f,SPLITS_20261002T112215_49638c,betting_splits,PARSE_TOO_FEW_ROWS,WARN,vsin,CFB,2 team rows,at least 40,2026-10-02T11:22:22+00:00
+9f9a754060fd4160,SPLITS_20261002T112215_49638c,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: only 2 team rows parsed | ,team + percentages,2026-10-02T11:22:22+00:00
