@@ -344,6 +344,13 @@ def explain(league: str, season: int, needle: str) -> None:
     html, ts = vsin.fetch(rm, league)
     rows, problems = vsin.parse(html)
     print(f"VSiN {league}: {len(rows)} team rows parsed at {ts.isoformat()}")
+    if str(needle).strip().lower() == "page":
+        # `--explain page` dumps what the fetch actually returned, without needing a team name and
+        # without the job having to fail first.
+        print("    " + vsin.describe_page(html))
+        head = html[:600].replace("\n", " ")
+        print(f"    first 600 characters of the response: {head}")
+        return
     n = needle.lower()
     # raw cell text for the matching rows: shows whether a blank value is the source's or our parser's
     try:
