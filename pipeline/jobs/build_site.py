@@ -592,6 +592,21 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
                                             f"{int(QUICK_EDGE_PCT_GAP*100)} percentile points on that metric."}
 
 
+def _splits_freshness(S: Season, week: int) -> dict:
+    """
+    When splits for this week were last collected, against when this page was built.
+
+    The site is a static build: splits collected after a build do not appear until the next one. That
+    is invisible on the page, so a perfectly healthy collection can look like a total failure.
+    """
+    hist = splits_engine.load(S.league, S.season, week)
+    if hist.empty:
+        return {"splits_last_collected": None, "splits_rows": 0}
+    last = pd.to_datetime(hist.retrieved_at, utc=True, errors="coerce").max()
+    return {"splits_last_collected": None if pd.isna(last) else last.isoformat(),
+            "splits_rows": int(len(hist)), "splits_games": int(hist.game_id.nunique())}
+
+
 def build_odds(S: Season, week: int, slate: dict) -> dict:
     """Odds tab payload: one entry per game with the splits history for both periods, plus the line history."""
     sp = splits_engine.build_week(S.league, S.season, week, S.games[(S.games.week == week)], S.teams)
@@ -617,7 +632,8 @@ def build_odds(S: Season, week: int, slate: dict) -> dict:
     games.sort(key=lambda e: (_rank.get(e["status"], 0), str(e["kickoff_utc"] or "9999")))
 
     return {            "league": S.league, "season": S.season, "week": week, "generated_at": datetime.now(timezone.utc).isoformat(),
-            "games": games, "coverage": {"with_splits": covered, "total": len(games)},
+            "games": games, "coverage": {"with_splits": covered, "total": len(games),
+                                         **_splits_freshness(S, week)},
             "source_note": (f"{config.VSIN['attribution']}. Percentages are the share of tickets and of money on the home side "
                             "(over side for totals), captured on a schedule and stored with a timestamp."
                             if config.VSIN.get("enabled") else

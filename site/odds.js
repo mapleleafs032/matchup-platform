@@ -88,8 +88,17 @@ async function oddsMain() {
       && (!S.onlyWithSplits || (g.splits?.[S.period]?.available)));
     const winLabel = { all: "the full history", week: "this week", today: "today" }[S.window]
       || (/^\d+$/.test(S.window) ? `the last ${S.window} hours` : "the full history");
+    const cov = data.coverage || {};
+    let freshness = "";
+    if (!cov.splits_last_collected) {
+      freshness = " No splits have been collected for this week at all.";
+    } else {
+      const collected = new Date(cov.splits_last_collected), built = new Date(data.generated_at);
+      freshness = ` Splits last collected ${fmt.ago(cov.splits_last_collected)} (${cov.splits_games || 0} games, ${cov.splits_rows} snapshots).`;
+      if (collected > built) freshness += " They arrived AFTER this page was built — rebuild the site to see them.";
+    }
     document.getElementById("coverage").textContent =
-      `${data.coverage.with_splits} of ${data.coverage.total} games have splits this week. Charts show ${winLabel}. ${data.source_note}`;
+      `${cov.with_splits} of ${cov.total} games have splits this week.${freshness} Charts show ${winLabel}. ${data.source_note}`;
     shown.sort(App.byPlayFirst);
     root.replaceChildren();
     if (!shown.length) { root.append(el("div", { class: "empty" }, "No games match these filters.")); return; }

@@ -293,3 +293,27 @@ def test_stale_paste_files_are_not_reprocessed_forever(tmp_path, monkeypatch):
     recs, probs = isp.read_pastes("NFL", 2026, ids.AliasResolver.load(), games, ValidationLog("t", "betting_splits"))
     files = {p.get("file") for p in probs}
     assert "NFL_FULL_old.txt" not in files        # the month-old file is skipped outright
+
+
+def test_odds_page_reports_whether_splits_predate_the_build(tmp_path, monkeypatch):
+    """The site is a static build: splits collected after it do not appear until the next one. With no
+    sign of that on the page, healthy collection is indistinguishable from total failure."""
+    import importlib
+    import config
+    monkeypatch.setattr(config, "TABLES", tmp_path / "t")
+    from pipeline.jobs import build_site as bs
+    from pipeline import splits_engine as se
+    importlib.reload(bs)
+    monkeypatch.setattr(se, "SPLITS", tmp_path / "t" / "market" / "splits")
+
+    class S:
+        league, season = "NFL", 2026
+    assert bs._splits_freshness(S(), 5) == {"splits_last_collected": None, "splits_rows": 0}
+    d = tmp_path / "t" / "market" / "splits" / "NFL" / "2026"; d.mkdir(parents=True)
+    pd.DataFrame([{"split_id": f"s{i}", "game_id": f"G{i % 3}", "period": "FULL", "book": "draftkings",
+                   "retrieved_at": f"2026-10-05T1{i}:00:00Z", "spread_ticket_pct_home": 0.6,
+                   "spread_money_pct_home": 0.5, "line_spread_home": -3, "line_total": 44} for i in range(6)]
+                 ).to_csv(d / "W05.csv", index=False)
+    f = bs._splits_freshness(S(), 5)
+    assert f["splits_rows"] == 6 and f["splits_games"] == 3 and f["splits_last_collected"] is not None
+    importlib.reload(bs)
