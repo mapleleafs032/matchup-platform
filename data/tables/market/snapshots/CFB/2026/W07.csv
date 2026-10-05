@@ -1,0 +1,10 @@
+snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_home_price,spread_away_price,ml_home,ml_away,total,over_price,under_price,spread_ticket_pct_home,spread_money_pct_home,ml_ticket_pct_home,ml_money_pct_home,total_ticket_pct_over,total_money_pct_over,is_first_snapshot,provider_open_spread_home,provider_open_total,source,plan
+2026_CFB_W07_FSU_MIA_draftkings_20261005T212652Z,2026_CFB_W07_FSU_MIA,2026-10-05T21:26:52.386075+00:00,,draftkings,-16.5,,,-1200.0,750.0,53.5,,,,,,,,,True,-16.5,53.5,cfbd,free
+2026_CFB_W07_PSU_MICH_draftkings_20261005T212652Z,2026_CFB_W07_PSU_MICH,2026-10-05T21:26:52.386075+00:00,,draftkings,-6.5,,,-270.0,220.0,51.5,,,,,,,,,True,-6.5,51.5,cfbd,free
+2026_CFB_W07_UNC_DUKE_draftkings_20261005T212652Z,2026_CFB_W07_UNC_DUKE,2026-10-05T21:26:52.386075+00:00,,draftkings,-4.5,,,-225.0,185.0,54.5,,,,,,,,,True,-4.5,54.5,cfbd,free
+2026_CFB_W07_NEB_ORE_draftkings_20261005T212652Z,2026_CFB_W07_NEB_ORE,2026-10-05T21:26:52.386075+00:00,,draftkings,-21.5,,,-3600.0,1500.0,51.5,,,,,,,,,True,-21.5,51.5,cfbd,free
+2026_CFB_W07_ND_BYU_draftkings_20261005T212652Z,2026_CFB_W07_ND_BYU,2026-10-05T21:26:52.386075+00:00,,draftkings,10.0,,,340.0,-440.0,54.5,,,,,,,,,True,10.0,54.5,cfbd,free
+2026_CFB_W07_OSU_IU_draftkings_20261005T212652Z,2026_CFB_W07_OSU_IU,2026-10-05T21:26:52.386075+00:00,,draftkings,-1.5,,,-110.0,-110.0,48.5,,,,,,,,,True,1.5,48.5,cfbd,free
+2026_CFB_W07_KU_KSU_draftkings_20261005T212652Z,2026_CFB_W07_KU_KSU,2026-10-05T21:26:52.386075+00:00,,draftkings,-7.5,,,-290.0,235.0,54.5,,,,,,,,,True,-7.5,54.5,cfbd,free
+2026_CFB_W07_ALA_TENN_draftkings_20261005T212652Z,2026_CFB_W07_ALA_TENN,2026-10-05T21:26:52.386075+00:00,,draftkings,1.5,,,100.0,-120.0,56.5,,,,,,,,,True,1.5,56.5,cfbd,free
+2026_CFB_W07_AUB_UGA_draftkings_20261005T212652Z,2026_CFB_W07_AUB_UGA,2026-10-05T21:26:52.386075+00:00,,draftkings,-16.5,,,-1200.0,750.0,54.5,,,,,,,,,True,-16.5,54.5,cfbd,free
