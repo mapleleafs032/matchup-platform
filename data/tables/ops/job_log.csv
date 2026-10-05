@@ -1,3 +1,4 @@
 job_run_id,job_name,league,started_at,finished_at,status,rows_written,api_calls,message,trigger
 SITE_20260928T172712_705116,SITE,NFL,2026-09-28T17:27:12+00:00,2026-09-28T17:27:12+00:00,SUCCESS,0,0,,manual
 SPLITS_20261005T004134_b65ade,SPLITS,BOTH,2026-10-05T00:41:34+00:00,2026-10-05T00:41:43+00:00,SUCCESS,0,0, 1 unreadable lines; 1 unreadable lines;,manual
+SPLITS_20261005T004838_2abccf,SPLITS,BOTH,2026-10-05T00:48:38+00:00,2026-10-05T00:48:47+00:00,SUCCESS,0,0, 1 unreadable lines; 1 unreadable lines;,manual
