@@ -84,6 +84,47 @@ def _num(s: str) -> float | None:
     return float(t) if _NUMBER.match(t.replace("-", "-", 1)) else None
 
 
+# Other public pages VSiN links from the splits page. The splits page shows only the current day's
+# card, so the full week's games never appear on it; these are the candidates that might carry more.
+CANDIDATE_PAGES = {
+    "splits (current)":   ("https://data.vsin.com/betting-splits/", {"sport": "{sport}", "source": "DK"}),
+    "splits + view=week": ("https://data.vsin.com/betting-splits/", {"sport": "{sport}", "source": "DK", "view": "week"}),
+    "games":              ("https://data.vsin.com/{path}/games/", {}),
+    "linetracker":        ("https://data.vsin.com/{path}/vegas-odds-linetracker/", {}),
+}
+PATH = {"NFL": "nfl", "CFB": "college-football"}
+
+
+def survey_pages(rm, league: str) -> str:
+    """
+    Try the public pages VSiN links to and report how many games each one actually exposes.
+
+    The splits page returns only the day's card, so a Sunday slate is invisible midweek. This says
+    which page, if any, carries the full week -- measured rather than assumed.
+    """
+    out = []
+    for label, (url, params) in CANDIDATE_PAGES.items():
+        u = url.format(path=PATH[league])
+        ps = {k: v.format(sport=SPORT[league]) if isinstance(v, str) else v for k, v in params.items()}
+        try:
+            res = rm.get(u, params=ps, headers={"User-Agent": UA, "Accept": "text/html"},
+                         expect_json=False, timeout=45)
+        except Exception as e:
+            out.append(f"{label}: fetch failed — {str(e)[:90]}")
+            continue
+        rows, _ = parse(res.payload)
+        teams = len({r.slug for r in rows})
+        out.append(f"{label}: {u} -> {len(rows)} team rows ({teams} distinct teams)")
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(res.payload, "html.parser")
+        heads = [_cell_text(tr) for t in soup.find_all("table")[:2] for tr in t.find_all("tr")[:1]]
+        if heads:
+            out.append(f"    first table header: {heads[0][:120]}")
+        if "inline-lock" in res.payload or "template-shown" in res.payload:
+            out.append("    NOTE: this page carries content-gate markup (inline-lock / template-shown)")
+    return "\n    ".join(out)
+
+
 def describe_page(html: str) -> str:
     """
     What the fetched page actually contains, table by table.

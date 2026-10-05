@@ -344,6 +344,10 @@ def explain(league: str, season: int, needle: str) -> None:
     html, ts = vsin.fetch(rm, league)
     rows, problems = vsin.parse(html)
     print(f"VSiN {league}: {len(rows)} team rows parsed at {ts.isoformat()}")
+    if str(needle).strip().lower() == "pages":
+        print("    surveying the public pages VSiN links to:")
+        print("    " + vsin.survey_pages(rm, league))
+        return
     if str(needle).strip().lower() == "page":
         # `--explain page` dumps what the fetch actually returned, without needing a team name and
         # without the job having to fail first.
