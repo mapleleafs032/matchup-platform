@@ -1,0 +1,4 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
+2026_CFB_W08_MTSU_FIU,2026-10-06T02:42:43.264685+00:00,2026-10-20T23:00:00+00:00,356.3,False,False,open_meteo,82.2,80.6,18.9,25.7,6.0,0.54,0.0,60.0,3.0
+2026_CFB_W08_MOST_DEL,2026-10-06T02:42:45.341727+00:00,2026-10-20T23:00:00+00:00,356.3,False,False,open_meteo,58.9,55.8,3.6,5.1,300.0,0.07,0.0,57.0,0.0
+2026_CFB_W08_USA_MRSH,2026-10-06T02:42:45.342312+00:00,2026-10-20T23:30:00+00:00,356.8,False,False,open_meteo,60.5,57.9,3.2,4.3,219.0,0.18,0.0,56.0,0.0
