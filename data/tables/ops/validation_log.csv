@@ -38790,3 +38790,7 @@ a55dec2c4cb24737,SPLITS_20261006T004546_b82731,betting_splits,SPLITS_UNREADABLE,
 dc7b4c07dc094070,SPLITS_20261006T072932_c6ca16,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: only 2 team rows parsed | ,team + percentages,2026-10-06T07:29:33+00:00
 1c2d77580b5447dd,SPLITS_20261006T072932_c6ca16,betting_splits,PARSE_TOO_FEW_ROWS,WARN,vsin,CFB,2 team rows,at least 40,2026-10-06T07:29:36+00:00
 465885ab330c4654,SPLITS_20261006T072932_c6ca16,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: only 2 team rows parsed | ,team + percentages,2026-10-06T07:29:36+00:00
+d77c6e94b7034804,SPLITS_20261006T150313_bb87ce,betting_splits,PARSE_TOO_FEW_ROWS,WARN,vsin,NFL,2 team rows,at least 16,2026-10-06T15:03:16+00:00
+7a1178e4910140b4,SPLITS_20261006T150313_bb87ce,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: only 2 team rows parsed | ,team + percentages,2026-10-06T15:03:16+00:00
+47b9cf83a76c45ae,SPLITS_20261006T150313_bb87ce,betting_splits,PARSE_TOO_FEW_ROWS,WARN,vsin,CFB,2 team rows,at least 40,2026-10-06T15:03:20+00:00
+2db3d79d5ee84e6c,SPLITS_20261006T150313_bb87ce,betting_splits,SPLITS_UNREADABLE,WARN,,line,None: only 2 team rows parsed | ,team + percentages,2026-10-06T15:03:21+00:00
