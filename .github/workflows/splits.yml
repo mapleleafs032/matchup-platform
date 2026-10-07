@@ -1,28 +1,73 @@
-name: Betting splits (ingest)
+name: Betting splits
+
 on:
-  schedule:
-    - cron: "5 12 * * *"
-    - cron: "5 * * * *"
-    - cron: "0,15,30,45 13-23 * * 0,4,6"
-    - cron: "0,15,30,45 0-4 * * 1,5,0"
   workflow_dispatch:
     inputs:
-      league:  { description: "NFL, CFB, or BOTH", default: "BOTH", required: true }
-      dry_run: { description: "parse and report only (true/false)", default: "false", required: false }
-      explain: { description: "print what the source published for games matching this team (blank = normal run)", default: "", required: false }
-concurrency: { group: splits, cancel-in-progress: false }
-permissions: { contents: write }
+      league:
+        description: 'NFL, CFB or BOTH'
+        type: choice
+        options: [BOTH, NFL, CFB]
+        default: BOTH
+      explain:
+        description: 'Diagnostic only, writes nothing. auth | linetracker | page | pages | a team name'
+        type: string
+        required: false
+      dry_run:
+        description: 'Parse and report, write nothing'
+        type: boolean
+        default: false
+      trigger:
+        description: 'Label recorded in the job log'
+        type: string
+        default: manual
+  schedule:
+    # Safety net only. The Apps Script timer drives the real cadence (daily midweek, hourly the day
+    # before, every 15 minutes on game day). This hourly run means a silent timer costs one hour of
+    # snapshots instead of four days. Comment the two lines out if you would rather it not run.
+    - cron: '17 * * * *'
+
+permissions:
+  contents: write
+
+# Per-workflow group. A group shared with other data jobs silently superseded queued runs, because
+# GitHub keeps only ONE pending run per group.
+concurrency:
+  group: splits-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   splits:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12", cache: pip }
+        with:
+          python-version: '3.12'
+          cache: pip
+
       - run: pip install -r requirements.txt
-      - name: Ingest splits
-        run: python -m pipeline.jobs.ingest_splits --league ${{ github.event.inputs.league || 'BOTH' }} ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }} ${{ github.event.inputs.explain != '' && format('--explain {0}', github.event.inputs.explain) || '' }} --trigger ${{ github.event_name == 'schedule' && 'cron' || 'manual' }}
-      - uses: ./.github/actions/commit
-        if: ${{ github.event.inputs.dry_run != 'true' && github.event.inputs.explain == '' }}
-        with: { message: "data: splits ${{ github.run_id }}" }
+
+      - name: Betting splits
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          # ---- THE ADDITION: the VSiN subscription session ----
+          # VSIN_COOKIE is the Cookie request header from a signed-in browser tab (preferred).
+          # VSIN_EMAIL / VSIN_PASSWORD are the alternative: log in each run. If the cookie is set it
+          # wins and the password is never sent. An unset secret arrives as an empty string, so
+          # leaving all three here costs nothing when you only use one of them.
+          VSIN_COOKIE: ${{ secrets.VSIN_COOKIE }}
+          VSIN_EMAIL: ${{ secrets.VSIN_EMAIL }}
+          VSIN_PASSWORD: ${{ secrets.VSIN_PASSWORD }}
+          # -----------------------------------------------------
+        run: |
+          python -m pipeline.jobs.ingest_splits \
+            --league "${{ inputs.league || 'BOTH' }}" \
+            ${{ (inputs.dry_run == true || inputs.dry_run == 'true') && '--dry-run' || '' }} \
+            ${{ inputs.explain != '' && format('--explain {0}', inputs.explain) || '' }} \
+            --trigger "${{ inputs.trigger || 'schedule' }}"
+
+      # A diagnostic run reads and prints; it must never commit.
+      - name: Commit
+        if: ${{ inputs.explain == '' || inputs.explain == null }}
+        uses: ./.github/actions/commit
