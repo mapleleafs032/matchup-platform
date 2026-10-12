@@ -286,6 +286,10 @@ _SIGNED = re.compile(r"([-+]\d{1,2}(?:\.\d+)?)(?![\d])")
 _TOTAL_IN_CELL = re.compile(r"(?:^|[^\d.])(\d{2,3}(?:\.\d+)?)(?![\d])")
 
 
+def _cell_text_str(s) -> str:
+    return re.sub(r"\s+", " ", str(s)).strip()
+
+
 def _defrac(s: str) -> str:
     out = str(s)
     for ch, rep in _HALF.items():
@@ -310,10 +314,12 @@ def _books_from_header(cells: list[str]) -> dict[int, str]:
 
 def describe_linetracker(html: str) -> str:
     """
-    Raw structure of the linetracker page: which books the header names, and what the cells hold.
+    Raw structure of the linetracker, printed in FULL -- no cell truncation.
 
-    This is the input to writing the value parser. It prints the cell text verbatim so the spread /
-    total / price format is read off a real signed-in page rather than assumed.
+    An earlier version printed only the first twelve cells of each row, which hid the fact that a data
+    row carries all eight books in one 25-cell row. Truncating a diagnostic is how a layout gets
+    guessed, so this prints every cell and then prints the layout the parser derived from the page's
+    own header, which is the thing to check.
     """
     try:
         from bs4 import BeautifulSoup
@@ -322,64 +328,171 @@ def describe_linetracker(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     out = [f"page length {len(html)} chars; {len(soup.find_all('table'))} table(s); "
            f"{len(soup.find_all('tr'))} row(s) overall",
-           f"date headers on the page: {date_headers(html) or 'none found'}",
-           f"gate markup: {'PRESENT (still paywalled)' if any(m in html for m in ('inline-lock', 'template-shown')) else 'absent'}"]
-    for ti, tbl in enumerate(soup.find_all("table")[:4]):
+           f"date headers on the page: {date_headers(html) or 'none found'}"]
+    for ti, tbl in enumerate(soup.find_all("table")[:2]):
         trs = tbl.find_all("tr")
-        linked = sum(1 for tr in trs if any(_TEAM_HREF.search(a.get("href", "")) for a in tr.find_all("a", href=True)))
-        out.append(f"  table {ti}: {len(trs)} rows, {linked} with a team link")
-        for ri, tr in enumerate(trs[:6]):
+        out.append(f"  table {ti}: {len(trs)} rows")
+        for ri, tr in enumerate(trs[:8]):
             cells = [_cell_text(c) for c in tr.find_all(["td", "th"])]
-            books = _books_from_header(cells)
-            tag = f" <- books {books}" if books else ""
-            out.append(f"    row {ri} ({len(cells)} cells): {cells[:12]}{tag}")
-        # a team row, dumped in full, is what the value parser is written against
-        for tr in trs:
-            if any(_TEAM_HREF.search(a.get("href", "")) for a in tr.find_all("a", href=True)):
-                cells = [_cell_text(c) for c in tr.find_all(["td", "th"])]
-                out.append(f"    FIRST TEAM ROW ({len(cells)} cells): {cells}")
-                break
+            out.append(f"    row {ri} ({len(cells)} cells): {cells}")
+        cols, probs = _linetracker_layout(trs)
+        out.append(f"    DERIVED LAYOUT: {len(cols)} market columns")
+        out.append(f"      {[f'{i+1}:{b}/{m}' for i, (b, m) in enumerate(cols)]}")
+        for p in probs:
+            out.append(f"      layout problem: {p.get('why')}")
+    rows, probs = parse_linetracker(html)
+    out.append(f"  parse: {len(rows)} priced rows, {len(probs)} problems")
+    for r in rows[:6]:
+        out.append(f"    {r}")
+    for p in probs[:6]:
+        out.append(f"    problem: {p.get('kind', 'other')}: {p.get('why', '')[:160]}")
     return "\n    ".join(out)
 
 
-def _price_cell(text: str) -> dict:
-    """
-    One book's cell for one team, read conservatively.
+# ---- cell parsers, one per market -------------------------------------------------------------
+# Market-aware on purpose. A single guess-the-market parser read "53" as a spread as readily as a
+# total; now the header says which column is which, so each cell is parsed as the one thing it is.
+# Samples observed on a signed-in page, 2026-10-12:
+#   SPR  '+2 -110'   '+3.5 -115'   '-3.5 -120'
+#   ML   '+120'      '+155'        '-180'
+#   TOT  '53'        '54.5 o -110'
+_AMERICAN = re.compile(r"([-+]\d{2,4})\s*$")
+_LEAD_NUM = re.compile(r"^\s*([-+]?\d{1,3}(?:\.\d+)?)")
+_PK = ("pk", "pick", "ev", "even")
 
-    Returns whichever of spread / total / price it can read with confidence, plus the raw text so a
-    cell it could not read is visible rather than silently becoming a null. A number it is unsure
-    about is left out: a blank costs a chart point, a wrong line poisons every signal downstream.
-    """
+
+def _spr_cell(text: str) -> dict:
+    """'+3.5 -115' -> {'spread': 3.5, 'spread_price': -115}. The number first, the price last."""
     t = _defrac(_cell_text_str(text))
-    out: dict = {"raw": t}
     if not t or t.lower() in _BLANK:
+        return {}
+    out: dict = {}
+    m = _AMERICAN.search(t)
+    head = t
+    if m:
+        out["spread_price"] = int(m.group(1))
+        head = t[:m.start()].strip()
+    if head.lower() in _PK:
+        out["spread"] = 0.0
         return out
-    prices = _PRICE.findall(t)
-    if prices:
-        out["price"] = int(prices[0])
-    body = _PRICE.sub(" ", t)
-    sp = _SIGNED.findall(body)
-    if sp:
-        out["spread"] = float(sp[0])
-    else:
-        tot = _TOTAL_IN_CELL.findall(body)
-        if tot:
-            v = float(tot[0])
-            if 20.0 <= v <= 110.0:
-                out["total"] = v
+    n = _LEAD_NUM.match(head)
+    if n:
+        v = float(n.group(1))
+        if -60.0 <= v <= 60.0:
+            out["spread"] = v
+    return out if "spread" in out else {}
+
+
+def _ml_cell(text: str) -> dict:
+    """'+155' -> {'ml_price': 155}. A moneyline cell is a price and nothing else."""
+    t = _defrac(_cell_text_str(text))
+    if not t or t.lower() in _BLANK:
+        return {}
+    m = _AMERICAN.search(t)
+    if not m:
+        return {}
+    v = int(m.group(1))
+    # a real moneyline is never inside -100..100; that range is a spread's vig, not a price
+    return {"ml_price": v} if abs(v) >= 100 else {}
+
+
+def _tot_cell(text: str) -> dict:
+    """'54.5 o -110' -> {'total': 54.5, 'over_price': -110}; '53' -> {'total': 53.0}."""
+    t = _defrac(_cell_text_str(text))
+    if not t or t.lower() in _BLANK:
+        return {}
+    out: dict = {}
+    m = _AMERICAN.search(t)
+    head = t
+    if m:
+        head = t[:m.start()].strip()
+    n = _LEAD_NUM.match(head)
+    if not n:
+        return {}
+    v = float(n.group(1))
+    if not (20.0 <= v <= 120.0):
+        return {}
+    out["total"] = v
+    if m:
+        side = head.rstrip().lower()[-1:]
+        key = "under_price" if side == "u" else "over_price"
+        out[key] = int(m.group(1))
     return out
 
 
-def _cell_text_str(s) -> str:
-    return re.sub(r"\s+", " ", str(s)).strip()
+_CELL_PARSER = {"spread": _spr_cell, "moneyline": _ml_cell, "total": _tot_cell}
+_MARKET_LABEL = {"spr": "spread", "sprd": "spread", "spread": "spread",
+                 "ml": "moneyline", "money": "moneyline",
+                 "tot": "total", "total": "total", "ou": "total", "o/u": "total"}
+
+
+def _linetracker_layout(trs) -> tuple[list[tuple[str, str]], list[dict]]:
+    """
+    Read the column layout off the page's own two-tier header instead of assuming it.
+
+    Observed shape, signed in: the books are split across SEVERAL header rows (4 + 4 for eight books),
+    each followed by a market sub-header of SPR / ML / TOT per book. A data row then carries every
+    book flat: one label cell plus (books x markets) columns, in header order -- 25 cells for eight
+    books. Deriving the order from the header means a book being added, removed or reordered changes
+    the mapping automatically instead of silently shifting every price by one column.
+
+    Returns (columns, problems) where columns[i] is the (book, market) of data cell i+1.
+    """
+    cols: list[tuple[str, str]] = []
+    problems: list[dict] = []
+    rows = [[_cell_text(c) for c in tr.find_all(["td", "th"])] for tr in trs]
+    i = 0
+    while i < len(rows) - 1:
+        books = _books_from_header(rows[i])
+        if len(books) < 2:
+            i += 1
+            continue
+        names = [books[k] for k in sorted(books)]
+        labels = [_MARKET_LABEL.get(re.sub(r"[^a-z/]", "", c.lower())) for c in rows[i + 1][1:]]
+        labels = [x for x in labels if x]
+        if not labels:
+            problems.append({"why": f"book header {names} was not followed by a market sub-header"})
+            i += 1
+            continue
+        if len(labels) % len(names):
+            problems.append({"why": f"{len(labels)} market labels do not divide evenly among "
+                                    f"{len(names)} books {names}"})
+            i += 2
+            continue
+        per = len(labels) // len(names)
+        for bi, book in enumerate(names):
+            for market in labels[bi * per:(bi + 1) * per]:
+                cols.append((book, market))
+        i += 2
+    if not cols:
+        problems.append({"why": "no book header followed by a market sub-header was found; the "
+                                "linetracker layout has changed"})
+    return cols, problems
+
+
+_OPEN_ROW = re.compile(r"\bOPEN\b", re.I)
 
 
 def parse_linetracker(html: str) -> tuple[list[dict], list[dict]]:
     """
-    (rows, problems) from the linetracker. Each row: {slug, name, book, spread?, total?, price?, raw}.
+    Multi-book prices from the linetracker, one record per (row, book).
 
-    Refuses rather than guesses: if no header row names two or more known books, nothing is returned
-    and the reason says so. Enable only after `--explain linetracker` has confirmed the shape.
+    Each record: {label, is_open, book, market, row_index} plus the values for that market --
+    spread + spread_price, ml_price, or total + over_price/under_price. The keys are namespaced by
+    market on purpose: a shared "price" key let a moneyline overwrite the spread's vig for the same
+    book, which silently destroyed half the pricing.
+    Team identity is NOT resolved here -- the linetracker shows plain display names with no team
+    link, so naming is the caller's job against the teams table, and a name this function cannot see
+    is reported rather than invented.
+
+    Strictness: a data row must carry exactly 1 + len(columns) cells. If it does not, the row is
+    skipped with a reason. A shifted row would misprice every book on it, so refusing is the only
+    safe behaviour, and the failure mode is missing data rather than wrong data.
+
+    NOTE on the paywall markers: `inline-lock` / `template-shown` are present on this page even when
+    signed in with a full week of prices visible, so they do NOT indicate a gate. An earlier version
+    treated them as one and threw away a perfectly good page. Whether content arrived is judged by
+    the content.
     """
     try:
         from bs4 import BeautifulSoup
@@ -387,45 +500,74 @@ def parse_linetracker(html: str) -> tuple[list[dict], list[dict]]:
         return [], [{"why": "beautifulsoup4 is not installed"}]
     soup = BeautifulSoup(html, "html.parser")
     problems: list[dict] = []
-    if any(m in html for m in ("inline-lock", "template-shown")):
-        problems.append({"kind": "gated", "why": "the linetracker still carries paywall markup; the "
-                                                 "session is not signed in to the subscription"})
     out: list[dict] = []
     for tbl in soup.find_all("table"):
         trs = tbl.find_all("tr")
-        books: dict[int, str] = {}
-        for tr in trs[:4]:
-            cand = _books_from_header([_cell_text(c) for c in tr.find_all(["td", "th"])])
-            if len(cand) >= 2:
-                books = cand
-                break
-        if not books:
+        cols, lprobs = _linetracker_layout(trs)
+        problems += lprobs
+        if not cols:
             continue
-        for tr in trs:
-            link = None
-            for a in tr.find_all("a", href=True):
-                m = _TEAM_HREF.search(a["href"])
-                if m:
-                    link = (m.group(1).lower(), _cell_text(a))
-                    break
-            if link is None:
-                continue
+        want = len(cols) + 1
+        for ri, tr in enumerate(trs):
             cells = [_cell_text(c) for c in tr.find_all(["td", "th"])]
-            for idx, book in books.items():
-                if idx >= len(cells):
-                    problems.append({"kind": "short_row", "slug": link[0],
-                                     "why": f"{link[0]}: row has {len(cells)} cells, book {book} sits at {idx}"})
+            if len(cells) != want:
+                continue                      # header, sub-header and spacer rows all land here
+            label = cells[0]
+            is_open = bool(_OPEN_ROW.search(label))
+            got = 0
+            for ci, (book, market) in enumerate(cols, start=1):
+                v = _CELL_PARSER[market](cells[ci])
+                if not v:
                     continue
-                v = _price_cell(cells[idx])
-                if not any(k in v for k in ("spread", "total", "price")):
-                    problems.append({"kind": "unreadable_cell", "slug": link[0],
-                                     "why": f"{link[0]} / {book}: cell {v['raw']!r} held no readable number"})
-                    continue
-                out.append({"slug": link[0], "name": link[1], "book": book, **v})
-    if not out and not problems:
-        problems.append({"why": "no header row on the linetracker named two or more known sportsbooks; "
-                                "run --explain linetracker and pin the shape before enabling it"})
+                got += 1
+                out.append({"label": label, "is_open": is_open, "book": book,
+                            "market": market, "row_index": ri, **v})
+            if got == 0:
+                problems.append({"kind": "row_unreadable", "why": f"row {ri} ({label!r}): none of "
+                                                                  f"{len(cols)} cells held a number"})
+    if not out:
+        problems.append({"kind": "no_prices",
+                         "why": "no priced row matched the derived column count; run "
+                                "--explain linetracker and compare DERIVED LAYOUT with the raw rows"})
     return out, problems
+
+
+def linetracker_games(rows: list[dict]) -> list[dict]:
+    """
+    Group the flat records into games: an OPEN row starts a game, the two rows after it are the
+    teams, away first (the same order the splits page uses).
+
+    Returns [{"open": {book: {...}}, "teams": [(label, {book: {...}}), ...]}]. A group that does not
+    have exactly two team rows is returned anyway, with "n_teams" set, so the caller can refuse it
+    rather than this function silently dropping half a game.
+    """
+    by_row: dict[int, dict] = {}
+    order: list[int] = []
+    for r in rows:
+        if r["row_index"] not in by_row:
+            by_row[r["row_index"]] = {"label": r["label"], "is_open": r["is_open"], "books": {}}
+            order.append(r["row_index"])
+        slot = by_row[r["row_index"]]["books"].setdefault(r["book"], {})
+        for k, v in r.items():
+            if k not in ("label", "is_open", "book", "row_index", "market"):
+                slot[k] = v
+    games: list[dict] = []
+    cur: dict | None = None
+    for ri in sorted(order):
+        row = by_row[ri]
+        if row["is_open"]:
+            if cur is not None:
+                games.append(cur)
+            cur = {"open": row["books"], "open_label": row["label"], "teams": []}
+            continue
+        if cur is None:
+            continue                          # prices before any game header; nothing to attach to
+        cur["teams"].append((row["label"], row["books"]))
+    if cur is not None:
+        games.append(cur)
+    for g in games:
+        g["n_teams"] = len(g["teams"])
+    return games
 
 
 def parse(html: str) -> tuple[list[TeamRow], list[dict]]:

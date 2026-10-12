@@ -430,12 +430,23 @@ def explain(league: str, season: int, needle: str) -> None:
         res = rm.get(url, headers={"User-Agent": vsin.UA, "Accept": "text/html"}, expect_json=False, timeout=45)
         print(f"    {url}")
         print("    " + vsin.describe_linetracker(res.payload))
-        rows, probs = vsin.parse_linetracker(res.payload)
-        print(f"    tolerant parse: {len(rows)} book-rows, {len(probs)} problems")
-        for r in rows[:12]:
-            print(f"      {r}")
-        for p in probs[:8]:
-            print(f"      problem: {p.get('kind', 'other')}: {p.get('why', '')[:140]}")
+        # Grouped into games, which is the form the snapshots writer will consume. Printing the
+        # OPEN row next to the two team rows is the one-look check that the derived column order
+        # really matches the page: the books must disagree the way books do, not in lockstep.
+        rows, _ = vsin.parse_linetracker(res.payload)
+        games = vsin.linetracker_games(rows)
+        print(f"    grouped into {len(games)} game(s)")
+        for g in games[:3]:
+            print(f"      {g['open_label'][:46]!r}  teams={g['n_teams']}")
+            for book in sorted(g["open"]):
+                print(f"        OPEN  {book:11s} {g['open'][book]}")
+            for label, books in g["teams"]:
+                for book in sorted(books):
+                    print(f"        {label[:22]:22s} {book:11s} {books[book]}")
+        bad = [g for g in games if g["n_teams"] != 2]
+        if bad:
+            print(f"    {len(bad)} game(s) did not have exactly two team rows -- "
+                  f"e.g. {bad[0]['open_label'][:50]!r} with {bad[0]['n_teams']}")
         return
 
     try:

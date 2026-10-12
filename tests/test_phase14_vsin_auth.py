@@ -165,38 +165,133 @@ def test_books_are_read_out_of_the_observed_linetracker_header():
     assert vsin._books_from_header(header) == {1: "circa", 2: "boomers", 3: "betmgm", 4: "caesars"}
 
 
+# The real signed-in page, 2026-10-12: eight books split across TWO header rows, each followed by a
+# SPR/ML/TOT sub-header, and a single flat 25-cell data row carrying all eight.
+LT_BOOKS_A = ["Circa", "Boomers", "BetMGM", "Caesars"]
+LT_BOOKS_B = ["Westgate", "Stations", "South Point", "Wynn"]
+LT_SUB = [""] + ["SPR", "ML", "TOT"] * 4
+
+
+def _tr(cells):
+    return "<tr>" + "".join(f"<td>{c}</td>" for c in cells) + "</tr>"
+
+
+def _lt_row(label, per_book):
+    return _tr([label] + [c for book in per_book for c in book])
+
+
+def _lt_html():
+    open_cells = [["+2 -110", "+120", "53"]] * 4 + [["+2.5 -105", "+125", "53.5"]] * 4
+    buf = [["+3.5 -115", "+155", "54.5 o -110"]] * 8
+    nyj = [["-3.5 -105", "-180", "54.5 u -110"]] * 8
+    return ("<table>"
+            + _tr(["Mon, Oct 12"] + LT_BOOKS_A) + _tr(LT_SUB)
+            + _tr(["Mon, Oct 12"] + LT_BOOKS_B) + _tr(LT_SUB)
+            + _lt_row("▶ 8:15 PM ET ET OPEN", open_cells)
+            + _lt_row("Buffalo Bills", buf)
+            + _lt_row("New York Jets", nyj)
+            + "</table>")
+
+
+def test_layout_is_derived_from_the_pages_own_two_tier_header():
+    """
+    Eight books over two header rows, 24 market columns, in page order. Deriving this rather than
+    hardcoding it means a book added or reordered re-maps automatically instead of shifting every
+    price one column sideways.
+    """
+    from bs4 import BeautifulSoup
+    trs = BeautifulSoup(_lt_html(), "html.parser").find_all("tr")
+    cols, probs = vsin._linetracker_layout(trs)
+    assert probs == []
+    assert len(cols) == 24
+    assert cols[:3] == [("circa", "spread"), ("circa", "moneyline"), ("circa", "total")]
+    assert cols[12:15] == [("westgate", "spread"), ("westgate", "moneyline"), ("westgate", "total")]
+    assert cols[-1] == ("wynn", "total")
+
+
 @pytest.mark.parametrize("cell,expect", [
-    ("-3½-110", {"spread": -3.5, "price": -110}),
-    ("+7 -105", {"spread": 7.0, "price": -105}),
-    ("47½-105", {"total": 47.5, "price": -105}),
-    ("+165", {"price": 165}),
+    ("+3.5 -115", {"spread": 3.5, "spread_price": -115}),
+    ("-3.5 -120", {"spread": -3.5, "spread_price": -120}),
+    ("+2 -110", {"spread": 2.0, "spread_price": -110}),
+    ("PK -105", {"spread": 0.0, "spread_price": -105}),
     ("", {}),
     ("--", {}),
 ])
-def test_price_cell_reads_what_it_can_and_nothing_it_cannot(cell, expect):
-    got = vsin._price_cell(cell)
-    got.pop("raw")
-    assert got == expect
+def test_spread_cells(cell, expect):
+    assert vsin._spr_cell(cell) == expect
 
 
-def test_linetracker_refuses_a_gated_page_rather_than_returning_partial_prices():
-    rows, probs = vsin.parse_linetracker(GATED_PAGE)
-    assert rows == []
-    assert any(p.get("kind") == "gated" for p in probs)
+@pytest.mark.parametrize("cell,expect", [
+    ("+155", {"ml_price": 155}), ("-180", {"ml_price": -180}), ("+120", {"ml_price": 120}),
+    ("", {}), ("--", {}),
+    ("-110", {"ml_price": -110}),
+])
+def test_moneyline_cells(cell, expect):
+    assert vsin._ml_cell(cell) == expect
 
 
-def test_linetracker_parses_a_multi_book_table():
-    html = """<html><table>
-      <tr><th>Mon, Oct 5</th><th>Circa</th><th>BetMGM</th><th>Caesars</th></tr>
-      <tr><td><a href="/nfl/teams/atlanta-falcons">Atlanta Falcons</a></td><td>+1&#189;-110</td><td>+2-115</td><td>+1&#189;-105</td></tr>
-      <tr><td><a href="/nfl/teams/new-orleans-saints">New Orleans Saints</a></td><td>-1&#189;-110</td><td>-2-105</td><td>-1&#189;-115</td></tr>
-    </table></html>"""
-    rows, probs = vsin.parse_linetracker(html)
-    assert {r["book"] for r in rows} == {"circa", "betmgm", "caesars"}
-    atl = {r["book"]: r for r in rows if r["slug"] == "atlanta-falcons"}
-    assert atl["circa"]["spread"] == 1.5 and atl["circa"]["price"] == -110
-    assert atl["betmgm"]["spread"] == 2.0          # the best number of the three, which is the point
+@pytest.mark.parametrize("cell,expect", [
+    ("54.5 o -110", {"total": 54.5, "over_price": -110}),
+    ("54.5 u -110", {"total": 54.5, "under_price": -110}),
+    ("53", {"total": 53.0}),
+    ("53.5", {"total": 53.5}),
+    ("", {}),
+])
+def test_total_cells(cell, expect):
+    assert vsin._tot_cell(cell) == expect
+
+
+def test_a_moneyline_cannot_overwrite_the_spreads_vig():
+    """
+    Both columns ended in an American price and both wrote "price", so the moneyline clobbered the
+    spread's vig for every book -- half the pricing gone, silently. The keys are market-namespaced.
+    """
+    rows, probs = vsin.parse_linetracker(_lt_html())
     assert probs == []
+    game = vsin.linetracker_games(rows)[0]
+    buf = dict(game["teams"])["Buffalo Bills"]["circa"]
+    assert buf == {"spread": 3.5, "spread_price": -115, "ml_price": 155,
+                   "total": 54.5, "over_price": -110}
+
+
+def test_the_open_row_is_kept_apart_from_the_team_rows():
+    """'OPEN' is the game's opening number across every book -- the other end of closing-line value."""
+    rows, _ = vsin.parse_linetracker(_lt_html())
+    games = vsin.linetracker_games(rows)
+    assert len(games) == 1
+    g = games[0]
+    assert g["n_teams"] == 2
+    assert "OPEN" in g["open_label"]
+    assert g["open"]["circa"]["spread"] == 2.0          # opened +2
+    assert dict(g["teams"])["Buffalo Bills"]["circa"]["spread"] == 3.5   # now +3.5
+    assert g["open"]["wynn"]["ml_price"] == 125
+    assert set(g["open"]) == {"circa", "boomers", "betmgm", "caesars",
+                              "westgate", "stations", "southpoint", "wynn"}
+
+
+def test_paywall_markup_alone_does_not_condemn_a_good_page():
+    """
+    inline-lock / template-shown sit on this page even when signed in with a full week of prices
+    showing. Treating them as a gate threw away a working page, so the content is judged instead.
+    """
+    html = '<div id="inline-lock" class="template-shown"></div>' + _lt_html()
+    rows, probs = vsin.parse_linetracker(html)
+    assert len(rows) == 72                          # 3 rows x 8 books x 3 markets
+    assert not any(p.get("kind") == "gated" for p in probs)
+
+
+def test_a_row_whose_cell_count_disagrees_with_the_header_is_skipped():
+    """A shifted row misprices every book on it, so it is refused, not best-guessed."""
+    short = _lt_row("Short Row", [["+3 -110", "+140", "50"]] * 7)      # 22 cells, not 25
+    html = _lt_html().replace("</table>", short + "</table>")
+    rows, _ = vsin.parse_linetracker(html)
+    assert not any(r["label"] == "Short Row" for r in rows)
+
+
+def test_no_prices_at_all_is_reported_not_returned_empty_and_silent():
+    rows, probs = vsin.parse_linetracker("<table><tr><td>nothing here</td></tr></table>")
+    assert rows == []
+    assert any(p.get("kind") == "no_prices" or "layout has changed" in p.get("why", "") for p in probs)
 
 
 # ---- the behaviour that matters ---------------------------------------------------------------

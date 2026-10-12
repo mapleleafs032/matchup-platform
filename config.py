@@ -198,14 +198,19 @@ VSIN_SCOPE_PAGES = [
     ("splits week",  "https://data.vsin.com/betting-splits/", {"sport": "{sport}", "source": "DK", "view": "week"}),
     ("splits day",   "https://data.vsin.com/betting-splits/", {"sport": "{sport}", "source": "DK"}),
 ]
-# The linetracker header observed on 2026-10-05 listed Circa, Boomers, BetMGM and Caesars. Signed in,
-# that page is the first multi-book pricing this platform has had: real line shopping and a closing
-# number that is not one book's opinion. The parser is written from a signed-in sample, not guessed --
-# run `--explain linetracker` once the secret is set and the shape gets pinned here.
+# Signed in, the linetracker is the first multi-book pricing this platform has had: real line
+# shopping, cross-book disagreement as a signal, and a closing number that is not one book's opinion.
+# Shape confirmed from a signed-in page on 2026-10-12: EIGHT books across two header rows
+# (Circa, Boomers, BetMGM, Caesars / Westgate, Stations, South Point, Wynn), each followed by a
+# SPR / ML / TOT sub-header, and one flat 25-cell data row per side carrying all eight. The column
+# map is derived from those headers at parse time rather than listed here, so a book added, dropped
+# or reordered re-maps itself instead of shifting every price one column sideways.
+# "enabled" gates WRITING these prices into market_snapshots, which is not built yet; parsing and
+# `--explain linetracker` work regardless.
 VSIN_LINETRACKER = {
-    "enabled": False,          # flipped on once the signed-in page shape is confirmed
+    "enabled": False,
     "url": "https://data.vsin.com/{path}/vegas-odds-linetracker/",
-    "books": ["circa", "boomers", "betmgm", "caesars", "draftkings"],
+    "books": ["circa", "boomers", "betmgm", "caesars", "westgate", "stations", "southpoint", "wynn"],
 }
 # Splits sources VSiN publishes. DK is the default; Circa is sharp money and worth its own series.
 VSIN_SPLIT_SOURCES = ["DK"]    # add "CIRCA" once the signed-in page confirms the parameter name
