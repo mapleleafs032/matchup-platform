@@ -1151,3 +1151,4 @@ snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_hom
 2026_CFB_W06_HAW_ASU_bovada_20261011T014626Z,2026_CFB_W06_HAW_ASU,2026-10-11T01:46:26.211190+00:00,,bovada,-20.5,,,-1900,900,51.0,,,,,,,,,False,-22.0,51.0,cfbd,free
 2026_CFB_W06_KU_UTAH_bovada_20261011T014626Z,2026_CFB_W06_KU_UTAH,2026-10-11T01:46:26.211190+00:00,,bovada,-16.0,,,-750,500,49.5,,,,,,,,,False,-15.5,52.0,cfbd,free
 2026_CFB_W06_KU_UTAH_draftkings_20261011T014626Z,2026_CFB_W06_KU_UTAH,2026-10-11T01:46:26.211190+00:00,,draftkings,-15.5,,,-700,500,49.5,,,,,,,,,False,,51.5,cfbd,free
+2026_CFB_W06_UL_LT_draftkings_20261012T144400Z,2026_CFB_W06_UL_LT,2026-10-12T14:44:00.016276+00:00,,draftkings,-14.5,,,-675.0,490.0,,,,1.0,1.0,1.0,1.0,,,False,,,vsin_dk,free
