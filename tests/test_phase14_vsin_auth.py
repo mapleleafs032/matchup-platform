@@ -599,3 +599,32 @@ def test_an_unpriced_row_found_nowhere_else_is_flagged_differently():
     _, probs = vsin.parse_linetracker(html)
     fresh = next(p for p in probs if p["kind"] == "unpriced_row")
     assert "Miami Dolphins" in fresh["why"]
+
+
+def test_the_same_team_on_two_games_is_reported():
+    """
+    27 games came back for an NFL window holding about 17, so either the slate is double-counted --
+    which would write two snapshots per game and double every market signal -- or the OPEN-row
+    grouping is splitting one game in two. A team cannot play twice in a week, so a repeated label
+    is the cheap, decisive test, and it has to run before anything is written.
+    """
+    dup_game = (
+        "<tr>" + "".join("<td>%s</td>" % c for c in
+                         ["▶ 4:25 PM ET ET OPEN"] + ["+1 -110", "+105", "44"] * 8) + "</tr>"
+        + "<tr>" + "".join("<td>%s</td>" % c for c in
+                           ["Buffalo Bills"] + ["+1.5 -110", "+110", "44.5 o -110"] * 8) + "</tr>"
+        + "<tr>" + "".join("<td>%s</td>" % c for c in
+                           ["Miami Dolphins"] + ["-1.5 -110", "-130", "44.5 u -110"] * 8) + "</tr>")
+    html = _real_lt().replace("</table>", dup_game + "</table>")
+    rows, _ = vsin.parse_linetracker(html)
+    games = vsin.linetracker_games(rows)
+    probs = vsin.linetracker_check(games)
+    dup = [p for p in probs if p["kind"] == "duplicate_side"]
+    assert dup, probs
+    assert "Buffalo Bills" in dup[0]["why"]
+
+
+def test_a_clean_page_reports_no_duplicate_sides():
+    rows, _ = vsin.parse_linetracker(_real_lt())
+    probs = vsin.linetracker_check(vsin.linetracker_games(rows))
+    assert not [p for p in probs if p["kind"] == "duplicate_side"]

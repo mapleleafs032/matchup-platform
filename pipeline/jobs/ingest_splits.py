@@ -435,7 +435,13 @@ def explain(league: str, season: int, needle: str) -> None:
         # really matches the page: the books must disagree the way books do, not in lockstep.
         rows, _ = vsin.parse_linetracker(res.payload)
         games = vsin.linetracker_games(rows)
-        print(f"    grouped into {len(games)} game(s)")
+        sides = [lbl for g in games for lbl, _ in g["teams"]]
+        print(f"    grouped into {len(games)} game(s); {len(sides)} team rows, "
+              f"{len(set(sides))} DISTINCT teams")
+        if len(sides) != len(set(sides)):
+            from collections import Counter
+            dupes = [f"{k} x{v}" for k, v in Counter(sides).items() if v > 1]
+            print(f"    {len(dupes)} team(s) appear on more than one game: {', '.join(dupes[:10])}")
         for g in games[:3]:
             print(f"      {g['open_label'][:46]!r}  teams={g['n_teams']}")
             for book in sorted(g["open"]):

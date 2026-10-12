@@ -892,9 +892,22 @@ def linetracker_check(games: list[dict]) -> list[dict]:
     being true if a column shifts by one. Relying on reading a diagnostic to notice that is how the
     layout got mis-derived twice, so the check runs on every parse instead.
 
+    Also checks that no team appears on more than one game. The page groups by an OPEN row, and a
+    team listed twice means either the slate is being double-counted (which would write two
+    snapshots per game and double every market signal) or the OPEN-row grouping is splitting one
+    game in two. Either way it must be known BEFORE anything is written.
+
     Returns problems; an empty list means every game was internally consistent.
     """
     problems: list[dict] = []
+    seen_side: dict[str, int] = {}
+    for gi, g in enumerate(games):
+        for label, _ in g.get("teams", []):
+            if label in seen_side:
+                problems.append({"kind": "duplicate_side", "game": gi, "book": "",
+                                 "why": f"{label!r} appears on game {seen_side[label]} and game {gi}"})
+            else:
+                seen_side[label] = gi
     for gi, g in enumerate(games):
         if g.get("n_teams") != 2:
             problems.append({"kind": "not_two_teams", "game": gi,
