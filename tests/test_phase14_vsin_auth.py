@@ -436,3 +436,117 @@ def test_the_odds_page_can_report_an_anonymous_collector(tmp_path, monkeypatch):
     f = bs._splits_freshness(S(), 5)
     assert f["splits_session"] == "anonymous/anonymous"
     importlib.reload(bs)
+
+# ---- the real signed-in linetracker -----------------------------------------------------------
+# tests/fixtures/vsin_linetracker_nfl.html holds rows copied VERBATIM from the signed-in page on
+# 2026-10-12, including Westgate's unpriced "- -" cells and the date block repeating for Oct 15.
+LT_FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "vsin_linetracker_nfl.html"
+
+
+def _real_lt():
+    return LT_FIXTURE.read_text()
+
+
+def test_the_repeating_date_block_does_not_inflate_the_column_map():
+    """
+    The header block repeats for every date on the page. Accumulating all of them derived 168
+    columns for a 25-cell row, so NOTHING parsed -- a wrong layout that failed closed. Collection
+    stops at the end of the first block.
+    """
+    from bs4 import BeautifulSoup
+    trs = BeautifulSoup(_real_lt(), "html.parser").find_all("tr")
+    cols, probs = vsin._linetracker_layout(trs)
+    assert probs == []
+    assert len(cols) == 24, f"expected 24 columns for 8 books x 3 markets, got {len(cols)}"
+    assert [b for b, _ in cols[::3]] == ["circa", "boomers", "betmgm", "caesars",
+                                         "westgate", "stations", "southpoint", "wynn"]
+
+
+def test_the_real_page_parses_into_two_consistent_games():
+    rows, probs = vsin.parse_linetracker(_real_lt())
+    assert probs == []
+    games = vsin.linetracker_games(rows)
+    assert len(games) == 2
+    assert [g["n_teams"] for g in games] == [2, 2]
+    # the structural guard: opposite spreads and equal totals at every book
+    assert vsin.linetracker_check(games) == []
+
+
+def test_books_really_disagree_which_is_how_a_shifted_column_shows_up():
+    """
+    If every book returned identical numbers the column order would be suspect. On the real page
+    Buffalo's total is 54.5 at Circa, 55 at BetMGM and 55.5 at Wynn.
+    """
+    rows, _ = vsin.parse_linetracker(_real_lt())
+    buf = dict(vsin.linetracker_games(rows)[0]["teams"])["Buffalo Bills"]
+    assert buf["circa"]["total"] == 54.5
+    assert buf["betmgm"]["total"] == 55.0 and buf["betmgm"]["over_price"] == -105
+    assert buf["wynn"]["total"] == 55.5
+    assert len({b["total"] for b in buf.values() if b.get("total")}) > 1
+
+
+def test_an_unpriced_book_stays_missing_rather_than_becoming_a_number():
+    """Westgate posts '- -' / '-' / '-' on both games. A blank must never become 0."""
+    rows, _ = vsin.parse_linetracker(_real_lt())
+    for g in vsin.linetracker_games(rows):
+        assert "westgate" not in g["open"]
+        for _, books in g["teams"]:
+            assert "westgate" not in books
+
+
+def test_the_open_row_differs_from_the_current_number():
+    """Opening and current are the two ends of closing-line value; they must not be the same cell."""
+    rows, _ = vsin.parse_linetracker(_real_lt())
+    g = vsin.linetracker_games(rows)[0]
+    assert g["open"]["circa"]["spread"] == 2.0                           # opened +2
+    assert dict(g["teams"])["Buffalo Bills"]["circa"]["spread"] == 3.5    # now +3.5
+    assert g["open"]["circa"]["total"] == 53.0                           # opened 53
+    assert dict(g["teams"])["Buffalo Bills"]["circa"]["total"] == 54.5
+
+
+def test_line_shopping_finds_the_best_number_on_each_side():
+    """
+    Bengals are +2.5 at seven books and +3 at Wynn -- a half point across the key number 3. That
+    difference is the entire point of having eight books.
+    """
+    rows, _ = vsin.parse_linetracker(_real_lt())
+    best = {b["label"]: b for b in vsin.linetracker_best(vsin.linetracker_games(rows))}
+    cin = best["Cincinnati Bengals"]
+    assert cin["spread"] == 3.0 and cin["spread_book"] == "wynn"
+    assert cin["ml_price"] == 130 and cin["ml_book"] == "wynn"
+    # the favourite's best number is the FEWEST points laid, at the best price
+    pit = best["Pittsburgh Steelers"]
+    assert pit["spread"] == -2.5 and pit["spread_price"] == -105
+    assert all(b["books_quoting"] == 7 for b in best.values())           # 8 books, Westgate unpriced
+
+
+def test_a_row_with_a_missing_cell_is_refused_by_the_count_guard():
+    """Drop one cell and the row no longer matches the 25-column header, so it is skipped."""
+    html = _real_lt()
+    assert "<td>+3.5 -115</td><td>+155</td>" in html          # the real cell layout, no whitespace
+    html = html.replace("<td>+3.5 -115</td><td>+155</td>", "<td>+155</td>", 1)
+    rows, _ = vsin.parse_linetracker(html)
+    assert not any(r["label"] == "Buffalo Bills" for r in rows)
+    games = vsin.linetracker_games(rows)
+    assert games[0]["n_teams"] == 1
+    assert any(p["kind"] == "not_two_teams" for p in vsin.linetracker_check(games))
+
+
+def test_a_reordered_column_is_caught_even_though_the_count_still_fits():
+    """
+    The count guard cannot see a swap -- 25 cells are still 25 cells. Only the structural check
+    catches it: Buffalo's Circa spread flipped to -3.5 stops being the opposite of the Rams' -3.5.
+    """
+    html = _real_lt().replace("<td>Buffalo Bills</td><td>+3.5 -115</td>",
+                              "<td>Buffalo Bills</td><td>-3.5 -115</td>", 1)
+    rows, _ = vsin.parse_linetracker(html)
+    probs = vsin.linetracker_check(vsin.linetracker_games(rows))
+    assert any(p["kind"] == "spreads_not_opposite" and p["book"] == "circa" for p in probs), probs
+
+
+def test_a_mismatched_total_between_the_two_sides_is_caught():
+    html = _real_lt().replace("<td>Buffalo Bills</td><td>+3.5 -115</td><td>+155</td><td>54.5 o -110</td>",
+                              "<td>Buffalo Bills</td><td>+3.5 -115</td><td>+155</td><td>49.5 o -110</td>", 1)
+    rows, _ = vsin.parse_linetracker(html)
+    probs = vsin.linetracker_check(vsin.linetracker_games(rows))
+    assert any(p["kind"] == "totals_differ" and p["book"] == "circa" for p in probs), probs

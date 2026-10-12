@@ -430,24 +430,32 @@ def _linetracker_layout(trs) -> tuple[list[tuple[str, str]], list[dict]]:
     """
     Read the column layout off the page's own two-tier header instead of assuming it.
 
-    Observed shape, signed in: the books are split across SEVERAL header rows (4 + 4 for eight books),
-    each followed by a market sub-header of SPR / ML / TOT per book. A data row then carries every
-    book flat: one label cell plus (books x markets) columns, in header order -- 25 cells for eight
-    books. Deriving the order from the header means a book being added, removed or reordered changes
-    the mapping automatically instead of silently shifting every price by one column.
+    Shape confirmed on a signed-in page, 2026-10-12: the eight books are split across TWO header rows
+    (Circa/Boomers/BetMGM/Caesars, then Westgate/Stations/South Point/Wynn), each followed by a
+    SPR / ML / TOT sub-header, and a data row carries every book flat -- one label cell plus 24
+    columns, 25 in all.
+
+    The layout BLOCK REPEATS for every date on the page. An earlier version accumulated columns from
+    all of them and derived 168 columns for a 25-cell row, so nothing parsed at all. Collection
+    therefore stops at the end of the first block, detected by a book appearing a second time.
 
     Returns (columns, problems) where columns[i] is the (book, market) of data cell i+1.
     """
     cols: list[tuple[str, str]] = []
     problems: list[dict] = []
     rows = [[_cell_text(c) for c in tr.find_all(["td", "th"])] for tr in trs]
+    seen_books: set[str] = set()
     i = 0
     while i < len(rows) - 1:
         books = _books_from_header(rows[i])
         if len(books) < 2:
+            if cols:
+                break                     # the first block has ended; the rest of the page repeats it
             i += 1
             continue
         names = [books[k] for k in sorted(books)]
+        if seen_books & set(names):
+            break                         # a book listed twice means the next date block has started
         labels = [_MARKET_LABEL.get(re.sub(r"[^a-z/]", "", c.lower())) for c in rows[i + 1][1:]]
         labels = [x for x in labels if x]
         if not labels:
@@ -463,6 +471,7 @@ def _linetracker_layout(trs) -> tuple[list[tuple[str, str]], list[dict]]:
         for bi, book in enumerate(names):
             for market in labels[bi * per:(bi + 1) * per]:
                 cols.append((book, market))
+        seen_books.update(names)
         i += 2
     if not cols:
         problems.append({"why": "no book header followed by a market sub-header was found; the "
@@ -828,3 +837,66 @@ def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: 
                              "why": "these slugs resolve to a team but never matched a scheduled game, which is what a wrong "
                                     "mapping looks like: " + "; ".join(mapped[:12])})
     return out, problems
+
+
+def linetracker_check(games: list[dict]) -> list[dict]:
+    """
+    Structural cross-checks on each grouped game, per book.
+
+    The two sides of a game must carry OPPOSITE spreads and the SAME total at any one book. That is
+    true of the real page (Buffalo +3.5 / Rams -3.5, both 54.5 at Circa) and it is exactly what stops
+    being true if a column shifts by one. Relying on reading a diagnostic to notice that is how the
+    layout got mis-derived twice, so the check runs on every parse instead.
+
+    Returns problems; an empty list means every game was internally consistent.
+    """
+    problems: list[dict] = []
+    for gi, g in enumerate(games):
+        if g.get("n_teams") != 2:
+            problems.append({"kind": "not_two_teams", "game": gi,
+                             "why": f"{g.get('open_label', '?')[:40]!r} grouped {g.get('n_teams')} "
+                                    f"team rows, expected 2"})
+            continue
+        (la, ba), (lb, bb) = g["teams"]
+        for book in sorted(set(ba) | set(bb)):
+            a, b = ba.get(book) or {}, bb.get(book) or {}
+            sa, sb = a.get("spread"), b.get("spread")
+            if sa is not None and sb is not None and abs(sa + sb) > 0.01:
+                problems.append({"kind": "spreads_not_opposite", "game": gi, "book": book,
+                                 "why": f"{book}: {la} {sa:+g} / {lb} {sb:+g} are not opposites"})
+            ta, tb = a.get("total"), b.get("total")
+            if ta is not None and tb is not None and abs(ta - tb) > 0.01:
+                problems.append({"kind": "totals_differ", "game": gi, "book": book,
+                                 "why": f"{book}: {la} total {ta} / {lb} total {tb} differ"})
+    return problems
+
+
+def linetracker_best(games: list[dict]) -> list[dict]:
+    """
+    The best number available on each side of each game, across every book -- line shopping.
+
+    For a side, "best" is the largest spread (most points taken / fewest laid) and, at equal spreads,
+    the better price. Totals are left per-book because better depends on which way you are betting.
+    """
+    out = []
+    for g in games:
+        for label, books in g.get("teams", []):
+            best_book, best = None, None
+            for book, v in books.items():
+                if v.get("spread") is None:
+                    continue
+                key = (v["spread"], v.get("spread_price") or -10000)
+                if best is None or key > best:
+                    best, best_book = key, book
+            if best_book is None:
+                continue
+            ml_book, ml = None, None
+            for book, v in books.items():
+                if v.get("ml_price") is None:
+                    continue
+                if ml is None or v["ml_price"] > ml:
+                    ml, ml_book = v["ml_price"], book
+            out.append({"label": label, "spread": best[0], "spread_price": books[best_book].get("spread_price"),
+                        "spread_book": best_book, "ml_price": ml, "ml_book": ml_book,
+                        "books_quoting": len([1 for v in books.values() if v.get("spread") is not None])})
+    return out

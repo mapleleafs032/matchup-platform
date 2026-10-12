@@ -443,10 +443,23 @@ def explain(league: str, season: int, needle: str) -> None:
             for label, books in g["teams"]:
                 for book in sorted(books):
                     print(f"        {label[:22]:22s} {book:11s} {books[book]}")
-        bad = [g for g in games if g["n_teams"] != 2]
-        if bad:
-            print(f"    {len(bad)} game(s) did not have exactly two team rows -- "
-                  f"e.g. {bad[0]['open_label'][:50]!r} with {bad[0]['n_teams']}")
+        # Structural cross-checks: opposite spreads and equal totals at every book. These are what
+        # catch a column shift automatically, rather than needing someone to spot it in a dump.
+        probs = vsin.linetracker_check(games)
+        if probs:
+            print(f"    {len(probs)} CONSISTENCY PROBLEM(S) -- the column map may be wrong:")
+            for p in probs[:10]:
+                print(f"      {p['kind']}: {p['why']}")
+        else:
+            print("    consistency: every game has two sides with opposite spreads and equal "
+                  "totals at every book")
+        best = vsin.linetracker_best(games)
+        if best:
+            print("    best number available on each side (line shopping):")
+            for b in best[:12]:
+                print(f"      {b['label'][:24]:24s} {b['spread']:+g} @ {b['spread_price']} "
+                      f"({b['spread_book']})  ML {b['ml_price']} ({b['ml_book']})  "
+                      f"{b['books_quoting']} books quoting")
         return
 
     try:
