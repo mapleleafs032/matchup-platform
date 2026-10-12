@@ -464,7 +464,8 @@ def test_the_repeating_date_block_does_not_inflate_the_column_map():
 
 def test_the_real_page_parses_into_two_consistent_games():
     rows, probs = vsin.parse_linetracker(_real_lt())
-    assert probs == []
+    # the only note allowed is the blank duplicate row, which loses nothing
+    assert {p.get("kind") for p in probs} <= {"unpriced_duplicate"}, probs
     games = vsin.linetracker_games(rows)
     assert len(games) == 2
     assert [g["n_teams"] for g in games] == [2, 2]
@@ -550,3 +551,51 @@ def test_a_mismatched_total_between_the_two_sides_is_caught():
     rows, _ = vsin.parse_linetracker(html)
     probs = vsin.linetracker_check(vsin.linetracker_games(rows))
     assert any(p["kind"] == "totals_differ" and p["book"] == "circa" for p in probs), probs
+
+
+def test_a_price_carrying_a_movement_arrow_is_not_dropped():
+    """
+    VSiN marks a number that just moved with an arrow glyph, e.g. '+145 ▼'. The price regex is
+    end-anchored, so the arrow blocked it -- and an arrowed price is the MOST informative one on the
+    page, because it is the one the market just moved. The glyph is stripped, the direction kept.
+    """
+    rows, _ = vsin.parse_linetracker(_real_lt())
+    g = vsin.linetracker_games(rows)[0]
+    buf = dict(g["teams"])["Buffalo Bills"]["betmgm"]
+    assert buf["ml_price"] == 145 and buf["ml_moved"] == "down"
+    rams = dict(g["teams"])["Los Angeles Rams"]["betmgm"]
+    assert rams["ml_price"] == -175 and rams["ml_moved"] == "up"
+
+
+@pytest.mark.parametrize("cell,fn,expect", [
+    ("+145 ▼", "_ml_cell", {"ml_price": 145, "ml_moved": "down"}),
+    ("-175 ▲", "_ml_cell", {"ml_price": -175, "ml_moved": "up"}),
+    ("+145", "_ml_cell", {"ml_price": 145}),
+    ("+3.5 -115 ▼", "_spr_cell", {"spread": 3.5, "spread_price": -115, "spread_moved": "down"}),
+    ("54.5 o -110 ▲", "_tot_cell", {"total": 54.5, "over_price": -110, "total_moved": "up"}),
+])
+def test_arrow_glyphs_in_every_market(cell, fn, expect):
+    assert getattr(vsin, fn)(cell) == expect
+
+
+def test_a_blank_row_whose_label_is_priced_elsewhere_is_called_harmless():
+    """
+    The real page carries blank duplicates of rows that price fine further up. Reporting those the
+    same way as a genuinely missed game buried the distinction that matters, so they are separated:
+    a duplicate loses nothing, an unpriced row found nowhere else might be a game we are dropping.
+    """
+    rows, probs = vsin.parse_linetracker(_real_lt())
+    kinds = {p.get("kind") for p in probs}
+    assert "unpriced_duplicate" in kinds
+    assert "unpriced_row" not in kinds
+    dup = next(p for p in probs if p["kind"] == "unpriced_duplicate")
+    assert "nothing is lost" in dup["why"]
+
+
+def test_an_unpriced_row_found_nowhere_else_is_flagged_differently():
+    extra = "<tr>" + "".join("<td>%s</td>" % c for c in
+                             ["Miami Dolphins"] + ["- -", "-", "-"] * 8) + "</tr>"
+    html = _real_lt().replace("</table>", extra + "</table>")
+    _, probs = vsin.parse_linetracker(html)
+    fresh = next(p for p in probs if p["kind"] == "unpriced_row")
+    assert "Miami Dolphins" in fresh["why"]

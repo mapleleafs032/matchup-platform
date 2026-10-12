@@ -359,14 +359,32 @@ def describe_linetracker(html: str) -> str:
 _AMERICAN = re.compile(r"([-+]\d{2,4})\s*$")
 _LEAD_NUM = re.compile(r"^\s*([-+]?\d{1,3}(?:\.\d+)?)")
 _PK = ("pk", "pick", "ev", "even")
+# VSiN marks a number that has just MOVED with an up/down arrow glyph, e.g. '+145 \u25bc'. The price
+# regex is end-anchored, so the arrow silently blocked it -- and the numbers carrying an arrow are the
+# ones that just moved, i.e. the most informative prices on the page. The glyph is stripped before
+# parsing and kept as a direction, which is free market-movement signal per book.
+_ARROWS = {"\u25b2": "up", "\u25bc": "down", "\u25b4": "up", "\u25be": "down",
+           "\u2191": "up", "\u2193": "down", "\u25b3": "up", "\u25bd": "down"}
+
+
+def _strip_arrows(t: str) -> tuple[str, str | None]:
+    """('+145 \u25bc') -> ('+145', 'down'). Direction is kept, never discarded with the glyph."""
+    moved = None
+    for glyph, direction in _ARROWS.items():
+        if glyph in t:
+            moved = direction
+            t = t.replace(glyph, " ")
+    return re.sub(r"\s+", " ", t).strip(), moved
 
 
 def _spr_cell(text: str) -> dict:
     """'+3.5 -115' -> {'spread': 3.5, 'spread_price': -115}. The number first, the price last."""
-    t = _defrac(_cell_text_str(text))
+    t, moved = _strip_arrows(_defrac(_cell_text_str(text)))
     if not t or t.lower() in _BLANK:
         return {}
     out: dict = {}
+    if moved:
+        out["spread_moved"] = moved
     m = _AMERICAN.search(t)
     head = t
     if m:
@@ -385,7 +403,7 @@ def _spr_cell(text: str) -> dict:
 
 def _ml_cell(text: str) -> dict:
     """'+155' -> {'ml_price': 155}. A moneyline cell is a price and nothing else."""
-    t = _defrac(_cell_text_str(text))
+    t, moved = _strip_arrows(_defrac(_cell_text_str(text)))
     if not t or t.lower() in _BLANK:
         return {}
     m = _AMERICAN.search(t)
@@ -393,15 +411,22 @@ def _ml_cell(text: str) -> dict:
         return {}
     v = int(m.group(1))
     # a real moneyline is never inside -100..100; that range is a spread's vig, not a price
-    return {"ml_price": v} if abs(v) >= 100 else {}
+    if abs(v) < 100:
+        return {}
+    out = {"ml_price": v}
+    if moved:
+        out["ml_moved"] = moved
+    return out
 
 
 def _tot_cell(text: str) -> dict:
     """'54.5 o -110' -> {'total': 54.5, 'over_price': -110}; '53' -> {'total': 53.0}."""
-    t = _defrac(_cell_text_str(text))
+    t, moved = _strip_arrows(_defrac(_cell_text_str(text)))
     if not t or t.lower() in _BLANK:
         return {}
     out: dict = {}
+    if moved:
+        out["total_moved"] = moved
     m = _AMERICAN.search(t)
     head = t
     if m:
@@ -510,6 +535,7 @@ def parse_linetracker(html: str) -> tuple[list[dict], list[dict]]:
     soup = BeautifulSoup(html, "html.parser")
     problems: list[dict] = []
     out: list[dict] = []
+    empty: list[dict] = []
     for tbl in soup.find_all("table"):
         trs = tbl.find_all("tr")
         cols, lprobs = _linetracker_layout(trs)
@@ -532,8 +558,26 @@ def parse_linetracker(html: str) -> tuple[list[dict], list[dict]]:
                 out.append({"label": label, "is_open": is_open, "book": book,
                             "market": market, "row_index": ri, **v})
             if got == 0:
-                problems.append({"kind": "row_unreadable", "why": f"row {ri} ({label!r}): none of "
-                                                                  f"{len(cols)} cells held a number"})
+                # Recorded with the label so the caller can tell the two very different causes apart:
+                # a game VSiN has not priced yet (normal, nothing to collect), versus a duplicate of a
+                # row that DID price elsewhere on the page (also harmless), versus a genuine parse
+                # failure on a priced row (not harmless at all).
+                empty.append({"row_index": ri, "label": label})
+    if empty:
+        priced = {r["label"] for r in out}
+        dupes = [e for e in empty if e["label"] in priced]
+        fresh = [e for e in empty if e["label"] not in priced]
+        if dupes:
+            problems.append({"kind": "unpriced_duplicate",
+                             "why": f"{len(dupes)} row(s) held no number but the same label is priced "
+                                    f"elsewhere on the page, so nothing is lost: "
+                                    + ", ".join(sorted({e['label'][:24] for e in dupes})[:6])})
+        if fresh:
+            problems.append({"kind": "unpriced_row",
+                             "why": f"{len(fresh)} row(s) held no number and appear NOWHERE priced -- "
+                                    f"either VSiN has not posted these games yet or they are being "
+                                    f"missed: " + ", ".join(f"{e['label'][:24]}@{e['row_index']}"
+                                                            for e in fresh[:8])})
     if not out:
         problems.append({"kind": "no_prices",
                          "why": "no priced row matched the derived column count; run "
