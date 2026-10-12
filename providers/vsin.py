@@ -543,9 +543,16 @@ def parse_linetracker(html: str) -> tuple[list[dict], list[dict]]:
         if not cols:
             continue
         want = len(cols) + 1
+        current_date = None
         for ri, tr in enumerate(trs):
             cells = [_cell_text(c) for c in tr.find_all(["td", "th"])]
             if len(cells) != want:
+                # The book-header rows carry the game date in their first cell ("Mon, Oct 12"), which
+                # is the only thing that tells two identical-looking games apart. The page spans
+                # several days and can cross two NFL weeks, so a team legitimately appears twice --
+                # what is NOT legitimate is the same pair twice on the same date.
+                if cells and _DATE_HEADER.search(cells[0]):
+                    current_date = re.sub(r"\s+", " ", _DATE_HEADER.search(cells[0]).group(0))
                 continue                      # header, sub-header and spacer rows all land here
             label = cells[0]
             is_open = bool(_OPEN_ROW.search(label))
@@ -555,7 +562,7 @@ def parse_linetracker(html: str) -> tuple[list[dict], list[dict]]:
                 if not v:
                     continue
                 got += 1
-                out.append({"label": label, "is_open": is_open, "book": book,
+                out.append({"label": label, "is_open": is_open, "book": book, "date": current_date,
                             "market": market, "row_index": ri, **v})
             if got == 0:
                 # Recorded with the label so the caller can tell the two very different causes apart:
@@ -598,11 +605,12 @@ def linetracker_games(rows: list[dict]) -> list[dict]:
     order: list[int] = []
     for r in rows:
         if r["row_index"] not in by_row:
-            by_row[r["row_index"]] = {"label": r["label"], "is_open": r["is_open"], "books": {}}
+            by_row[r["row_index"]] = {"label": r["label"], "is_open": r["is_open"],
+                                      "date": r.get("date"), "books": {}}
             order.append(r["row_index"])
         slot = by_row[r["row_index"]]["books"].setdefault(r["book"], {})
         for k, v in r.items():
-            if k not in ("label", "is_open", "book", "row_index", "market"):
+            if k not in ("label", "is_open", "book", "row_index", "market", "date"):
                 slot[k] = v
     games: list[dict] = []
     cur: dict | None = None
@@ -611,7 +619,8 @@ def linetracker_games(rows: list[dict]) -> list[dict]:
         if row["is_open"]:
             if cur is not None:
                 games.append(cur)
-            cur = {"open": row["books"], "open_label": row["label"], "teams": []}
+            cur = {"open": row["books"], "open_label": row["label"],
+                   "date": row.get("date"), "teams": []}
             continue
         if cur is None:
             continue                          # prices before any game header; nothing to attach to
@@ -900,14 +909,19 @@ def linetracker_check(games: list[dict]) -> list[dict]:
     Returns problems; an empty list means every game was internally consistent.
     """
     problems: list[dict] = []
-    seen_side: dict[str, int] = {}
+    # A team appearing twice is only wrong WITHIN A DATE. The page spans several days and can cross
+    # two NFL weeks, so the Bills playing on Oct 12 and again on Oct 19 is correct, not a fault --
+    # an earlier version flagged 23 such teams and would have had us chasing a non-problem.
+    seen_side: dict[tuple, int] = {}
     for gi, g in enumerate(games):
         for label, _ in g.get("teams", []):
-            if label in seen_side:
+            key = (g.get("date"), label)
+            if key in seen_side:
                 problems.append({"kind": "duplicate_side", "game": gi, "book": "",
-                                 "why": f"{label!r} appears on game {seen_side[label]} and game {gi}"})
+                                 "why": f"{label!r} appears twice on {g.get('date')}: "
+                                        f"game {seen_side[key]} and game {gi}"})
             else:
-                seen_side[label] = gi
+                seen_side[key] = gi
     for gi, g in enumerate(games):
         if g.get("n_teams") != 2:
             problems.append({"kind": "not_two_teams", "game": gi,
@@ -957,3 +971,44 @@ def linetracker_best(games: list[dict]) -> list[dict]:
                         "spread_book": best_book, "ml_price": ml, "ml_book": ml_book,
                         "books_quoting": len([1 for v in books.values() if v.get("spread") is not None])})
     return out
+
+
+def linetracker_dedupe(games: list[dict]) -> tuple[list[dict], list[dict]]:
+    """
+    Collapse the same matchup listed twice on the same date.
+
+    The signed-in page renders the board more than once: measured 2026-10-12, 27 groups covered only
+    28 distinct teams, with games 0/15, 1/16, 2/17 and 3/18 sharing BOTH sides at a constant offset.
+    Writing all 27 would have stored two snapshots per game and doubled every market signal built on
+    top of them.
+
+    Identity is (date, the pair of team labels) -- not the team alone, because the page spans several
+    days and can cross two NFL weeks, so one team legitimately appears on two different games.
+
+    The copy kept is the one quoting the most books; ties keep the first, which is the top of the
+    page. Returns (deduplicated games, notes describing what was dropped).
+    """
+    def quoted(g):
+        return sum(len(b) for _, b in g.get("teams", [])) + len(g.get("open", {}))
+
+    best: dict[tuple, dict] = {}
+    order: list[tuple] = []
+    notes: list[dict] = []
+    for gi, g in enumerate(games):
+        labels = tuple(sorted(lbl for lbl, _ in g.get("teams", [])))
+        if len(labels) != 2:
+            key = ("__unpaired__", gi)          # never merge a group we could not pair
+        else:
+            key = (g.get("date"), labels)
+        g = {**g, "_index": gi}
+        if key not in best:
+            best[key] = g
+            order.append(key)
+            continue
+        keep, drop = (g, best[key]) if quoted(g) > quoted(best[key]) else (best[key], g)
+        best[key] = keep
+        notes.append({"kind": "collapsed_duplicate",
+                      "why": f"{' vs '.join(labels)} on {g.get('date')} was listed twice "
+                             f"(groups {best[key]['_index']} and {drop['_index']}); kept the copy "
+                             f"quoting {quoted(keep)} book-markets, dropped {quoted(drop)}"})
+    return [best[k] for k in order], notes

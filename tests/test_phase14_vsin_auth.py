@@ -601,30 +601,72 @@ def test_an_unpriced_row_found_nowhere_else_is_flagged_differently():
     assert "Miami Dolphins" in fresh["why"]
 
 
-def test_the_same_team_on_two_games_is_reported():
+def _lt_game(label_time, away, home, spread, total, date_block=None):
+    """One game block: OPEN row plus two team rows, all eight books, optionally a new date header."""
+    out = ""
+    if date_block:
+        out += (_tr([date_block] + LT_BOOKS_A) + _tr(LT_SUB)
+                + _tr([date_block] + LT_BOOKS_B) + _tr(LT_SUB))
+    out += _lt_row(label_time, [[f"{spread:+g} -110", "+100", str(total)]] * 8)
+    out += _lt_row(away, [[f"{spread:+g} -110", "+110", f"{total} o -110"]] * 8)
+    out += _lt_row(home, [[f"{-spread:+g} -110", "-130", f"{total} u -110"]] * 8)
+    return out
+
+
+def test_a_team_on_two_different_dates_is_not_a_fault():
     """
-    27 games came back for an NFL window holding about 17, so either the slate is double-counted --
-    which would write two snapshots per game and double every market signal -- or the OPEN-row
-    grouping is splitting one game in two. A team cannot play twice in a week, so a repeated label
-    is the cheap, decisive test, and it has to run before anything is written.
+    The page spans several days and can cross two NFL weeks, so the Bills playing Oct 12 and again
+    Oct 19 is correct. An earlier version flagged 23 such teams and would have sent us chasing a
+    non-problem -- the date is what tells a real duplicate from a second game.
     """
-    dup_game = (
-        "<tr>" + "".join("<td>%s</td>" % c for c in
-                         ["▶ 4:25 PM ET ET OPEN"] + ["+1 -110", "+105", "44"] * 8) + "</tr>"
-        + "<tr>" + "".join("<td>%s</td>" % c for c in
-                           ["Buffalo Bills"] + ["+1.5 -110", "+110", "44.5 o -110"] * 8) + "</tr>"
-        + "<tr>" + "".join("<td>%s</td>" % c for c in
-                           ["Miami Dolphins"] + ["-1.5 -110", "-130", "44.5 u -110"] * 8) + "</tr>")
-    html = _real_lt().replace("</table>", dup_game + "</table>")
+    html = _real_lt().replace(
+        "</table>",
+        _lt_game("\u25b6 8:15 PM ET ET OPEN", "Buffalo Bills", "Miami Dolphins", 1.5, 44.5,
+                 date_block="Mon, Oct 19") + "</table>")
     rows, _ = vsin.parse_linetracker(html)
     games = vsin.linetracker_games(rows)
-    probs = vsin.linetracker_check(games)
-    dup = [p for p in probs if p["kind"] == "duplicate_side"]
-    assert dup, probs
-    assert "Buffalo Bills" in dup[0]["why"]
+    assert {g["date"] for g in games} == {"Mon, Oct 12", "Thu, Oct 15", "Mon, Oct 19"}
+    assert not [p for p in vsin.linetracker_check(games) if p["kind"] == "duplicate_side"]
 
 
-def test_a_clean_page_reports_no_duplicate_sides():
+def test_the_same_pair_twice_on_the_same_date_is_flagged_and_collapsed():
+    """
+    The real defect: 27 groups covering 28 distinct teams, with games 0/15, 1/16, 2/17, 3/18 sharing
+    BOTH sides at a constant offset -- the board rendered twice. Writing all of them would store two
+    snapshots per game and double every market signal built on them.
+    """
+    repeat = _lt_game("\u25b6 8:15 PM ET ET OPEN", "Buffalo Bills", "Los Angeles Rams", 3.5, 54.5)
+    html = _real_lt().replace("<tr><td>Thu, Oct 15</td>", repeat + "<tr><td>Thu, Oct 15</td>", 1)
+    rows, _ = vsin.parse_linetracker(html)
+    games = vsin.linetracker_games(rows)
+    assert len(games) == 3
+    dup = [p for p in vsin.linetracker_check(games) if p["kind"] == "duplicate_side"]
+    assert dup, "the same pair twice on one date went unreported"
+    assert "Mon, Oct 12" in dup[0]["why"]
+
+    kept, notes = vsin.linetracker_dedupe(games)
+    assert len(kept) == 2, [g["date"] for g in kept]
+    assert any(n["kind"] == "collapsed_duplicate" for n in notes)
+    # and the survivor is the richer copy: the real page's rows quote 7 books, the synthetic one 8
+    bills = dict(next(g for g in kept if g["date"] == "Mon, Oct 12")["teams"])["Buffalo Bills"]
+    assert len(bills) == 8
+    assert not [p for p in vsin.linetracker_check(kept) if p["kind"] == "duplicate_side"]
+
+
+def test_dedupe_leaves_a_clean_page_alone():
     rows, _ = vsin.parse_linetracker(_real_lt())
-    probs = vsin.linetracker_check(vsin.linetracker_games(rows))
-    assert not [p for p in probs if p["kind"] == "duplicate_side"]
+    games = vsin.linetracker_games(rows)
+    kept, notes = vsin.linetracker_dedupe(games)
+    assert len(kept) == len(games) and notes == []
+
+
+def test_an_unpaired_group_is_never_merged_into_another():
+    """A group we could not pair has unknown identity, so it must not be collapsed onto anything."""
+    orphan = _lt_row("\u25b6 1:00 PM ET ET OPEN", [["+1 -110", "+100", "40"]] * 8) \
+        + _lt_row("Chicago Bears", [["+1 -110", "+105", "40 o -110"]] * 8)
+    html = _real_lt().replace("</table>", orphan + "</table>")
+    rows, _ = vsin.parse_linetracker(html)
+    games = vsin.linetracker_games(rows)
+    kept, _ = vsin.linetracker_dedupe(games)
+    assert any(g["n_teams"] == 1 for g in kept)
+    assert any(p["kind"] == "not_two_teams" for p in vsin.linetracker_check(kept))

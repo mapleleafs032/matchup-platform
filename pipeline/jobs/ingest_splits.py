@@ -436,12 +436,18 @@ def explain(league: str, season: int, needle: str) -> None:
         rows, _ = vsin.parse_linetracker(res.payload)
         games = vsin.linetracker_games(rows)
         sides = [lbl for g in games for lbl, _ in g["teams"]]
-        print(f"    grouped into {len(games)} game(s); {len(sides)} team rows, "
-              f"{len(set(sides))} DISTINCT teams")
-        if len(sides) != len(set(sides)):
-            from collections import Counter
-            dupes = [f"{k} x{v}" for k, v in Counter(sides).items() if v > 1]
-            print(f"    {len(dupes)} team(s) appear on more than one game: {', '.join(dupes[:10])}")
+        print(f"    grouped into {len(games)} raw group(s); {len(sides)} team rows, "
+              f"{len(set(sides))} distinct teams")
+        games, dnotes = vsin.linetracker_dedupe(games)
+        if dnotes:
+            print(f"    collapsed {len(dnotes)} duplicate listing(s) -> {len(games)} game(s):")
+            for n in dnotes[:8]:
+                print(f"      {n['why']}")
+        by_date: dict = {}
+        for g in games:
+            by_date[g.get("date")] = by_date.get(g.get("date"), 0) + 1
+        print(f"    {len(games)} game(s) after dedupe, by date: "
+              + ", ".join(f"{d}: {n}" for d, n in by_date.items()))
         for g in games[:3]:
             print(f"      {g['open_label'][:46]!r}  teams={g['n_teams']}")
             for book in sorted(g["open"]):
