@@ -51,15 +51,9 @@ jobs:
       - name: Betting splits
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
-          # ---- THE ADDITION: the VSiN subscription session ----
-          # VSIN_COOKIE is the Cookie request header from a signed-in browser tab (preferred).
-          # VSIN_EMAIL / VSIN_PASSWORD are the alternative: log in each run. If the cookie is set it
-          # wins and the password is never sent. An unset secret arrives as an empty string, so
-          # leaving all three here costs nothing when you only use one of them.
           VSIN_COOKIE: ${{ secrets.VSIN_COOKIE }}
           VSIN_EMAIL: ${{ secrets.VSIN_EMAIL }}
           VSIN_PASSWORD: ${{ secrets.VSIN_PASSWORD }}
-          # -----------------------------------------------------
         run: |
           python -m pipeline.jobs.ingest_splits \
             --league "${{ inputs.league || 'BOTH' }}" \
@@ -71,3 +65,4 @@ jobs:
       - name: Commit
         if: ${{ inputs.explain == '' || inputs.explain == null }}
         uses: ./.github/actions/commit
+        with: { message: "data: splits ${{ github.run_id }}" }
