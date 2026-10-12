@@ -27,7 +27,7 @@ import pandas as pd
 
 import config
 from pipeline import ids
-from providers.base import RequestManager
+from providers.base import RequestManager, ProviderError
 
 BASE = "https://data.vsin.com/betting-splits/"
 SPORT = {"NFL": "NFL", "CFB": "CFB"}
@@ -54,10 +54,112 @@ class TeamRow:
     ml_bets: float | None
 
 
-def fetch(rm: RequestManager, league: str) -> tuple[str, object]:
-    res = rm.get(BASE, params={"sport": SPORT[league], "source": "DK"}, headers={"User-Agent": UA, "Accept": "text/html"},
+def fetch(rm: RequestManager, league: str, params: dict | None = None) -> tuple[str, object]:
+    res = rm.get(BASE, params=params or {"sport": SPORT[league], "source": "DK"},
+                 headers={"User-Agent": UA, "Accept": "text/html"},
                  expect_json=False, timeout=45)
     return res.payload, res.retrieved_at
+
+
+# ---- page scope -------------------------------------------------------------------------------
+# The day-only page is what an anonymous fetch gets. Signed in, a week view may exist. Rather than
+# assume which page carries the week, the scope that actually produced the most team rows is learned
+# and remembered, so routine runs spend one request instead of surveying every time.
+SCOPE_CACHE = config.TABLES / "ops" / "vsin_scope.json"
+SCOPE_RESURVEY_HOURS = 20
+
+_DATE_HEADER = re.compile(r"(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,\s+[A-Z][a-z]{2}\.?\s+\d{1,2}")
+
+
+def date_headers(html: str) -> list[str]:
+    """Distinct game-day headers on the page. One means the page is a single day's card."""
+    seen, out = set(), []
+    for m in _DATE_HEADER.findall(html or ""):
+        k = re.sub(r"\s+", " ", m)
+        if k not in seen:
+            seen.add(k); out.append(k)
+    return out
+
+
+def _load_scope() -> dict:
+    import json
+    if SCOPE_CACHE.exists():
+        try:
+            return json.loads(SCOPE_CACHE.read_text())
+        except (ValueError, OSError):
+            return {}
+    return {}
+
+
+def _save_scope(cache: dict) -> None:
+    import json
+    SCOPE_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    SCOPE_CACHE.write_text(json.dumps(cache, indent=2, sort_keys=True))
+
+
+def _scope_params(entry, league: str) -> tuple[str, dict]:
+    _, url, params = entry
+    u = url.format(path=PATH[league], sport=SPORT[league])
+    ps = {k: (v.format(sport=SPORT[league], path=PATH[league]) if isinstance(v, str) else v)
+          for k, v in params.items()}
+    return u, ps
+
+
+def fetch_best_scope(rm: RequestManager, league: str, minimum: int,
+                     force_survey: bool = False) -> tuple[str, object, str, list[dict]]:
+    """
+    Fetch the page that carries the most games, learning which one that is.
+
+    Returns (html, retrieved_at, label, notes). A cached winner is used directly; it is re-surveyed
+    once a day, or immediately whenever it comes back with fewer rows than the slate needs -- which is
+    also what an expired subscription cookie looks like, so a shrinking page always triggers a recheck
+    rather than being written as if it were the whole board.
+    """
+    import pandas as _pd
+    cache = _load_scope()
+    rec = cache.get(league) or {}
+    stale = True
+    if rec.get("checked_at"):
+        age_h = (_pd.Timestamp.now(tz="UTC") - _pd.Timestamp(rec["checked_at"])).total_seconds() / 3600
+        stale = age_h >= SCOPE_RESURVEY_HOURS
+    notes: list[dict] = []
+
+    def try_entry(entry):
+        url, ps = _scope_params(entry, league)
+        res = rm.get(url, params=ps, headers={"User-Agent": UA, "Accept": "text/html"},
+                     expect_json=False, timeout=45)
+        rows, _ = parse(res.payload)
+        return res.payload, res.retrieved_at, len(rows), url, ps
+
+    # fast path: the remembered winner, used alone while it still covers the board
+    if rec.get("label") and not stale and not force_survey:
+        entry = next((e for e in config.VSIN_SCOPE_PAGES if e[0] == rec["label"]), None)
+        if entry is not None:
+            html, ts, n, url, ps = try_entry(entry)
+            notes.append({"label": entry[0], "rows": n, "days": len(date_headers(html)), "cached": True})
+            if n >= minimum:
+                return html, ts, entry[0], notes
+            notes.append({"why": f"remembered page {entry[0]!r} returned {n} rows, below {minimum}; re-surveying"})
+
+    best = None
+    for entry in config.VSIN_SCOPE_PAGES:
+        try:
+            html, ts, n, url, ps = try_entry(entry)
+        except Exception as e:                       # one dead page must not sink the others
+            notes.append({"label": entry[0], "why": f"fetch failed — {str(e)[:100]}"})
+            continue
+        notes.append({"label": entry[0], "rows": n, "days": len(date_headers(html)),
+                      "gated": any(m in html for m in ("inline-lock", "template-shown"))})
+        if best is None or n > best[2]:
+            best = (html, ts, n, entry[0])
+        if n >= minimum:
+            break                                   # good enough; do not spend further requests
+    if best is None:
+        raise ProviderError("every VSiN page fetch failed; see notes")
+    html, ts, n, label = best
+    cache[league] = {"label": label, "rows": n, "checked_at": _pd.Timestamp.now(tz="UTC").isoformat()}
+    _save_scope(cache)
+    return html, ts, label, notes
 
 
 def _cell_text(td) -> str:
@@ -163,6 +265,167 @@ def describe_page(html: str) -> str:
         out.append("  NOTE: very few rows and scripts present — the table may now be built in the browser, "
                    "which this fetch cannot run.")
     return "\n    ".join(out)
+
+
+# ---- linetracker: multi-book pricing ----------------------------------------------------------
+# The anonymous linetracker header read "Mon, Oct 5 | Circa | Boomers | BetMGM | Caesars" with zero
+# team rows -- the books were named but the prices were behind the gate. Signed in, this is the first
+# multi-book pricing the platform has had, which is what line shopping and a real closing number need.
+#
+# NOTHING here guesses the cell format. parse_linetracker() reads the books out of the header row and
+# refuses when it cannot, and describe_linetracker() dumps the raw cells so the value parser can be
+# written from a signed-in sample instead of from imagination.
+_HALF = {"½": ".5", "¼": ".25", "¾": ".75"}
+_KNOWN_BOOKS = {"circa": "circa", "boomers": "boomers", "betmgm": "betmgm", "mgm": "betmgm",
+                "caesars": "caesars", "draftkings": "draftkings", "dk": "draftkings",
+                "fanduel": "fanduel", "westgate": "westgate", "southpoint": "southpoint",
+                "south point": "southpoint", "wynn": "wynn", "stations": "stations",
+                "station": "stations", "bet365": "bet365", "espnbet": "espnbet"}
+_PRICE = re.compile(r"([-+]\d{3,4})")
+_SIGNED = re.compile(r"([-+]\d{1,2}(?:\.\d+)?)(?![\d])")
+_TOTAL_IN_CELL = re.compile(r"(?:^|[^\d.])(\d{2,3}(?:\.\d+)?)(?![\d])")
+
+
+def _defrac(s: str) -> str:
+    out = str(s)
+    for ch, rep in _HALF.items():
+        out = out.replace(ch, rep)
+    return out
+
+
+def _books_from_header(cells: list[str]) -> dict[int, str]:
+    """{column index: canonical book name} for the header cells that name a sportsbook."""
+    found = {}
+    for i, c in enumerate(cells):
+        key = re.sub(r"[^a-z ]", "", c.lower()).strip()
+        if key in _KNOWN_BOOKS:
+            found[i] = _KNOWN_BOOKS[key]
+            continue
+        for name, canon in _KNOWN_BOOKS.items():
+            if name and name in key and len(name) > 3:
+                found[i] = canon
+                break
+    return found
+
+
+def describe_linetracker(html: str) -> str:
+    """
+    Raw structure of the linetracker page: which books the header names, and what the cells hold.
+
+    This is the input to writing the value parser. It prints the cell text verbatim so the spread /
+    total / price format is read off a real signed-in page rather than assumed.
+    """
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return "beautifulsoup4 is not installed"
+    soup = BeautifulSoup(html, "html.parser")
+    out = [f"page length {len(html)} chars; {len(soup.find_all('table'))} table(s); "
+           f"{len(soup.find_all('tr'))} row(s) overall",
+           f"date headers on the page: {date_headers(html) or 'none found'}",
+           f"gate markup: {'PRESENT (still paywalled)' if any(m in html for m in ('inline-lock', 'template-shown')) else 'absent'}"]
+    for ti, tbl in enumerate(soup.find_all("table")[:4]):
+        trs = tbl.find_all("tr")
+        linked = sum(1 for tr in trs if any(_TEAM_HREF.search(a.get("href", "")) for a in tr.find_all("a", href=True)))
+        out.append(f"  table {ti}: {len(trs)} rows, {linked} with a team link")
+        for ri, tr in enumerate(trs[:6]):
+            cells = [_cell_text(c) for c in tr.find_all(["td", "th"])]
+            books = _books_from_header(cells)
+            tag = f" <- books {books}" if books else ""
+            out.append(f"    row {ri} ({len(cells)} cells): {cells[:12]}{tag}")
+        # a team row, dumped in full, is what the value parser is written against
+        for tr in trs:
+            if any(_TEAM_HREF.search(a.get("href", "")) for a in tr.find_all("a", href=True)):
+                cells = [_cell_text(c) for c in tr.find_all(["td", "th"])]
+                out.append(f"    FIRST TEAM ROW ({len(cells)} cells): {cells}")
+                break
+    return "\n    ".join(out)
+
+
+def _price_cell(text: str) -> dict:
+    """
+    One book's cell for one team, read conservatively.
+
+    Returns whichever of spread / total / price it can read with confidence, plus the raw text so a
+    cell it could not read is visible rather than silently becoming a null. A number it is unsure
+    about is left out: a blank costs a chart point, a wrong line poisons every signal downstream.
+    """
+    t = _defrac(_cell_text_str(text))
+    out: dict = {"raw": t}
+    if not t or t.lower() in _BLANK:
+        return out
+    prices = _PRICE.findall(t)
+    if prices:
+        out["price"] = int(prices[0])
+    body = _PRICE.sub(" ", t)
+    sp = _SIGNED.findall(body)
+    if sp:
+        out["spread"] = float(sp[0])
+    else:
+        tot = _TOTAL_IN_CELL.findall(body)
+        if tot:
+            v = float(tot[0])
+            if 20.0 <= v <= 110.0:
+                out["total"] = v
+    return out
+
+
+def _cell_text_str(s) -> str:
+    return re.sub(r"\s+", " ", str(s)).strip()
+
+
+def parse_linetracker(html: str) -> tuple[list[dict], list[dict]]:
+    """
+    (rows, problems) from the linetracker. Each row: {slug, name, book, spread?, total?, price?, raw}.
+
+    Refuses rather than guesses: if no header row names two or more known books, nothing is returned
+    and the reason says so. Enable only after `--explain linetracker` has confirmed the shape.
+    """
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return [], [{"why": "beautifulsoup4 is not installed"}]
+    soup = BeautifulSoup(html, "html.parser")
+    problems: list[dict] = []
+    if any(m in html for m in ("inline-lock", "template-shown")):
+        problems.append({"kind": "gated", "why": "the linetracker still carries paywall markup; the "
+                                                 "session is not signed in to the subscription"})
+    out: list[dict] = []
+    for tbl in soup.find_all("table"):
+        trs = tbl.find_all("tr")
+        books: dict[int, str] = {}
+        for tr in trs[:4]:
+            cand = _books_from_header([_cell_text(c) for c in tr.find_all(["td", "th"])])
+            if len(cand) >= 2:
+                books = cand
+                break
+        if not books:
+            continue
+        for tr in trs:
+            link = None
+            for a in tr.find_all("a", href=True):
+                m = _TEAM_HREF.search(a["href"])
+                if m:
+                    link = (m.group(1).lower(), _cell_text(a))
+                    break
+            if link is None:
+                continue
+            cells = [_cell_text(c) for c in tr.find_all(["td", "th"])]
+            for idx, book in books.items():
+                if idx >= len(cells):
+                    problems.append({"kind": "short_row", "slug": link[0],
+                                     "why": f"{link[0]}: row has {len(cells)} cells, book {book} sits at {idx}"})
+                    continue
+                v = _price_cell(cells[idx])
+                if not any(k in v for k in ("spread", "total", "price")):
+                    problems.append({"kind": "unreadable_cell", "slug": link[0],
+                                     "why": f"{link[0]} / {book}: cell {v['raw']!r} held no readable number"})
+                    continue
+                out.append({"slug": link[0], "name": link[1], "book": book, **v})
+    if not out and not problems:
+        problems.append({"why": "no header row on the linetracker named two or more known sportsbooks; "
+                                "run --explain linetracker and pin the shape before enabling it"})
+    return out, problems
 
 
 def parse(html: str) -> tuple[list[TeamRow], list[dict]]:

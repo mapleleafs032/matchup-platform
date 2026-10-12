@@ -25,7 +25,19 @@ def _implied(ml) -> float | None:
 
 
 def closing_number(league: str, season: int, week: int, game_id: str, kickoff, cache: dict) -> dict | None:
-    """The last number posted before kickoff: the market's final, sharpest estimate."""
+    """
+    The market's final number before kickoff -- and how close to kickoff it actually was.
+
+    The last snapshot on record is not automatically a closing number. During the splits outage the
+    newest snapshot for a Saturday game was four days old, and comparing the number we took against
+    THAT produced a confident-looking closing-line value that measured nothing. So the observation
+    window is reported, and a number observed too far out is returned marked stale rather than
+    silently standing in for the close.
+
+    With more than one book on record the closing number is taken per book and the sharpest book
+    present wins (Circa first: its close is the industry's reference price). One book still works --
+    it just cannot disagree with itself.
+    """
     key = (league, season, week)
     if key not in cache:
         cache[key] = storage.read_table(config.TABLES / "market" / "snapshots" / league / str(season) / f"W{week:02d}.csv")
@@ -36,13 +48,23 @@ def closing_number(league: str, season: int, week: int, game_id: str, kickoff, c
     if g.empty:
         return None
     g["retrieved_at"] = pd.to_datetime(g.retrieved_at, utc=True, errors="coerce")
-    if kickoff is not None and not pd.isna(kickoff):
-        g = g[g.retrieved_at < pd.Timestamp(kickoff)]
+    g = g[g.retrieved_at.notna()]
+    kick = pd.Timestamp(kickoff) if (kickoff is not None and not pd.isna(kickoff)) else None
+    if kick is not None:
+        g = g[g.retrieved_at < kick]
     if g.empty:
         return None
-    last = g.sort_values("retrieved_at").iloc[-1]
+    pri = {b: i for i, b in enumerate(config.CLV_BOOK_PRIORITY)}
+    g["_pri"] = g.book.astype(str).str.lower().map(pri).fillna(99)
+    # last row per book, then the sharpest book among those
+    per_book = g.sort_values("retrieved_at").drop_duplicates("book", keep="last")
+    last = per_book.sort_values(["_pri", "retrieved_at"], ascending=[True, False]).iloc[0]
+    stale_min = None if kick is None else round((kick - last.retrieved_at).total_seconds() / 60)
     return {"spread_home": last.get("spread_home"), "total": last.get("total"),
-            "ml_home": last.get("ml_home"), "ml_away": last.get("ml_away"), "at": last.retrieved_at.isoformat()}
+            "ml_home": last.get("ml_home"), "ml_away": last.get("ml_away"),
+            "at": last.retrieved_at.isoformat(), "book": str(last.get("book")),
+            "books_seen": int(per_book.book.nunique()), "stale_minutes": stale_min,
+            "is_close": stale_min is None or stale_min <= config.CLV_CLOSE_WINDOW_MIN}
 
 
 def closing_line_value(k, close: dict | None) -> dict:
@@ -52,8 +74,19 @@ def closing_line_value(k, close: dict | None) -> dict:
     hundreds of plays to mean anything, while a model that keeps beating the closing line shows it
     within weeks, because the close is the sharpest price there is.
     """
-    out = {"close_line": None, "clv_points": None, "clv_prob": None, "beat_close": None}
+    out = {"close_line": None, "clv_points": None, "clv_prob": None, "beat_close": None,
+           "close_book": None, "close_stale_min": None, "close_note": None}
     if not close:
+        out["close_note"] = "no pre-kickoff snapshot on record"
+        return out
+    out["close_book"] = close.get("book")
+    out["close_stale_min"] = close.get("stale_minutes")
+    if not close.get("is_close", True):
+        # Reported, never used. A number from days earlier is a mid-week price, and scoring against it
+        # would read as skill (or the lack of it) when it is only a gap in collection.
+        hrs = (close.get("stale_minutes") or 0) / 60
+        out["close_note"] = (f"last number on record was {hrs:.1f}h before kickoff, outside the "
+                             f"{config.CLV_CLOSE_WINDOW_MIN / 60:.0f}h closing window — not scored")
         return out
     if k.market == "SPREAD" and close.get("spread_home") is not None and not pd.isna(close["spread_home"]):
         close_side = float(close["spread_home"]) if k.side_is_home else -float(close["spread_home"])

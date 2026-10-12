@@ -308,7 +308,10 @@ def test_odds_page_reports_whether_splits_predate_the_build(tmp_path, monkeypatc
 
     class S:
         league, season = "NFL", 2026
-    assert bs._splits_freshness(S(), 5) == {"splits_last_collected": None, "splits_rows": 0}
+    empty = bs._splits_freshness(S(), 5)
+    assert empty["splits_last_collected"] is None and empty["splits_rows"] == 0
+    # the page also needs to be able to say WHY it is empty, so collection health travels with it
+    assert "splits_session" in empty and "splits_longest_gap_h" in empty
     d = tmp_path / "t" / "market" / "splits" / "NFL" / "2026"; d.mkdir(parents=True)
     pd.DataFrame([{"split_id": f"s{i}", "game_id": f"G{i % 3}", "period": "FULL", "book": "draftkings",
                    "retrieved_at": f"2026-10-05T1{i}:00:00Z", "spread_ticket_pct_home": 0.6,

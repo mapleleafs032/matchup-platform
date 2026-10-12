@@ -23,7 +23,7 @@ import pandas as pd
 import config
 from pipeline import ids, storage, ingest_health
 from pipeline.log import JobRun, ValidationLog
-from providers import splits_manual, splits_feed, vsin
+from providers import splits_manual, splits_feed, vsin, vsin_auth
 
 PASTE_DIR = config.DATA / "manual" / "splits_paste"
 OUT = config.TABLES / "market" / "splits"
@@ -31,6 +31,9 @@ PCT_COLS = [f"{m.lower()}_{k}_pct_home" for m in splits_manual.MARKETS for k in 
 SPLIT_COLS = ["split_id", "game_id", "week", "retrieved_at", "book", "period"] + PCT_COLS + \
              ["line_spread_home", "line_total", "line_ml_home", "line_ml_away", "source"]
 _ISO = re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
+# The VSiN session state of the most recent read, so the heartbeat records WHY a pull was thin.
+# A week of empty beats reads very differently when every one of them says "anonymous".
+_LAST_AUTH: dict = {"mode": "anonymous", "signed_in": False}
 
 
 def _week_of(games: pd.DataFrame, game_id: str) -> int | None:
@@ -52,26 +55,69 @@ def _current_lines(league: str, season: int, week: int) -> dict:
     return {r.game_id: {"line_spread_home": r.spread_home, "line_total": r.total} for _, r in s.iterrows()}
 
 
-def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.DataFrame, vlog: ValidationLog) -> tuple[list[dict], list[dict]]:
-    from providers.base import RequestManager, BudgetExceeded, ProviderError
-    rm = RequestManager("vsin", "splits")
-    teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
+def vsin_session(job_run_id: str):
+    """
+    (RequestManager carrying the subscription session, AuthState). Credentials are optional: without
+    them this is the old anonymous fetch, which only ever sees the current day's card.
+    """
+    from providers.base import RequestManager
     try:
-        html, ts = vsin.fetch(rm, league)
+        session, state = vsin_auth.build_session(verify=True)
+    except vsin_auth.AuthFailed as e:
+        from providers.base import ProviderError
+        raise ProviderError(f"VSiN subscription sign-in failed: {vsin_auth.redact(e)}") from None
+    return RequestManager("vsin", job_run_id, session=session), state
+
+
+def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.DataFrame, vlog: ValidationLog) -> tuple[list[dict], list[dict]]:
+    from providers.base import BudgetExceeded, ProviderError
+    teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
+    minimum = config.SPLITS_MIN_TEAM_ROWS.get(league, 10)
+    try:
+        rm, auth = vsin_session("splits")
+    except ProviderError as e:
+        vlog.warn("PROVIDER_FAIL", "vsin_auth", league, str(e)[:160], "signed-in session")
+        print(f"  {str(e)[:200]}")
+        return [], [{"why": str(e)[:200]}]
+    print(f"  {auth.line()}")
+    _LAST_AUTH["mode"] = auth.mode
+    _LAST_AUTH["signed_in"] = auth.signed_in
+    # A configured subscription that comes back anonymous is an expired cookie. Writing the day's one
+    # game as if it were the slate is what hid this outage for four days, so it stops here instead.
+    if auth.configured and not auth.signed_in and config.VSIN_AUTH.get("fail_when_not_signed_in"):
+        msg = ("VSiN credentials are set but the page did not come back signed in — the session has "
+               "most likely expired. Sign in with a browser and replace the VSIN_COOKIE secret. "
+               "Nothing was written, deliberately: a gated page shows only today's card.")
+        vlog.warn("VSIN_NOT_SIGNED_IN", "vsin", league, vsin_auth.redact(auth.detail)[:160], "signed-in page")
+        print(f"  {msg}")
+        return [], [{"kind": "not_signed_in", "why": msg}]
+    try:
+        html, ts, scope, notes = vsin.fetch_best_scope(rm, league, minimum)
     except (ProviderError, BudgetExceeded) as e:
         vlog.warn("PROVIDER_FAIL", "vsin", league, str(e)[:120], "200")
         print(f"  VSiN {league}: fetch failed ({str(e)[:80]})")
         return [], []
+    days = vsin.date_headers(html)
+    print(f"  VSiN {league}: using the {scope!r} page — {len(days)} game day(s) on it"
+          + (f" ({', '.join(days[:4])}{' ...' if len(days) > 4 else ''})" if days else ""))
+    for n in notes:
+        if "why" in n:
+            print(f"    scope note: {n['why']}")
     rows, problems = vsin.parse(html)
-    minimum = config.SPLITS_MIN_TEAM_ROWS.get(league, 10)
     if len(rows) < minimum:
         for p in problems[:5]:
             vlog.warn("SPLITS_UNREADABLE", "vsin", league, p.get("why", "")[:160], "parsed rows")
         vlog.warn("PARSE_TOO_FEW_ROWS", "vsin", league, f"{len(rows)} team rows", f"at least {minimum}")
-        print(f"  VSiN {league}: only {len(rows)} team rows parsed, expected at least {minimum}. "
-              f"The page has almost certainly changed. Structure follows:")
-        print("    " + vsin.describe_page(html))
-        return [], (problems or [{"why": f"only {len(rows)} team rows parsed"}])
+        print(f"  VSiN {league}: only {len(rows)} team rows parsed, expected at least {minimum}.")
+        if len(days) <= 1:
+            print(f"    The page carries {len(days)} game day, so this is page SCOPE, not a parser fault: "
+                  f"it is showing one day's card, not the week."
+                  + ("" if auth.configured else " No subscription credentials are configured — set the "
+                                                "VSIN_COOKIE secret to see the full board."))
+        else:
+            print("    The page has almost certainly changed. Structure follows:")
+            print("    " + vsin.describe_page(html))
+        return [], (problems or [{"why": f"only {len(rows)} team rows parsed from the {scope!r} page"}])
     added, unmatched, conflicts = vsin.seed_aliases(rows, league, resolver, teams)
     for u in unmatched:
         vlog.warn("ALIAS_UNMATCHED", u, "vsin_slug", u, "add to team_aliases.csv (provider=vsin)")
@@ -308,7 +354,8 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
     if not dry:
         print(f"    {upcoming_rows} upcoming game(s) got splits this run")
         ingest_health.record("splits", league, season, written, covered,
-                             note=f"{upcoming_rows} upcoming games covered")
+                             note=f"{upcoming_rows} upcoming games covered; vsin_auth="
+                                  f"{_LAST_AUTH['mode']}/{'signed_in' if _LAST_AUTH['signed_in'] else 'anonymous'}")
         h = ingest_health.gaps("splits", league)
         if h["longest_gap_h"] and h["longest_gap_h"] > 12:
             print(f"    WARNING: longest gap with no successful pull in the last 7 days is {h['longest_gap_h']}h "
@@ -338,17 +385,73 @@ def explain(league: str, season: int, needle: str) -> None:
     Answers "why is this cell blank" without guessing from the rendered card.
     """
     from providers.base import RequestManager
-    rm = RequestManager("vsin", "explain")
+    want = str(needle).strip().lower()
     games = storage.read_table(storage.games_path(league, season))
     resolver = ids.AliasResolver.load()
+
+    # --explain auth: is the subscription actually reaching the page? Nothing else is worth reading
+    # until this says "signed in", because every thin pull downstream is explained by it.
+    if want == "auth":
+        present, mode = vsin_auth.credentials_present()
+        print(f"VSiN {league}: credentials configured = {present} (mode {mode})")
+        try:
+            session, state = vsin_auth.build_session(verify=True)
+        except vsin_auth.AuthFailed as e:
+            print(f"    sign-in FAILED: {vsin_auth.redact(e)}")
+            return
+        r = session.get(config.VSIN_AUTH["verify_url"], params={"sport": vsin.SPORT[league], "source": "DK"}, timeout=45)
+        print("    " + vsin_auth.describe(state, r.text))
+        rows, _ = vsin.parse(r.text)
+        print(f"    day page as this session sees it: {len(rows)} team rows, "
+              f"game days {vsin.date_headers(r.text) or 'none'}")
+        rm = RequestManager("vsin", "explain", session=session)
+        minimum = config.SPLITS_MIN_TEAM_ROWS.get(league, 10)
+        try:
+            html, ts, scope, notes = vsin.fetch_best_scope(rm, league, minimum, force_survey=True)
+        except Exception as e:
+            print(f"    scope survey failed: {str(e)[:160]}")
+            return
+        print(f"    scope survey (minimum wanted: {minimum} team rows):")
+        for n in notes:
+            print(f"      {n}")
+        print(f"    best page: {scope!r}")
+        return
+
+    # --explain linetracker: dump the multi-book page so its parser is written from a real sample.
+    if want == "linetracker":
+        try:
+            session, state = vsin_auth.build_session(verify=True)
+        except vsin_auth.AuthFailed as e:
+            print(f"VSiN {league}: sign-in FAILED: {vsin_auth.redact(e)}")
+            return
+        print(f"VSiN {league}: {state.line()}")
+        rm = RequestManager("vsin", "explain", session=session)
+        url = config.VSIN_LINETRACKER["url"].format(path=vsin.PATH[league])
+        res = rm.get(url, headers={"User-Agent": vsin.UA, "Accept": "text/html"}, expect_json=False, timeout=45)
+        print(f"    {url}")
+        print("    " + vsin.describe_linetracker(res.payload))
+        rows, probs = vsin.parse_linetracker(res.payload)
+        print(f"    tolerant parse: {len(rows)} book-rows, {len(probs)} problems")
+        for r in rows[:12]:
+            print(f"      {r}")
+        for p in probs[:8]:
+            print(f"      problem: {p.get('kind', 'other')}: {p.get('why', '')[:140]}")
+        return
+
+    try:
+        rm, auth = vsin_session("explain")
+        print(f"VSiN {league}: {auth.line()}")
+    except Exception as e:
+        print(f"VSiN {league}: session error {str(e)[:160]}")
+        rm = RequestManager("vsin", "explain")
     html, ts = vsin.fetch(rm, league)
     rows, problems = vsin.parse(html)
     print(f"VSiN {league}: {len(rows)} team rows parsed at {ts.isoformat()}")
-    if str(needle).strip().lower() == "pages":
+    if want == "pages":
         print("    surveying the public pages VSiN links to:")
         print("    " + vsin.survey_pages(rm, league))
         return
-    if str(needle).strip().lower() == "page":
+    if want == "page":
         # `--explain page` dumps what the fetch actually returned, without needing a team name and
         # without the job having to fail first.
         print("    " + vsin.describe_page(html))
@@ -398,7 +501,8 @@ def main(argv=None):
     p.add_argument("--league", default="BOTH", choices=["NFL", "CFB", "BOTH"])
     p.add_argument("--season", type=int, default=config.SEASON)
     p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--explain", help="print what the source published for games matching this team name/slug")
+    p.add_argument("--explain", help="a team name/slug, or one of: auth (is the subscription signed in), "
+                                     "linetracker (dump the multi-book page), page, pages")
     p.add_argument("--trigger", default="manual")
     a = p.parse_args(argv)
     leagues = ["NFL", "CFB"] if a.league == "BOTH" else [a.league]

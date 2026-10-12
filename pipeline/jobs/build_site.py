@@ -600,11 +600,32 @@ def _splits_freshness(S: Season, week: int) -> dict:
     is invisible on the page, so a perfectly healthy collection can look like a total failure.
     """
     hist = splits_engine.load(S.league, S.season, week)
+    # Collection health, so an empty tab says WHY instead of just being empty. The heartbeat note
+    # carries the VSiN session state of each pull: "anonymous" there is the whole explanation for a
+    # week of missing splits, and it is the one thing the page could never previously show.
+    health: dict = {}
+    try:
+        from pipeline import ingest_health
+        g = ingest_health.gaps("splits", S.league)
+        hb = storage.read_table(ingest_health.HEARTBEAT)
+        note = ""
+        if not hb.empty:
+            mine = hb[(hb.source == "splits") & (hb.league == S.league)].sort_values("ran_at")
+            if not mine.empty:
+                note = str(mine.note.iloc[-1] or "")
+        mode = ""
+        if "vsin_auth=" in note:
+            mode = note.split("vsin_auth=", 1)[1].split(";")[0].strip()
+        health = {"splits_last_pull_h": g.get("hours_since"), "splits_longest_gap_h": g.get("longest_gap_h"),
+                  "splits_empty_pulls": g.get("empty_pulls"), "splits_attempts": g.get("attempts"),
+                  "splits_session": mode or None}
+    except Exception:
+        health = {}
     if hist.empty:
-        return {"splits_last_collected": None, "splits_rows": 0}
+        return {"splits_last_collected": None, "splits_rows": 0, **health}
     last = pd.to_datetime(hist.retrieved_at, utc=True, errors="coerce").max()
     return {"splits_last_collected": None if pd.isna(last) else last.isoformat(),
-            "splits_rows": int(len(hist)), "splits_games": int(hist.game_id.nunique())}
+            "splits_rows": int(len(hist)), "splits_games": int(hist.game_id.nunique()), **health}
 
 
 def build_odds(S: Season, week: int, slate: dict) -> dict:

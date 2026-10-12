@@ -172,6 +172,52 @@ SPLITS_MIN_TEAM_ROWS = {"NFL": 16, "CFB": 40}
 
 MARKET_FROM_VSIN = True    # VSiN carries the DraftKings line with the splits: one source, one timestamp
 VSIN = {"enabled": True, "attribution": "Betting splits: DraftKings action via VSiN (data.vsin.com)"}
+
+# ---- VSiN subscription (paid) -----------------------------------------------------------
+# The PUBLIC splits page carries only the current day's card behind a paywall teaser, so midweek it
+# shows one or two games out of a full slate. Measured 2026-10-05: NFL 2 team rows, week view 0,
+# linetracker 0, every page carrying inline-lock / template-shown markup. A VSiN Pro subscription
+# includes the DraftKings and Circa splits, so the session below is the subscriber's own.
+# Credentials are env-only and never written to the repo. Either:
+#   VSIN_COOKIE                  the Cookie request header copied from a signed-in browser tab
+#   VSIN_EMAIL + VSIN_PASSWORD   log in through the account form on each run
+VSIN_COOKIE = os.environ.get("VSIN_COOKIE", "").strip()
+VSIN_EMAIL = os.environ.get("VSIN_EMAIL", "").strip()
+VSIN_PASSWORD = os.environ.get("VSIN_PASSWORD", "")
+VSIN_AUTH = {
+    "login_url": "https://vsin.com/my-account/",
+    "verify_url": "https://data.vsin.com/betting-splits/",
+    # When credentials ARE configured but the session comes back anonymous, stop rather than write a
+    # partial slate. An expired cookie that silently collects one game of sixteen is the exact failure
+    # this whole integration exists to end.
+    "fail_when_not_signed_in": True,
+}
+# Pages to try for a FULL WEEK of games, best first. The day-only splits page is the last resort.
+# Each entry: (label, url template, query params). {sport} -> NFL/CFB, {path} -> nfl/college-football.
+VSIN_SCOPE_PAGES = [
+    ("splits week",  "https://data.vsin.com/betting-splits/", {"sport": "{sport}", "source": "DK", "view": "week"}),
+    ("splits day",   "https://data.vsin.com/betting-splits/", {"sport": "{sport}", "source": "DK"}),
+]
+# The linetracker header observed on 2026-10-05 listed Circa, Boomers, BetMGM and Caesars. Signed in,
+# that page is the first multi-book pricing this platform has had: real line shopping and a closing
+# number that is not one book's opinion. The parser is written from a signed-in sample, not guessed --
+# run `--explain linetracker` once the secret is set and the shape gets pinned here.
+VSIN_LINETRACKER = {
+    "enabled": False,          # flipped on once the signed-in page shape is confirmed
+    "url": "https://data.vsin.com/{path}/vegas-odds-linetracker/",
+    "books": ["circa", "boomers", "betmgm", "caesars", "draftkings"],
+}
+# Splits sources VSiN publishes. DK is the default; Circa is sharp money and worth its own series.
+VSIN_SPLIT_SOURCES = ["DK"]    # add "CIRCA" once the signed-in page confirms the parameter name
+
+# ---- Closing-line value ----------------------------------------------------------------
+# The last number ON RECORD is not automatically the closing number. During the splits outage the
+# newest snapshot for a Saturday game was four days old; scoring against that measured the gap in
+# collection, not the market. A number observed further out than this is reported and NOT scored.
+CLV_CLOSE_WINDOW_MIN = 240
+# Which book's close counts when several are on record. Circa first: it posts early, moves on sharp
+# money and its close is the industry's reference price.
+CLV_BOOK_PRIORITY = ["circa", "consensus", "draftkings", "betmgm", "caesars", "boomers", "fanduel", "westgate"]
 SPLITS_PERIODS = ("FULL", "1H")
 # Divergence: ticket share minus money share, in percentage points, at which the two disagree enough to note.
 SPLITS_DIVERGENCE_PTS = 12

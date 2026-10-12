@@ -97,6 +97,18 @@ async function oddsMain() {
       freshness = ` Splits last collected ${fmt.ago(cov.splits_last_collected)} (${cov.splits_games || 0} games, ${cov.splits_rows} snapshots).`;
       if (collected > built) freshness += " They arrived AFTER this page was built — rebuild the site to see them.";
     }
+    // Why, not just whether. An anonymous VSiN session only ever sees the current day's card, which
+    // is what weeks of near-empty splits looked like with no explanation anywhere on the page.
+    if (cov.splits_session && cov.splits_session.indexOf("anonymous") >= 0) {
+      freshness += " The collector is running WITHOUT a signed-in VSiN session, so it can only see"
+        + " today's card — set the VSIN_COOKIE secret to collect the full board.";
+    } else if (cov.splits_session) {
+      freshness += ` Collector session: ${cov.splits_session}.`;
+    }
+    if (cov.splits_longest_gap_h != null && cov.splits_longest_gap_h > 12) {
+      freshness += ` Longest gap with no pull in the last 7 days: ${cov.splits_longest_gap_h}h`
+        + (cov.splits_attempts ? ` (${cov.splits_empty_pulls} of ${cov.splits_attempts} pulls came back empty).` : ".");
+    }
     document.getElementById("coverage").textContent =
       `${cov.with_splits} of ${cov.total} games have splits this week.${freshness} Charts show ${winLabel}. ${data.source_note}`;
     shown.sort(App.byPlayFirst);
