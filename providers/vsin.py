@@ -505,6 +505,24 @@ def _linetracker_layout(trs) -> tuple[list[tuple[str, str]], list[dict]]:
 
 
 _OPEN_ROW = re.compile(r"\bOPEN\b", re.I)
+_MONTHS = {m: i for i, m in enumerate(
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], start=1)}
+
+
+def _date_gap_days(a: str, b: str) -> int | None:
+    """Whole days between two 'Mon, Oct 12' headers. None when either cannot be read."""
+    import datetime as _dt
+
+    def parse(x):
+        m = re.search(r"([A-Z][a-z]{2})\.?\s+(\d{1,2})", str(x))
+        if not m or m.group(1) not in _MONTHS:
+            return None
+        return _dt.date(2000, _MONTHS[m.group(1)], int(m.group(2)))
+
+    pa, pb = parse(a), parse(b)
+    if pa is None or pb is None:
+        return None
+    return abs((pb - pa).days)
 
 
 def parse_linetracker(html: str) -> tuple[list[dict], list[dict]]:
@@ -922,6 +940,23 @@ def linetracker_check(games: list[dict]) -> list[dict]:
                                         f"game {seen_side[key]} and game {gi}"})
             else:
                 seen_side[key] = gi
+    # A team on two dates fewer than four days apart is a scheduling impossibility in either league,
+    # so it is proof that a date was mis-attributed -- which matters because the date is what dedupe
+    # uses for identity. current_date carries forward from the previous block, so an unrecognised date
+    # header would silently stamp a game with the wrong day and hide a duplicate.
+    by_team: dict = {}
+    for gi, g in enumerate(games):
+        for label, _ in g.get("teams", []):
+            by_team.setdefault(label, []).append((g.get("date"), gi))
+    for label, seen in by_team.items():
+        days = [(d, gi) for d, gi in seen if d]
+        for i in range(len(days)):
+            for j in range(i + 1, len(days)):
+                gap = _date_gap_days(days[i][0], days[j][0])
+                if gap is not None and gap < 4:
+                    problems.append({"kind": "impossible_gap", "game": days[j][1], "book": "",
+                                     "why": f"{label!r} appears on {days[i][0]} and {days[j][0]} "
+                                            f"({gap}d apart) -- one of those dates is wrong"})
     for gi, g in enumerate(games):
         if g.get("n_teams") != 2:
             problems.append({"kind": "not_two_teams", "game": gi,

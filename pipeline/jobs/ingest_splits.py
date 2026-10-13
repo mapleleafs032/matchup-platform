@@ -448,6 +448,12 @@ def explain(league: str, season: int, needle: str) -> None:
             by_date[g.get("date")] = by_date.get(g.get("date"), 0) + 1
         print(f"    {len(games)} game(s) after dedupe, by date: "
               + ", ".join(f"{d}: {n}" for d, n in by_date.items()))
+        # Every matchup, listed. 16 games is 32 team slots drawn from 28 distinct names, so four
+        # teams must appear twice -- printing the board is how that is checked rather than assumed.
+        print("    the board as parsed:")
+        for g in games:
+            labels = " @ ".join(lbl for lbl, _ in g["teams"]) or "(unpaired)"
+            print(f"      {str(g.get('date')):14s} {labels}")
         for g in games[:3]:
             print(f"      {g['open_label'][:46]!r}  teams={g['n_teams']}")
             for book in sorted(g["open"]):

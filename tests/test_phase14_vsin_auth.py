@@ -670,3 +670,30 @@ def test_an_unpaired_group_is_never_merged_into_another():
     kept, _ = vsin.linetracker_dedupe(games)
     assert any(g["n_teams"] == 1 for g in kept)
     assert any(p["kind"] == "not_two_teams" for p in vsin.linetracker_check(kept))
+
+
+def test_a_team_on_two_dates_less_than_four_days_apart_is_impossible():
+    """
+    The date is what dedupe uses for identity, and current_date carries forward from the previous
+    block -- so an unrecognised date header would stamp a game with the wrong day and hide a
+    duplicate. No team in either league plays twice inside four days, so that is the proof.
+    """
+    html = _real_lt().replace(
+        "</table>",
+        _lt_game("▶ 1:00 PM ET ET OPEN", "Buffalo Bills", "Miami Dolphins", 1.5, 44.5,
+                 date_block="Wed, Oct 14") + "</table>")
+    rows, _ = vsin.parse_linetracker(html)
+    probs = vsin.linetracker_check(vsin.linetracker_games(rows))
+    bad = [p for p in probs if p["kind"] == "impossible_gap"]
+    assert bad, probs
+    assert "Buffalo Bills" in bad[0]["why"] and "2d apart" in bad[0]["why"]
+
+
+def test_a_legitimate_seven_day_gap_is_not_flagged():
+    html = _real_lt().replace(
+        "</table>",
+        _lt_game("▶ 8:15 PM ET ET OPEN", "Buffalo Bills", "Miami Dolphins", 1.5, 44.5,
+                 date_block="Mon, Oct 19") + "</table>")
+    rows, _ = vsin.parse_linetracker(html)
+    probs = vsin.linetracker_check(vsin.linetracker_games(rows))
+    assert not [p for p in probs if p["kind"] == "impossible_gap"]
