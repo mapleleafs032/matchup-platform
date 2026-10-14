@@ -505,6 +505,9 @@ def _linetracker_layout(trs) -> tuple[list[tuple[str, str]], list[dict]]:
 
 
 _OPEN_ROW = re.compile(r"\bOPEN\b", re.I)
+# Two teams meeting again this far apart could be a real rematch rather than a repeat
+# listing, so both copies are kept and the case is reported instead of being collapsed.
+DATE_APART_MAX = 21
 _MONTHS = {m: i for i, m in enumerate(
     ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], start=1)}
 
@@ -1010,15 +1013,26 @@ def linetracker_best(games: list[dict]) -> list[dict]:
 
 def linetracker_dedupe(games: list[dict]) -> tuple[list[dict], list[dict]]:
     """
-    Collapse the same matchup listed twice on the same date.
+    Collapse the same matchup listed more than once on the page.
 
-    The signed-in page renders the board more than once: measured 2026-10-12, 27 groups covered only
-    28 distinct teams, with games 0/15, 1/16, 2/17 and 3/18 sharing BOTH sides at a constant offset.
-    Writing all 27 would have stored two snapshots per game and doubled every market signal built on
-    top of them.
+    Identity is THE PAIR OF TEAMS, not (date, pair). An earlier version keyed on the date and missed
+    the worst case: the page repeats its FIRST games at the END, and because the date header carries
+    forward those repeats inherit the LAST date on the page. Measured 2026-10-14 --
 
-    Identity is (date, the pair of team labels) -- not the team alone, because the page spans several
-    days and can cross two NFL weeks, so one team legitimately appears on two different games.
+        NFL  Thu, Oct 15  Seattle Seahawks @ Denver Broncos
+             Mon, Oct 26  Seattle Seahawks @ Denver Broncos    (same pair, 11 days apart)
+                          ... while Oct 25 has Chiefs @ Seahawks and Broncos @ Cardinals,
+                          so an Oct 26 Seahawks-Broncos game is impossible
+        CFB  Wed, Oct 14  Kennesaw ST @ Missouri ST   and  W Kentucky @ Sam Houston ST
+             Sat, Oct 17  the same two games again, as the last two entries on the board
+
+    Keying on the pair collapses CFB to 57 games -- 114 team slots against exactly 114 distinct
+    teams, no team twice, which is the arithmetic proof that the pair is the right identity.
+
+    Two teams cannot meet twice inside the window one of these pages covers (four to six consecutive
+    dates), so a repeated pair is always a repeated listing. The one exception guarded for is a page
+    spanning long enough to hold a genuine rematch: occurrences DATE_APART_MAX days or more apart are
+    both kept and flagged, so a rematch would show up in the log rather than vanish.
 
     The copy kept is the one quoting the most books; ties keep the first, which is the top of the
     page. Returns (deduplicated games, notes describing what was dropped).
@@ -1031,19 +1045,37 @@ def linetracker_dedupe(games: list[dict]) -> tuple[list[dict], list[dict]]:
     notes: list[dict] = []
     for gi, g in enumerate(games):
         labels = tuple(sorted(lbl for lbl, _ in g.get("teams", [])))
+        g = {**g, "_index": gi}
         if len(labels) != 2:
             key = ("__unpaired__", gi)          # never merge a group we could not pair
-        else:
-            key = (g.get("date"), labels)
-        g = {**g, "_index": gi}
+            best[key] = g
+            order.append(key)
+            continue
+        key = labels
         if key not in best:
             best[key] = g
             order.append(key)
             continue
-        keep, drop = (g, best[key]) if quoted(g) > quoted(best[key]) else (best[key], g)
-        best[key] = keep
-        notes.append({"kind": "collapsed_duplicate",
-                      "why": f"{' vs '.join(labels)} on {g.get('date')} was listed twice "
-                             f"(groups {best[key]['_index']} and {drop['_index']}); kept the copy "
-                             f"quoting {quoted(keep)} book-markets, dropped {quoted(drop)}"})
+        prior = best[key]
+        gap = _date_gap_days(prior.get("date"), g.get("date"))
+        if gap is not None and gap >= DATE_APART_MAX:
+            notes.append({"kind": "possible_rematch",
+                          "why": f"{' vs '.join(labels)} appears on {prior.get('date')} and "
+                                 f"{g.get('date')} ({gap}d apart) -- too far apart to be one listing, "
+                                 f"so BOTH were kept; check whether this is a real rematch"})
+            key = (labels, g.get("date"))
+            best[key] = g
+            order.append(key)
+            continue
+        keep, drop = (g, prior) if quoted(g) > quoted(prior) else (prior, g)
+        best[labels] = keep
+        same_day = prior.get("date") == g.get("date")
+        notes.append({"kind": "collapsed_duplicate" if same_day else "collapsed_repeat_across_dates",
+                      "why": f"{' vs '.join(labels)} was listed twice"
+                             + (f" on {g.get('date')}" if same_day else
+                                f" -- {prior.get('date')} and {g.get('date')}, which cannot both be "
+                                f"right; the page repeats its first games at the end and they inherit "
+                                f"the last date header")
+                             + f" (groups {keep['_index']} and {drop['_index']}); kept the copy "
+                               f"quoting {quoted(keep)} book-markets, dropped {quoted(drop)}"})
     return [best[k] for k in order], notes

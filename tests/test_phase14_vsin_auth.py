@@ -697,3 +697,72 @@ def test_a_legitimate_seven_day_gap_is_not_flagged():
     rows, _ = vsin.parse_linetracker(html)
     probs = vsin.linetracker_check(vsin.linetracker_games(rows))
     assert not [p for p in probs if p["kind"] == "impossible_gap"]
+
+
+def test_the_page_repeating_its_first_game_at_the_end_is_collapsed():
+    """
+    The real failure, measured 2026-10-14: the page repeats its FIRST games at the END, and because
+    the date header carries forward those repeats inherit the LAST date on the page. Keying dedupe on
+    (date, pair) could not see it -- NFL showed Seahawks @ Broncos on both Oct 15 and Oct 26 while
+    Oct 25 had both teams playing other opponents. Identity is the pair.
+    """
+    repeat = _lt_game("▶ 8:15 PM ET ET OPEN", "Buffalo Bills", "Los Angeles Rams", 3.5, 54.5,
+                      date_block="Mon, Oct 19")
+    html = _real_lt().replace("</table>", repeat + "</table>")
+    rows, _ = vsin.parse_linetracker(html)
+    games = vsin.linetracker_games(rows)
+    assert len(games) == 3
+    kept, notes = vsin.linetracker_dedupe(games)
+    assert len(kept) == 2, [(g["date"], [l for l, _ in g["teams"]]) for g in kept]
+    note = next(n for n in notes if n["kind"] == "collapsed_repeat_across_dates")
+    assert "Mon, Oct 12" in note["why"] and "Mon, Oct 19" in note["why"]
+    assert "cannot both be right" in note["why"]
+
+
+def test_the_surviving_copy_is_the_one_quoting_more_books():
+    """The real page's duplicate copies were nearly empty: 21 book-markets kept against 3-6 dropped."""
+    def row(label, first):
+        return ("<tr>" + "".join("<td>%s</td>" % c for c in [label] + first + ["- -", "-", "-"] * 7)
+                + "</tr>")
+    thin = (row("\u25b6 8:15 PM ET ET OPEN", ["+3 -110", "+140", "54"])
+            + row("Buffalo Bills", ["+3.5 -110", "+150", "54.5 o -110"])
+            + row("Los Angeles Rams", ["-3.5 -110", "-180", "54.5 u -110"]))
+    html = _real_lt().replace("</table>", thin + "</table>")
+    rows, _ = vsin.parse_linetracker(html)
+    kept, notes = vsin.linetracker_dedupe(vsin.linetracker_games(rows))
+    bills = dict(next(g for g in kept if "Buffalo Bills" in dict(g["teams"]))["teams"])["Buffalo Bills"]
+    assert len(bills) == 7, "the thin copy survived instead of the full one"
+    note = next(n for n in notes if "collapsed" in n["kind"])
+    assert "dropped 3" in note["why"], note["why"]
+
+
+def test_team_rows_with_no_open_row_above_them_are_reported_not_absorbed():
+    """
+    A game whose OPEN row holds no numbers starts no group, so its team rows attach to the PREVIOUS
+    game and that game ends up with four sides. Silently averaging two games together would be far
+    worse than refusing, so the pairing check catches it.
+    """
+    def blank_row(label):
+        return "<tr>" + "".join("<td>%s</td>" % c for c in [label] + ["- -", "-", "-"] * 8) + "</tr>"
+    orphan = (blank_row("\u25b6 8:15 PM ET ET OPEN")
+              + _lt_row("Miami Dolphins", [["+3.5 -110", "+150", "44.5 o -110"]] * 8)
+              + _lt_row("New York Jets", [["-3.5 -110", "-180", "44.5 u -110"]] * 8))
+    html = _real_lt().replace("</table>", orphan + "</table>")
+    rows, _ = vsin.parse_linetracker(html)
+    games = vsin.linetracker_games(rows)
+    assert any(g["n_teams"] == 4 for g in games), [g["n_teams"] for g in games]
+    assert any(p["kind"] == "not_two_teams" for p in vsin.linetracker_check(games))
+
+
+def test_a_pair_far_enough_apart_to_be_a_real_rematch_is_kept_and_flagged():
+    """
+    A page covering a long enough span could hold a genuine rematch. Collapsing that would delete a
+    real game, so both are kept and the case is reported rather than decided silently.
+    """
+    rematch = _lt_game("▶ 8:15 PM ET ET OPEN", "Buffalo Bills", "Los Angeles Rams", 2.5, 48.5,
+                       date_block="Sun, Nov 22")
+    html = _real_lt().replace("</table>", rematch + "</table>")
+    rows, _ = vsin.parse_linetracker(html)
+    kept, notes = vsin.linetracker_dedupe(vsin.linetracker_games(rows))
+    assert len(kept) == 3, "a possible rematch was silently collapsed"
+    assert any(n["kind"] == "possible_rematch" for n in notes)
