@@ -55,10 +55,10 @@ def test_parse_aborts_when_the_header_layout_changes():
 def test_seed_aliases_maps_slugs_and_reports_unknowns():
     r = ids.AliasResolver.load()
     rows, _ = vsin.parse(FIX.read_text())
-    added, unmatched, _ = vsin.seed_aliases(rows, "NFL", r, _teams())
+    added, unmatched, _, _ = vsin.seed_aliases(rows, "NFL", r, _teams())
     assert added == 6 and not unmatched
     assert r.resolve("vsin", alias="seattle-seahawks") == "NFL_SEA"
-    added2, unmatched2, _ = vsin.seed_aliases(rows, "NFL", r, _teams())
+    added2, unmatched2, _, _ = vsin.seed_aliases(rows, "NFL", r, _teams())
     assert added2 == 0                                                     # already known, not re-added
     fake = [type(rows[0])(slug="not-a-real-team", name="X", spread=1, spread_handle=.5, spread_bets=.5, total=44,
                           total_handle=.5, total_bets=.5, moneyline=100, ml_handle=.5, ml_bets=.5)]
@@ -183,7 +183,7 @@ def test_stored_alias_written_by_an_older_matcher_is_detected_and_corrected(tmp_
     r.add([{"provider": "vsin", "alias": "florida-atlantic-owls", "provider_id": None, "team_id": "CFB_FLA", "season_from": None, "season_to": None}])
     rows = [vsin.TeamRow(slug="florida-atlantic-owls", name="Florida Atlantic", spread=-3.0, spread_handle=.5, spread_bets=.5,
                          total=50.0, total_handle=.5, total_bets=.5, moneyline=-150, ml_handle=.5, ml_bets=.5)]
-    added, unmatched, conflicts = vsin.seed_aliases(rows, "CFB", r, teams)
+    added, unmatched, conflicts, _ = vsin.seed_aliases(rows, "CFB", r, teams)
     assert conflicts and conflicts[0]["stored"] == "CFB_FLA" and conflicts[0]["expected"] == "CFB_FAU"
     assert r.resolve("vsin", alias="florida-atlantic-owls") == "CFB_FAU"      # corrected in place
 

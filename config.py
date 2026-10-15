@@ -208,7 +208,7 @@ VSIN_SCOPE_PAGES = [
 # "enabled" gates WRITING these prices into market_snapshots, which is not built yet; parsing and
 # `--explain linetracker` work regardless.
 VSIN_LINETRACKER = {
-    "enabled": False,
+    "enabled": True,
     "url": "https://data.vsin.com/{path}/vegas-odds-linetracker/",
     "books": ["circa", "boomers", "betmgm", "caesars", "westgate", "stations", "southpoint", "wynn"],
 }

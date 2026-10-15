@@ -118,7 +118,7 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
             print("    The page has almost certainly changed. Structure follows:")
             print("    " + vsin.describe_page(html))
         return [], (problems or [{"why": f"only {len(rows)} team rows parsed from the {scope!r} page"}])
-    added, unmatched, conflicts = vsin.seed_aliases(rows, league, resolver, teams)
+    added, unmatched, conflicts, suspect = vsin.seed_aliases(rows, league, resolver, teams)
     for u in unmatched:
         vlog.warn("ALIAS_UNMATCHED", u, "vsin_slug", u, "add to team_aliases.csv (provider=vsin)")
     if unmatched:
@@ -127,6 +127,14 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
         pd.DataFrame({"provider": "vsin", "alias": unmatched, "provider_id": None, "team_id": "", "season_from": None, "season_to": None}).to_csv(out, index=False)
         print(f"    unmapped slugs written to {out.relative_to(config.ROOT)} — fill team_id and paste the rows into data/tables/ref/team_aliases.csv")
         print(f"    {', '.join(unmatched[:20])}" + (" ..." if len(unmatched) > 20 else ""))
+    if suspect:
+        # Cannot be corrected automatically: no spelling of the slug matches the stored team at all.
+        print(f"    {len(suspect)} STORED ALIAS(ES) NO SPELLING SUPPORTS -- delete these rows from "
+              f"data/tables/ref/team_aliases.csv and re-run:")
+        for x in suspect:
+            print(f"      provider=vsin alias={x['slug']} -> stored {x['stored']} (nothing matches)")
+        vlog.warn("ALIAS_SUSPECT", ";".join(x["slug"] for x in suspect), "vsin_slug",
+                  "; ".join(f"{x['slug']}->{x['stored']}" for x in suspect), "a supported mapping")
     if conflicts:
         print(f"    CORRECTED {len(conflicts)} team alias(es) written by an earlier, looser matcher:")
         for c in conflicts:
@@ -146,6 +154,79 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
         for kind, whys in sorted(by_kind.items(), key=lambda kv: -len(kv[1])):
             print(f"      {kind}: {len(whys)}  e.g. {whys[0][:110]}")
     return recs, problems + probs
+
+
+def read_linetracker(league: str, season: int, games: pd.DataFrame, vlog: ValidationLog,
+                     dry: bool) -> int:
+    """
+    Multi-book prices from the signed-in linetracker, written as market snapshots.
+
+    Eight books instead of one is what line shopping and a trustworthy closing number need: until
+    now every "closing line" was DraftKings' opinion of the close. Circa leads CLV_BOOK_PRIORITY
+    because its close is the industry's reference price.
+
+    Nothing is written for a game that does not resolve to exactly one scheduled game, and nothing
+    is written at all if the page's own consistency checks fail -- a price filed against the wrong
+    game is worse than a missing price.
+    """
+    from providers.base import BudgetExceeded, ProviderError
+    from pipeline import linetracker
+    try:
+        rm, auth = vsin_session("linetracker")
+    except ProviderError as e:
+        vlog.warn("PROVIDER_FAIL", "vsin_linetracker", league, str(e)[:160], "signed-in session")
+        return 0
+    if auth.configured and not auth.signed_in:
+        print("  linetracker: session is not signed in; skipped")
+        return 0
+    url = config.VSIN_LINETRACKER["url"].format(path=vsin.PATH[league])
+    try:
+        res = rm.get(url, headers={"User-Agent": vsin.UA, "Accept": "text/html"},
+                     expect_json=False, timeout=45)
+    except (ProviderError, BudgetExceeded) as e:
+        vlog.warn("PROVIDER_FAIL", "vsin_linetracker", league, str(e)[:120], "200")
+        print(f"  linetracker {league}: fetch failed ({str(e)[:80]})")
+        return 0
+    rows, probs = vsin.parse_linetracker(res.payload)
+    parsed = vsin.linetracker_games(rows)
+    deduped, dnotes = vsin.linetracker_dedupe(parsed)
+    checks = vsin.linetracker_check(deduped)
+    print(f"  linetracker {league}: {len(rows)} priced cells, {len(parsed)} raw groups -> "
+          f"{len(deduped)} games ({len(dnotes)} collapsed)")
+    hard = [c for c in checks if c["kind"] in ("spreads_not_opposite", "totals_differ",
+                                               "duplicate_side", "impossible_gap")]
+    if hard:
+        # These are the signatures of a shifted column or a mis-grouped game. Writing prices while
+        # one is outstanding is how a wrong number reaches every signal downstream.
+        print(f"    REFUSING to write: {len(hard)} structural problem(s):")
+        for c in hard[:6]:
+            print(f"      {c['kind']}: {c['why']}")
+        vlog.warn("LINETRACKER_UNSAFE", "vsin_linetracker", league,
+                  "; ".join(c["kind"] for c in hard[:6]), "no structural problems")
+        return 0
+    teams = storage.read_table(config.TABLES / "ref" / "teams.parquet")
+    resolved, rprobs = linetracker.resolve(deduped, league, season, games, teams)
+    print(f"    resolved {len(resolved)} of {len(deduped)} games to a scheduled game_id")
+    by_kind: dict = {}
+    for x in rprobs + probs:
+        by_kind.setdefault(x.get("kind", "other"), []).append(x.get("why", ""))
+    for kind, whys in sorted(by_kind.items(), key=lambda kv: -len(kv[1])):
+        print(f"      {kind}: {len(whys)}  e.g. {whys[0][:150]}")
+        vlog.warn("LINETRACKER_" + kind.upper(), "vsin_linetracker", league, whys[0][:160], "resolved")
+    snaps = linetracker.snapshots(resolved, res.retrieved_at)
+    moves = linetracker.movement(resolved)
+    if moves:
+        print(f"    {len(moves)} book-marked move(s) on the page "
+              f"({len({m['game_id'] for m in moves})} games)")
+    if dry:
+        print(f"    dry run: {len(snaps)} snapshot row(s) would be written across "
+              f"{len({s['game_id'] for s in snaps})} games, "
+              f"{len({s['book'] for s in snaps})} books")
+        return 0
+    n = linetracker.write(snaps, league, season, games)
+    print(f"    wrote {n} multi-book snapshot row(s) "
+          f"({len({s['book'] for s in snaps})} books: {', '.join(sorted({s['book'] for s in snaps}))})")
+    return n
 
 
 def read_pastes(league: str, season: int, resolver: ids.AliasResolver, games: pd.DataFrame, vlog: ValidationLog) -> tuple[list[dict], list[dict]]:
@@ -308,6 +389,13 @@ def run(league: str, season: int, dry: bool, job: JobRun) -> None:
                 recs += splits_feed.fetch(rm, league, season, int(wk))
             except (splits_feed.NotConfigured, NotImplementedError) as e:
                 vlog.warn("PROVIDER_FAIL", "splits_feed", "", str(e)[:120], "records")
+    if config.VSIN_LINETRACKER.get("enabled"):
+        try:
+            job.rows_written += read_linetracker(league, season, games, vlog, dry)
+        except Exception as e:
+            # The linetracker is an addition, not a dependency: if it breaks, the splits still land.
+            vlog.warn("PROVIDER_FAIL", "vsin_linetracker", league, str(e)[:160], "snapshot rows")
+            print(f"  linetracker {league}: skipped after an error -- {str(e)[:120]}")
     if config.MARKET_FROM_VSIN and not dry:
         n_mkt = write_market_snapshots([r for r in recs if r.get("source") == "vsin_dk"], league, season, games)
         if n_mkt:

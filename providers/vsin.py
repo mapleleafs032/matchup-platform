@@ -709,7 +709,16 @@ def parse(html: str) -> tuple[list[TeamRow], list[dict]]:
 
 
 def slug_key(s: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", s.lower())
+    """
+    Normalise a name for comparison, FOLDING accents rather than deleting them.
+
+    Stripping non-alphanumerics turned "San Jose State" into sanjosestate but "San José State" into
+    sanjosstate, so the two never matched and San Jose State was reported unmapped every run. NFKD
+    decomposition separates the accent from the letter, so the letter survives.
+    """
+    import unicodedata
+    folded = unicodedata.normalize("NFKD", str(s)).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]", "", folded.lower())
 
 
 # VSiN shortens school names; expand each token to its full form before matching.
@@ -741,7 +750,11 @@ def _slug_variants(slug: str) -> list[str]:
     for toks in expanded:
         # never cut past a qualifier: "florida atlantic owls" may shorten to "florida atlantic", never "florida"
         last_q = max((i for i, t in enumerate(toks) if t in _QUALIFIERS), default=-1)
-        floor = max(last_q + 1, 1)
+        # And never reduce a THREE-OR-MORE token name to its first token. That unguarded cut turned
+        # "texas-san-antonio-roadrunners" into "texas" and wrote UTSA's alias as Texas -- a wrong
+        # team, accepted as a unique match, sitting in team_aliases.csv. Two-token names may still
+        # shorten to one ("navy-midshipmen" -> "navy"), which is where the trim is actually needed.
+        floor = max(last_q + 1, 2 if len(toks) >= 3 else 1)
         for cut in range(len(toks), floor - 1, -1):
             if cut >= floor:
                 out.append(slug_key("".join(toks[:cut])))
@@ -772,18 +785,26 @@ def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, 
     existing = dict(zip(resolver.aliases[resolver.aliases.provider == "vsin"].alias,
                         resolver.aliases[resolver.aliases.provider == "vsin"].team_id))
     known = set(existing)
-    added, unmatched, conflicts = [], [], []
+    added, unmatched, conflicts, suspect = [], [], [], []
     for r in rows:
         if r.slug in known:
             # an alias written by an earlier matcher can be wrong and would never be revisited; re-check it
             best = None
+            supported = False
             for key in _slug_variants(r.slug):
-                cand = lookup.get(key)
-                if cand and len(cand) == 1:
+                cand = lookup.get(key) or set()
+                if existing[r.slug] in cand:
+                    supported = True
+                if cand and len(cand) == 1 and best is None:
                     best = next(iter(cand))
-                    break
             if best and best != existing[r.slug]:
                 conflicts.append({"slug": r.slug, "stored": existing[r.slug], "expected": best})
+            elif not supported:
+                # No spelling of this slug can produce the stored team at all. That is what the
+                # unguarded token trim left behind: texas-san-antonio-roadrunners -> CFB_TEX, a wrong
+                # team accepted as a unique match and never revisited. It cannot be corrected
+                # automatically (nothing matches), so it is reported for deletion by hand.
+                suspect.append({"slug": r.slug, "stored": existing[r.slug]})
             continue
         hit = None
         for key in _slug_variants(r.slug):
@@ -804,7 +825,7 @@ def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, 
         resolver.add([{"provider": "vsin", "alias": c["slug"], "provider_id": None, "team_id": c["expected"],
                        "season_from": None, "season_to": None} for c in conflicts])
         resolver.save()
-    return len(added), sorted(set(unmatched)), conflicts
+    return len(added), sorted(set(unmatched)), conflicts, suspect
 
 
 def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: ids.AliasResolver,
