@@ -718,6 +718,9 @@ def slug_key(s: str) -> str:
     """
     import unicodedata
     folded = unicodedata.normalize("NFKD", str(s)).encode("ascii", "ignore").decode("ascii")
+    # "&" survives as the word, because VSiN spells it: texas-a-and-m-aggies against our
+    # "Texas A&M Aggies". Dropping the ampersand left texasamaggies vs texasaandmaggies.
+    folded = folded.replace("&", "and")
     return re.sub(r"[^a-z0-9]", "", folded.lower())
 
 
@@ -785,26 +788,17 @@ def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, 
     existing = dict(zip(resolver.aliases[resolver.aliases.provider == "vsin"].alias,
                         resolver.aliases[resolver.aliases.provider == "vsin"].team_id))
     known = set(existing)
-    added, unmatched, conflicts, suspect = [], [], [], []
+    added, unmatched, conflicts = [], [], []
     for r in rows:
         if r.slug in known:
             # an alias written by an earlier matcher can be wrong and would never be revisited; re-check it
             best = None
-            supported = False
             for key in _slug_variants(r.slug):
                 cand = lookup.get(key) or set()
-                if existing[r.slug] in cand:
-                    supported = True
                 if cand and len(cand) == 1 and best is None:
                     best = next(iter(cand))
             if best and best != existing[r.slug]:
                 conflicts.append({"slug": r.slug, "stored": existing[r.slug], "expected": best})
-            elif not supported:
-                # No spelling of this slug can produce the stored team at all. That is what the
-                # unguarded token trim left behind: texas-san-antonio-roadrunners -> CFB_TEX, a wrong
-                # team accepted as a unique match and never revisited. It cannot be corrected
-                # automatically (nothing matches), so it is reported for deletion by hand.
-                suspect.append({"slug": r.slug, "stored": existing[r.slug]})
             continue
         hit = None
         for key in _slug_variants(r.slug):
@@ -825,7 +819,7 @@ def seed_aliases(rows: list[TeamRow], league: str, resolver: ids.AliasResolver, 
         resolver.add([{"provider": "vsin", "alias": c["slug"], "provider_id": None, "team_id": c["expected"],
                        "season_from": None, "season_to": None} for c in conflicts])
         resolver.save()
-    return len(added), sorted(set(unmatched)), conflicts, suspect
+    return len(added), sorted(set(unmatched)), conflicts
 
 
 def to_records(rows: list[TeamRow], league: str, games: pd.DataFrame, resolver: ids.AliasResolver,
@@ -1100,3 +1094,75 @@ def linetracker_dedupe(games: list[dict]) -> tuple[list[dict], list[dict]]:
                              + f" (groups {keep['_index']} and {drop['_index']}); kept the copy "
                                f"quoting {quoted(keep)} book-markets, dropped {quoted(drop)}"})
     return [best[k] for k in order], notes
+
+
+def match_depth(slug: str, team_id: str, lookup: dict) -> int | None:
+    """
+    How far down the spelling list the team is reached. 0 means the FULL name matched.
+
+    Depth is what separates a real mapping from a trimmed-down accident: "tennessee-volunteers"
+    reaches Tennessee at depth 0, while "tennessee-martin" only reaches it at depth 1, after its own
+    identity has been cut away. None means never.
+    """
+    for i, key in enumerate(_slug_variants(slug)):
+        if team_id in (lookup.get(key) or set()):
+            return i
+    return None
+
+
+def collisions(resolver, league: str, teams: pd.DataFrame) -> list[dict]:
+    """
+    Aliases where SEVERAL slugs claim ONE team. Each is a wrong mapping, provable without spelling.
+
+    A team has exactly one VSiN slug, so a second slug pointing at it is another school that got
+    collapsed onto it by the token trim. Measured on the live table: ten rows, including
+    texas-a-and-m-aggies and texas-san-antonio-roadrunners both filed as CFB_TEX, la-monroe-warhawks
+    as CFB_UL (the Ragin' Cajuns) and tennessee-martin as CFB_TENN.
+
+    Collision is the right test, and "no spelling supports it" is NOT: an alias exists precisely to
+    bridge what spelling cannot reach, so being underivable is the normal state of a USEFUL alias.
+    Judging by that alone condemned appalachian-st-mountaineers, army-black-nights (VSiN's own typo
+    for Black Knights) and miami-fl-hurricanes -- three correct mappings, each the only thing making
+    its team work.
+
+    Within a collision the keeper is the slug matching at the lowest depth; the rest are returned for
+    removal. A group with no clear winner is reported and left alone.
+    """
+    if teams is None or teams.empty:
+        return []
+    t = teams[teams.league == league]
+    lookup: dict[str, set] = {}
+    for _, x in t.iterrows():
+        forms = {x.get("display_name"), x.get("school_or_city")}
+        if pd.notna(x.get("mascot")):
+            forms.add(f"{x.get('school_or_city')} {x.get('mascot')}")
+        for f in forms:
+            if isinstance(f, str) and f.strip():
+                lookup.setdefault(slug_key(f), set()).add(x.team_id)
+    a = resolver.aliases
+    a = a[(a.provider == "vsin") & (a.team_id.isin(set(t.team_id)))]
+    out: list[dict] = []
+    for team_id, grp in a.groupby("team_id"):
+        slugs = list(grp.alias)
+        if len(slugs) < 2:
+            continue
+        depths = {s: match_depth(s, team_id, lookup) for s in slugs}
+        real = [d for d in depths.values() if d is not None]
+        if not real:
+            out.append({"team_id": team_id, "keep": None, "drop": [],
+                        "why": f"{team_id} is claimed by {slugs} and none of them is derivable; "
+                               f"left alone for a human to pick"})
+            continue
+        best = min(real)
+        keep = [s for s, d in depths.items() if d == best]
+        if len(keep) > 1:
+            out.append({"team_id": team_id, "keep": None, "drop": [],
+                        "why": f"{team_id} is claimed by {slugs}, {len(keep)} of them equally well; "
+                               f"left alone for a human to pick"})
+            continue
+        out.append({"team_id": team_id, "keep": keep[0],
+                    "drop": [s for s in slugs if s != keep[0]],
+                    "why": f"{team_id}: {keep[0]} matches its full name (depth {best}); "
+                           f"{', '.join(s for s in slugs if s != keep[0])} only reach it after "
+                           f"their own identity is trimmed away"})
+    return out

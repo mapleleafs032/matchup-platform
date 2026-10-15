@@ -1,2 +1,6 @@
 league,label,team_id,note
-CFB,Texas-San Antonio Roadrunners,CFB_UTSA,"VSiN spells it out; our table uses the UTSA initialism, so no spelling of one reaches the other"
+CFB,Texas-San Antonio Roadrunners,CFB_UTSA,"VSiN spells it out; our table uses the UTSA initialism"
+CFB,Appalachian ST Mountaineers,CFB_APP,"our table says App State, VSiN says Appalachian"
+CFB,Army Black Nights,CFB_ARMY,"VSiN's own typo for Black Knights"
+CFB,Miami FL Hurricanes,CFB_MIA,"VSiN disambiguates from Miami OH; our table does not"
+CFB,LA Monroe Warhawks,CFB_ULM,"VSiN abbreviates Louisiana as LA; our table uses UL Monroe"

@@ -199,3 +199,87 @@ def test_write_appends_per_week_and_is_idempotent():
     assert len(df) == 2 and set(df.book) == {"circa", "betmgm"}
     assert list(df.columns)[:5] == ["snapshot_id", "game_id", "retrieved_at",
                                     "provider_updated_at", "book"]
+
+
+# ---- collision is the right test for a wrong alias --------------------------------------------
+class _Resolver:
+    """Minimal stand-in: collisions() only reads .aliases."""
+    def __init__(self, rows):
+        self.aliases = pd.DataFrame(rows)
+        self.saved = False
+
+    def save(self):
+        self.saved = True
+
+
+def _cfb_teams():
+    return pd.DataFrame([
+        {"team_id": "CFB_TEX", "league": "CFB", "abbr": "TEX", "school_or_city": "Texas",
+         "mascot": "Longhorns", "display_name": "Texas Longhorns"},
+        {"team_id": "CFB_TAM", "league": "CFB", "abbr": "TAM", "school_or_city": "Texas A&M",
+         "mascot": "Aggies", "display_name": "Texas A&M Aggies"},
+        {"team_id": "CFB_UTSA", "league": "CFB", "abbr": "UTSA", "school_or_city": "UTSA",
+         "mascot": "Roadrunners", "display_name": "UTSA Roadrunners"},
+        {"team_id": "CFB_TENN", "league": "CFB", "abbr": "TENN", "school_or_city": "Tennessee",
+         "mascot": "Volunteers", "display_name": "Tennessee Volunteers"},
+        {"team_id": "CFB_APP", "league": "CFB", "abbr": "APP", "school_or_city": "App State",
+         "mascot": "Mountaineers", "display_name": "App State Mountaineers"},
+    ])
+
+
+def _alias(alias, team_id):
+    return {"provider": "vsin", "alias": alias, "provider_id": None, "team_id": team_id,
+            "season_from": None, "season_to": None}
+
+
+def test_several_slugs_claiming_one_team_is_the_wrong_mapping():
+    """
+    Measured on the live table: texas-a-and-m-aggies AND texas-san-antonio-roadrunners were both
+    filed as CFB_TEX. A team has exactly one VSiN slug, so a second one is another school that the
+    token trim collapsed onto it -- provable with no spelling rule involved.
+    """
+    r = _Resolver([_alias("texas-longhorns", "CFB_TEX"),
+                   _alias("texas-a-and-m-aggies", "CFB_TEX"),
+                   _alias("texas-san-antonio-roadrunners", "CFB_TEX")])
+    coll = vsin.collisions(r, "CFB", _cfb_teams())
+    assert len(coll) == 1
+    assert coll[0]["keep"] == "texas-longhorns"
+    assert set(coll[0]["drop"]) == {"texas-a-and-m-aggies", "texas-san-antonio-roadrunners"}
+
+
+def test_a_lone_underivable_alias_is_left_alone():
+    """
+    THE MISTAKE THIS GUARDS AGAINST. An earlier detector condemned every alias no spelling could
+    derive, and told the user to delete appalachian-st-mountaineers, army-black-nights (VSiN's own
+    typo for Black Knights) and miami-fl-hurricanes -- three CORRECT mappings, each the only thing
+    making its team resolve at all. An alias exists to bridge what spelling cannot reach, so being
+    underivable is the normal state of a useful one. Only a collision proves an alias wrong.
+    """
+    r = _Resolver([_alias("appalachian-st-mountaineers", "CFB_APP"),
+                   _alias("texas-longhorns", "CFB_TEX")])
+    assert vsin.collisions(r, "CFB", _cfb_teams()) == []
+
+
+def test_depth_separates_a_real_match_from_a_trimmed_one():
+    """
+    tennessee-volunteers reaches Tennessee at depth 0 on its full name; tennessee-martin only gets
+    there at depth 1, after its own identity is cut away. Both "match", so depth decides.
+    """
+    r = _Resolver([_alias("tennessee-volunteers", "CFB_TENN"),
+                   _alias("tennessee-martin", "CFB_TENN")])
+    coll = vsin.collisions(r, "CFB", _cfb_teams())
+    assert coll[0]["keep"] == "tennessee-volunteers"
+    assert coll[0]["drop"] == ["tennessee-martin"]
+
+
+def test_a_collision_with_no_clear_winner_is_reported_not_guessed():
+    r = _Resolver([_alias("mystery-one", "CFB_TEX"), _alias("mystery-two", "CFB_TEX")])
+    coll = vsin.collisions(r, "CFB", _cfb_teams())
+    assert coll[0]["keep"] is None and coll[0]["drop"] == []
+    assert "for a human to pick" in coll[0]["why"]
+
+
+def test_the_ampersand_is_read_as_a_word():
+    """VSiN writes texas-a-and-m-aggies; our table writes Texas A&M Aggies. Dropping & broke both."""
+    assert vsin.slug_key("Texas A&M Aggies") == vsin.slug_key("texas a and m aggies")
+    assert lt.name_candidates("Texas A&M Aggies", "CFB", _cfb_teams()) == {"CFB_TAM"}

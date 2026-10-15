@@ -58,7 +58,10 @@ def _name_variants(label: str) -> list[str]:
     'Kennesaw ST' -> kennesaw-st -> {kennesawstate, kennesawst, ...}. The qualifier rules in
     vsin._slug_variants stop a cut from turning Miami OH into Miami.
     """
-    slug = re.sub(r"[^a-z0-9]+", "-", str(label or "").lower()).strip("-")
+    # "&" becomes the word before anything else is stripped, so "Texas A&M Aggies" turns into
+    # texas-a-and-m-aggies and lands on the same key as VSiN's own spelling of the slug.
+    cleaned = str(label or "").replace("&", " and ")
+    slug = re.sub(r"[^a-z0-9]+", "-", cleaned.lower()).strip("-")
     return vsin._slug_variants(slug) if slug else []
 
 

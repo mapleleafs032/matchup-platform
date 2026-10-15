@@ -118,7 +118,7 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
             print("    The page has almost certainly changed. Structure follows:")
             print("    " + vsin.describe_page(html))
         return [], (problems or [{"why": f"only {len(rows)} team rows parsed from the {scope!r} page"}])
-    added, unmatched, conflicts, suspect = vsin.seed_aliases(rows, league, resolver, teams)
+    added, unmatched, conflicts = vsin.seed_aliases(rows, league, resolver, teams)
     for u in unmatched:
         vlog.warn("ALIAS_UNMATCHED", u, "vsin_slug", u, "add to team_aliases.csv (provider=vsin)")
     if unmatched:
@@ -127,14 +127,43 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
         pd.DataFrame({"provider": "vsin", "alias": unmatched, "provider_id": None, "team_id": "", "season_from": None, "season_to": None}).to_csv(out, index=False)
         print(f"    unmapped slugs written to {out.relative_to(config.ROOT)} — fill team_id and paste the rows into data/tables/ref/team_aliases.csv")
         print(f"    {', '.join(unmatched[:20])}" + (" ..." if len(unmatched) > 20 else ""))
-    if suspect:
-        # Cannot be corrected automatically: no spelling of the slug matches the stored team at all.
-        print(f"    {len(suspect)} STORED ALIAS(ES) NO SPELLING SUPPORTS -- delete these rows from "
-              f"data/tables/ref/team_aliases.csv and re-run:")
-        for x in suspect:
-            print(f"      provider=vsin alias={x['slug']} -> stored {x['stored']} (nothing matches)")
-        vlog.warn("ALIAS_SUSPECT", ";".join(x["slug"] for x in suspect), "vsin_slug",
-                  "; ".join(f"{x['slug']}->{x['stored']}" for x in suspect), "a supported mapping")
+    # Several slugs claiming ONE team is a wrong mapping, provable without any spelling rule: a team
+    # has exactly one VSiN slug. This is the test that matters -- "no spelling supports it" is not,
+    # because an alias exists to bridge what spelling cannot, so being underivable is the normal
+    # state of a useful one (appalachian-st-mountaineers, army-black-nights, miami-fl-hurricanes).
+    # Slugs no spelling rule can reach (initialisms: UTSA, UL Monroe). Applied before the collision
+    # scan so the corrected mapping is in place the moment the wrong one is removed.
+    seeds = config.DATA / "manual" / "vsin_aliases.csv"
+    if seeds.exists():
+        try:
+            sd = pd.read_csv(seeds)
+            have = set(resolver.aliases[resolver.aliases.provider == "vsin"].alias)
+            new_rows = [{"provider": "vsin", "alias": str(r.alias).strip(),
+                         "provider_id": None, "team_id": str(r.team_id).strip(),
+                         "season_from": None, "season_to": None}
+                        for r in sd.itertuples()
+                        if str(r.alias).strip() and str(r.alias).strip() not in have
+                        and str(r.team_id).strip() in set(teams.team_id)]
+            if new_rows:
+                resolver.add(new_rows); resolver.save()
+                print(f"    applied {len(new_rows)} recorded alias(es) from {seeds.name}: "
+                      + ", ".join(r["alias"] for r in new_rows))
+        except (OSError, ValueError) as e:
+            vlog.warn("ALIAS_SEED_FAIL", seeds.name, "file", str(e)[:120], "readable csv")
+    coll = vsin.collisions(resolver, league, teams)
+    drop = [s for c in coll for s in c["drop"]]
+    if coll:
+        print(f"    {len(coll)} team(s) claimed by more than one VSiN slug:")
+        for c in coll:
+            print(f"      {c['why']}")
+        vlog.warn("ALIAS_COLLISION", ";".join(drop) or "none", "vsin_slug",
+                  "; ".join(c["why"][:90] for c in coll[:6]), "one slug per team")
+    if drop:
+        keep = resolver.aliases[~((resolver.aliases.provider == "vsin")
+                                  & (resolver.aliases.alias.isin(drop)))]
+        resolver.aliases = keep
+        resolver.save()
+        print(f"      REMOVED {len(drop)} wrong alias row(s): {', '.join(sorted(set(drop)))}")
     if conflicts:
         print(f"    CORRECTED {len(conflicts)} team alias(es) written by an earlier, looser matcher:")
         for c in conflicts:

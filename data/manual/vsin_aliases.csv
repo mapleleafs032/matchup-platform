@@ -1,0 +1,3 @@
+provider,alias,team_id,note
+vsin,texas-san-antonio-roadrunners,CFB_UTSA,"was wrongly stored as CFB_TEX by the unguarded token trim"
+vsin,la-monroe-warhawks,CFB_ULM,"was wrongly stored as CFB_UL (the Ragin' Cajuns) by the same trim"
