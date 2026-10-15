@@ -508,3 +508,17 @@ table.kp td { font-variant-numeric: tabular-nums; }
 table.res-tbl td.good, table.res-tbl tr.good td:nth-child(5) { color: var(--good); font-weight: 600; }
 table.res-tbl td.bad, table.res-tbl tr.bad td:nth-child(5) { color: var(--bad); font-weight: 600; }
 table.res-tbl { width: 100%; }
+
+/* Quick-look rows shown for context only: no edge is credited, so the cell is dashed rather than
+   blank -- blank reads as "we could not tell", a dash reads as "this one does not vote". */
+.ql-context { color: var(--muted); font-weight: 400; }
+
+/* Quick-look rows with no per-window form carry a dot, so "Last 3" cannot imply a three-game
+   figure that was never computed. */
+.ql-fixedmark { color: var(--muted); margin-left: 4px; font-weight: 700; }
+/* Opponent strength in the schedule panel. Top-25 and sub-100 are tinted because the point of the
+   column is to read schedule difficulty at a glance, not to be looked up row by row. */
+.sched .pwr { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sched .pwr-top { color: var(--home); font-weight: 600; }
+.sched .pwr-low { color: var(--muted); }
+.sched .pwr.none { color: var(--muted); }

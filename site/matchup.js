@@ -65,13 +65,21 @@ async function matchupMain() {
   const state = { window: d.metrics.default_window, adj: "OPP_ADJ" };
 
   /* ---- quick look: the stats worth seeing first, value + national rank, with an edge tally ---- */
-  const qlAdj = { v: "OPP_ADJ" };
+  const WLAB = { SEASON: "Season", LAST5: "Last 5", LAST3: "Last 3", HOME: "Home", AWAY: "Away", CONF: "Conference" };
+  const qlAdj = { v: "OPP_ADJ", w: (d.quick_look && d.quick_look.default_window) || "SEASON" };
   const qlWrap = el("div", { class: "ql-wrap" });
   const qlToggle = el("div", { class: "seg", role: "group", "aria-label": "Quick look basis" });
   for (const [k, lab] of [["OPP_ADJ", "Opponent-adjusted"], ["RAW", "Raw"]]) {
     const b = el("button", { "aria-pressed": String(k === qlAdj.v) }, lab);
     b.addEventListener("click", () => { qlAdj.v = k; paintQuick(); });
     qlToggle.append(b);
+  }
+  // Same windows as the comparison grid, so one mental model covers both tables.
+  const qlWindows = el("div", { class: "tabs", role: "group", "aria-label": "Quick look window" });
+  for (const w of ((d.quick_look && d.quick_look.windows) || ["SEASON"])) {
+    const b = el("button", { "aria-pressed": String(w === qlAdj.w) }, WLAB[w] || w);
+    b.addEventListener("click", () => { qlAdj.w = w; paintQuick(); });
+    qlWindows.append(b);
   }
   const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function fmtQL(v, unit) {
@@ -85,7 +93,8 @@ async function matchupMain() {
     const away = d.game.away, home = d.game.home;
     const aName = esc(away.short || away.name), hName = esc(home.short || home.name);
     const aTag = esc(away.abbr || aName), hTag = esc(home.abbr || hName);
-    const title = `${d.game.league === "CFB" ? "College" : "NFL"} analysis — season to date, ${qlAdj.v === "RAW" ? "raw" : "opponent-adjusted"}`;
+    const ck = `${qlAdj.w}:${qlAdj.v}`;
+    const title = `${d.game.league === "CFB" ? "College" : "NFL"} analysis — ${(WLAB[qlAdj.w] || qlAdj.w).toLowerCase()}, ${qlAdj.v === "RAW" ? "raw" : "opponent-adjusted"}`;
     const tip = r => r.metric_key === "__qbr"
       ? "ESPN QBR when both teams have it, otherwise NCAA passing efficiency. Both teams are always on the same scale."
       : r.metric_key === "__sos"
@@ -99,31 +108,45 @@ async function matchupMain() {
     h += `<tr class="ql-sub"><th scope="col">Value</th><th scope="col">Rk</th>`
        + `<th scope="col">Value</th><th scope="col">Rk</th></tr></thead><tbody>`;
     for (const r of q.rows) {
-      const side = r.edge === "home" ? hTag : r.edge === "away" ? aTag : "";
-      h += `<tr class="g-${esc(r.group.toLowerCase())}">`
-         + `<th scope="row" title="${esc(tip(r))}">${esc(r.label)}</th>`
-         + `<td class="num${r.edge === "away" ? " win" : ""}">${esc(fmtQL(r.away.v, r.unit))}</td>`
-         + `<td class="rk">${r.away.rank == null ? "" : esc(r.away.rank)}</td>`
-         + `<td class="num${r.edge === "home" ? " win" : ""}">${esc(fmtQL(r.home.v, r.unit))}</td>`
-         + `<td class="rk">${r.home.rank == null ? "" : esc(r.home.rank)}</td>`
-         + `<td class="ql-edge ${esc(r.edge || "")}">${esc(side)}</td></tr>`;
+      const c = (r.cells || {})[ck] || { away: {}, home: {}, edge: null };
+      const side = c.edge === "home" ? hTag : c.edge === "away" ? aTag : r.context_only ? "—" : "";
+      // A row with no per-window form says so, rather than letting "Last 3" imply a three-game
+      // figure that was never computed.
+      const fixedTip = r.windowed ? "" : " (season to date; does not change with the window)";
+      h += `<tr class="g-${esc(r.group.toLowerCase())}${r.windowed ? "" : " ql-fixed"}">`
+         + `<th scope="row" title="${esc(tip(r) + fixedTip)}">${esc(r.label)}`
+         + `${r.windowed ? "" : '<span class="ql-fixedmark" aria-hidden="true">\u00b7</span>'}</th>`
+         + `<td class="num${c.edge === "away" ? " win" : ""}">${esc(fmtQL(c.away.v, r.unit))}</td>`
+         + `<td class="rk">${c.away.rank == null ? "" : esc(c.away.rank)}</td>`
+         + `<td class="num${c.edge === "home" ? " win" : ""}">${esc(fmtQL(c.home.v, r.unit))}</td>`
+         + `<td class="rk">${c.home.rank == null ? "" : esc(c.home.rank)}</td>`
+         + `<td class="ql-edge ${esc(c.edge || "")}${r.context_only ? " ql-context" : ""}" `
+         + `${r.context_only ? 'title="context only, not counted in the edge tally"' : ""}>`
+         + `${esc(side)}</td></tr>`;
     }
-    const w = q.winner;
+    const tal = (q.tallies || {})[ck] || { home: 0, away: 0 };
+    const w = (q.winners || {})[ck] || null;
     h += `</tbody><tfoot><tr class="ql-total"><th scope="row">Edge count</th>`
-       + `<td class="num" colspan="2">${q.edge_count.away}</td>`
-       + `<td class="num" colspan="2">${q.edge_count.home}</td>`
+       + `<td class="num" colspan="2">${tal.away}</td>`
+       + `<td class="num" colspan="2">${tal.home}</td>`
        + `<td class="ql-edge ${esc(w || "")}">${w === "home" ? hTag : w === "away" ? aTag : "even"}</td>`
        + `</tr></tfoot></table>`;
     return h;
   }
   function paintQuick() {
     [...qlToggle.children].forEach(b => b.setAttribute("aria-pressed", String((b.textContent === "Raw") === (qlAdj.v === "RAW"))));
-    const q = (d.quick_look || {})[qlAdj.v];
+    [...qlWindows.children].forEach(b => b.setAttribute("aria-pressed", String(b.textContent === (WLAB[qlAdj.w] || qlAdj.w))));
+    const q = d.quick_look;
     qlWrap.replaceChildren();
     if (!q || !q.rows || !q.rows.length) { qlWrap.append(el("p", { class: "note" }, "Quick look is unavailable for this game.")); return; }
     qlWrap.append(el("div", { html: quickTableHTML(q) }));
     if (q.espn_note) qlWrap.append(el("p", { class: "note" }, `Power / Offense / Defense / Spec Teams ranks: ${q.espn_note}.`));
     qlWrap.append(el("p", { class: "note" }, q.edge_rule + " Ranks are among all teams in the league as of this week; a blank rank means the metric is not ranked."));
+    if ((q.unwindowed_rows || []).length) {
+      qlWrap.append(el("p", { class: "note" },
+        `Marked with a dot: ${q.unwindowed_rows.join(", ")} are season-to-date or current standings `
+        + `and do not change with the window.`));
+    }
   }
   paintQuick();
   /* ---- schedules and head-to-head, beside the quick look ---- */
@@ -152,14 +175,25 @@ async function matchupMain() {
       const rows = ((d.schedules || {})[schedState.team]) || [];
       if (!rows.length) { schedWrap.append(el("p", { class: "sub-note" }, "No schedule recorded.")); return; }
       const t = el("table", { class: "sched" });
-      t.append(el("tr", { class: "sched-head" }, el("th", {}, "Wk"), el("th", {}, "Opponent"), el("th", {}, "Result")));
+      t.append(el("tr", { class: "sched-head" }, el("th", {}, "Wk"), el("th", {}, "Opponent"),
+                   el("th", { class: "num", title: "ESPN power rank of that opponent" }, "Pwr"),
+                   el("th", {}, "Result")));
       for (const r of rows) {
         const opp = `${r.at} ${r.opponent.abbr}`;
+        // A schedule with no opponent strength says nothing: 5-1 against the bottom thirty and 5-1
+        // against the top thirty look identical. An unranked opponent stays blank rather than
+        // borrowing a number it does not have.
+        const pwr = r.opponent_power_rk == null
+          ? el("td", { class: "num pwr none", title: r.opponent_is_fcs ? "FCS opponent — not ranked" : "no power rank available" },
+               r.opponent_is_fcs ? "FCS" : "—")
+          : el("td", { class: "num pwr " + (r.opponent_power_rk <= 25 ? "pwr-top" : r.opponent_power_rk >= 100 ? "pwr-low" : ""),
+                       title: `ESPN power rank #${r.opponent_power_rk}` }, "#" + r.opponent_power_rk);
         const score = r.us == null ? (r.kickoff_utc ? fmt.kick(r.kickoff_utc, false) : "—")
           : `${r.result} ${r.us}-${r.them}`;
         t.append(el("tr", { class: r.result ? "r-" + r.result : "" },
           el("td", { class: "num" }, String(r.week)),
           el("td", {}, r.has_page === false ? el("span", {}, opp) : gameLink(r.game_id, opp)),
+          pwr,
           el("td", { class: "num sched-res" }, (r.us == null || r.has_page === false) ? score : gameLink(r.game_id, score, "sched-link plain"))));
       }
       schedWrap.append(t);
@@ -249,7 +283,9 @@ async function matchupMain() {
 
   sec("Quick look", null,
     el("div", { class: "ql-row" },
-      el("div", { class: "ql-col" }, el("div", { class: "toolbar" }, el("label", {}, "Basis ", qlToggle)), qlWrap),
+      el("div", { class: "ql-col" },
+        el("div", { class: "toolbar" }, el("label", {}, "Basis ", qlToggle),
+           el("label", {}, "Window ", qlWindows)), qlWrap),
       el("div", { class: "sched-col" }, schedBar, schedWrap)));
   if (kpEl) sec("Key players", null, kpEl);
   const tabs = el("div", { class: "tabs" });

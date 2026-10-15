@@ -323,3 +323,46 @@ def test_a_recorded_alias_replaces_a_wrong_stored_one(tmp_path, monkeypatch, cap
 class _Log:
     def warn(self, *a, **k):
         pass
+
+
+# ---- non-FBS opponents are unmapped on purpose ------------------------------------------------
+def test_an_ignore_row_is_not_treated_as_a_real_mapping(tmp_path, monkeypatch):
+    """
+    Charleston Southern, The Citadel, Columbia, Elon and Pennsylvania are FCS. The teams table holds
+    the 138 FBS teams, so they have no team_id and never will -- asking for one every run invites a
+    mapping that would be WRONG. IGNORE says so once, without becoming an alias.
+    """
+    from pipeline.jobs import ingest_splits as isp
+    monkeypatch.setattr(config, "DATA", tmp_path / "data")
+    (tmp_path / "data" / "manual").mkdir(parents=True)
+    (tmp_path / "data" / "manual" / "vsin_aliases.csv").write_text(
+        "provider,alias,team_id,note\n"
+        "vsin,columbia,IGNORE,FCS\n"
+        "vsin,elon,,FCS with a blank\n"
+        "vsin,la-monroe-warhawks,CFB_ULM,a real one\n")
+    assert isp.ignored_slugs() == {"columbia", "elon"}
+
+    # and the real mapping is still applied, not swallowed by the ignore handling
+    import pandas as _pd
+    from pipeline import ids
+    monkeypatch.setattr(ids, "ALIASES_PATH", tmp_path / "aliases.csv")
+    teams = _pd.DataFrame([
+        {"team_id": "CFB_ULM", "league": "CFB", "abbr": "ULM", "school_or_city": "UL Monroe",
+         "mascot": "Warhawks", "display_name": "UL Monroe Warhawks"}])
+    r = ids.AliasResolver.load()
+    isp.apply_recorded_aliases(r, teams, _Log())
+    stored = dict(zip(r.aliases.alias, r.aliases.team_id))
+    assert stored.get("la-monroe-warhawks") == "CFB_ULM"
+    assert "columbia" not in stored and "elon" not in stored
+
+
+def test_an_unlisted_unmapped_slug_stays_loud(tmp_path, monkeypatch):
+    """A newly promoted or renamed FBS team is the case that DOES need a human; it must not be quieted."""
+    from pipeline.jobs import ingest_splits as isp
+    monkeypatch.setattr(config, "DATA", tmp_path / "data")
+    (tmp_path / "data" / "manual").mkdir(parents=True)
+    (tmp_path / "data" / "manual" / "vsin_aliases.csv").write_text(
+        "provider,alias,team_id,note\nvsin,columbia,IGNORE,FCS\n")
+    ign = isp.ignored_slugs()
+    assert "columbia" in ign
+    assert "some-new-fbs-team" not in ign

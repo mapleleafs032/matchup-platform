@@ -119,6 +119,12 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
             print("    " + vsin.describe_page(html))
         return [], (problems or [{"why": f"only {len(rows)} team rows parsed from the {scope!r} page"}])
     added, unmatched, conflicts = vsin.seed_aliases(rows, league, resolver, teams)
+    ignore = ignored_slugs()
+    known_fcs = [u for u in unmatched if u in ignore]
+    unmatched = [u for u in unmatched if u not in ignore]
+    if known_fcs:
+        print(f"    {len(known_fcs)} non-FBS opponent(s) deliberately unmapped: "
+              + ", ".join(sorted(known_fcs)))
     for u in unmatched:
         vlog.warn("ALIAS_UNMATCHED", u, "vsin_slug", u, "add to team_aliases.csv (provider=vsin)")
     if unmatched:
@@ -167,6 +173,33 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
         for kind, whys in sorted(by_kind.items(), key=lambda kv: -len(kv[1])):
             print(f"      {kind}: {len(whys)}  e.g. {whys[0][:110]}")
     return recs, problems + probs
+
+
+def ignored_slugs() -> set[str]:
+    """
+    Slugs deliberately left unmapped: non-FBS opponents.
+
+    The teams table holds the 138 FBS teams, so Charleston Southern, The Citadel, Columbia, Elon and
+    Pennsylvania have no team_id and never will. Reporting them as "fill in team_id" every run asks
+    for work that must not be done -- an FCS slug mapped to anything would be wrong. Listing them as
+    IGNORE in data/manual/vsin_aliases.csv says so once.
+
+    Only slugs named in that file are quieted. A newly promoted or renamed FBS team stays loud,
+    which is the case that actually needs a human.
+    """
+    path = config.DATA / "manual" / "vsin_aliases.csv"
+    if not path.exists():
+        return set()
+    try:
+        df = pd.read_csv(path)
+    except (OSError, ValueError):
+        return set()
+    out = set()
+    for r in df.itertuples():
+        tid = "" if pd.isna(getattr(r, "team_id", None)) else str(r.team_id).strip()
+        if tid.upper() in ("", "IGNORE", "NONE", "FCS"):
+            out.add(str(r.alias).strip())
+    return out
 
 
 def apply_recorded_aliases(resolver, teams, vlog) -> None:

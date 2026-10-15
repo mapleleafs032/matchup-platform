@@ -269,6 +269,11 @@ QUICK_ROWS = [
     ("OTHER",    "SOS",              "__sos"),
 ]
 QUICK_EDGE_PCT_GAP = 0.12       # percentile gap at which one side is credited with the edge
+# Rows shown for CONTEXT ONLY: they get no edge mark and no vote in the tally. ESPN's power, offence,
+# defence and special-teams ranks are composites built from the very things the other rows already
+# measure, so crediting them double-counts the same evidence -- and four of twenty-five rows is
+# enough to decide the tally on its own.
+QUICK_CONTEXT_GROUPS = {"RANKS"}
 
 
 def _passer_rating(cmp_, att, yds, td, intc) -> float | None:
@@ -392,10 +397,28 @@ def _espn_sos_manual(S: "Season") -> dict:
     return out
 
 
+def _espn_power_by_team(S: "Season") -> dict:
+    """{team_id: ESPN power rank}. Empty when the power index has not been pulled."""
+    tbl = _espn_ranks(S)
+    col = ESPN_RANK_COLUMNS["__espn_power"]
+    if tbl.empty or col not in tbl.columns:
+        return {}
+    return {r.team_id: int(getattr(r, col)) for r in tbl.itertuples()
+            if pd.notna(getattr(r, col))}
+
+
 def _schedule_rows(S: "Season", team_id: str, upto_week: int, limit: int = 20) -> list[dict]:
-    """Every game this team has on the books this season, result included where it is final."""
+    """
+    Every game this team has on the books this season, result included where it is final.
+
+    Each opponent carries its ESPN power rank, because a schedule without it says nothing about
+    strength: 5-1 against the bottom thirty and 5-1 against the top thirty read identically. A
+    missing rank stays None -- an unranked opponent (FCS) has no rank, and showing one would invent
+    strength that does not exist.
+    """
     g = S.games[((S.games.home_team_id == team_id) | (S.games.away_team_id == team_id)) & (S.games.season_type == "REG")]
     g = g.sort_values("week")
+    power = _espn_power_by_team(S)
     out = []
     for _, x in g.iterrows():
         home = x.home_team_id == team_id
@@ -406,7 +429,9 @@ def _schedule_rows(S: "Season", team_id: str, upto_week: int, limit: int = 20) -
             us = int(r.home_score if home else r.away_score)
             them = int(r.away_score if home else r.home_score)
         out.append({"game_id": x.game_id, "week": int(x.week), "at": "vs" if home else "at",
-                    "opponent": S.team(opp), "kickoff_utc": str(x.kickoff_utc) if pd.notna(x.kickoff_utc) else None,
+                    "opponent": S.team(opp), "opponent_power_rk": power.get(opp),
+                    "opponent_is_fcs": bool(x.get("is_fcs_game")) if "is_fcs_game" in x.index else False,
+                    "kickoff_utc": str(x.kickoff_utc) if pd.notna(x.kickoff_utc) else None,
                     "status": x.status, "us": us, "them": them,
                     "result": None if us is None else ("W" if us > them else "L" if us < them else "T"),
                     "has_page": bool(r is not None or x.status == "SCHEDULED")})
@@ -510,7 +535,19 @@ def _box_stats(S: "Season", gid: str, home: str, away: str) -> dict | None:
     return out
 
 
-def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, metrics_rows: list, adj: str = "OPP_ADJ") -> dict:
+def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str,
+                     metrics_rows: list) -> dict:
+    """
+    The Quick Look table, carrying EVERY window and both adjustments in one block.
+
+    The windowed values already exist on the metric rows keyed "{WINDOW}:{ADJUSTMENT}" -- the same
+    keys the comparison grid uses -- so the server emits all of them and the page switches instantly
+    instead of needing a rebuild per view. Cells are keyed the same way.
+
+    Six of the rows are NOT windowed: QBR, SOS and the four ESPN ranks are season-to-date or
+    current-standing figures with no per-window form. They are repeated across the keys and marked
+    windowed=False, so "Last 3" cannot imply a three-game QBR that was never computed.
+    """
     by_key = {r["metric_key"]: r for r in metrics_rows}
     reg = S.reg.set_index("metric_key") if not S.reg.empty else pd.DataFrame()
     rat = storage.read_table(AN / "team_ratings" / S.league / f"{S.season}.parquet")
@@ -520,24 +557,24 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
     if len({k for _, k in qb.values() if k}) > 1:
         qb_kind = "PASSER_RTG"          # never compare two teams on different scales
         qb = {t: (_team_qb_metric_passer(S, t, week), "PASSER_RTG") for t in (home, away)}
-    rows, tally = [], {"home": 0, "away": 0}
     note_missing = None
-    for group, label, key in QUICK_ROWS:
-        hib, unit = True, None
+    keys = [f"{w}:{a}" for w in WINDOWS for a in ("OPP_ADJ", "RAW")]
+
+    def fixed_cell(key):
+        """The window-independent rows. Returns (away, home, higher_is_better, unit, label)."""
+        nonlocal note_missing
         if key == "__qbr":
-            a = {"v": qb[away][0], "rank": None, "pct": None}
-            h = {"v": qb[home][0], "rank": None, "pct": None}
-            unit = "qbr"
-            label = "QBR" if qb_kind == "QBR" else "Pass Efficiency"
-        elif key in ESPN_RANK_COLUMNS:
+            return ({"v": qb[away][0], "rank": None, "pct": None},
+                    {"v": qb[home][0], "rank": None, "pct": None},
+                    True, "qbr", "QBR" if qb_kind == "QBR" else "Pass Efficiency")
+        if key in ESPN_RANK_COLUMNS:
             col = ESPN_RANK_COLUMNS[key]
             tbl = _espn_ranks(S)
             if tbl.empty:
-                espn_missing = "no ESPN power-index data pulled for this league yet"
+                note_missing = "no ESPN power-index data pulled for this league yet"
             elif col not in tbl.columns:
-                espn_missing = "ESPN data was pulled before these rank columns existed; re-run the fpi step"
-            else:
-                espn_missing = None
+                note_missing = "ESPN data was pulled before these rank columns existed; re-run the fpi step"
+
             def rk(t):
                 if tbl.empty or col not in tbl.columns:
                     return {"v": None, "rank": None, "pct": None}
@@ -545,51 +582,77 @@ def build_quick_look(S: "Season", week: int, gid: str, home: str, away: str, met
                 if r.empty or pd.isna(r[col].iloc[0]):
                     return {"v": None, "rank": None, "pct": None}
                 return {"v": int(r[col].iloc[0]), "rank": None, "pct": None}
-            a, h = rk(away), rk(home)
-            hib = False            # a lower rank is better
-            unit = "rank"
-            if espn_missing:
-                note_missing = espn_missing
-        elif key == "__sos":
-            manual = _espn_sos_manual(S)
-            espn = _espn_sos_table(S)
-            def sos(t):
-                if t in manual:                      # a hand-entered rank always wins
-                    return {"v": manual[t], "rank": None, "pct": None}
-                if t in espn:                        # ESPN's own rank, as pulled by the context job
-                    return {"v": espn[t], "rank": None, "pct": None}
-                if rat.empty or t not in rat.index:
-                    return {"v": None, "rank": None, "pct": None}
-                return {"v": int(rat.loc[t].sos_rank), "rank": None, "pct": None}
-            a, h = sos(away), sos(home)
-            hib = False            # a lower SOS rank means a tougher schedule faced
-            unit = "rank"
+            return rk(away), rk(home), False, "rank", None
+        # __sos
+        manual, espn = _espn_sos_manual(S), _espn_sos_table(S)
+
+        def sos(t):
+            if t in manual:                      # a hand-entered rank always wins
+                return {"v": manual[t], "rank": None, "pct": None}
+            if t in espn:                        # ESPN's own rank, as pulled by the context job
+                return {"v": espn[t], "rank": None, "pct": None}
+            if rat.empty or t not in rat.index:
+                return {"v": None, "rank": None, "pct": None}
+            return {"v": int(rat.loc[t].sos_rank), "rank": None, "pct": None}
+        return sos(away), sos(home), False, "rank", None
+
+    def credit(a, h, hib):
+        """Which side the metric favours, or None. Percentiles first, raw values when there are none."""
+        ap, hp = (a or {}).get("pct"), (h or {}).get("pct")
+        av, hv = (a or {}).get("v"), (h or {}).get("v")
+        if ap is not None and hp is not None and abs(hp - ap) >= QUICK_EDGE_PCT_GAP:
+            return "home" if hp > ap else "away"
+        if ap is None and hp is None and av is not None and hv is not None:
+            return "home" if ((hv > av) if hib else (hv < av)) else "away"
+        return None
+
+    rows = []
+    tallies = {k: {"home": 0, "away": 0} for k in keys}
+    for group, label, key in QUICK_ROWS:
+        context_only = group in QUICK_CONTEXT_GROUPS
+        windowed = key not in ESPN_RANK_COLUMNS and key not in ("__qbr", "__sos")
+        cells = {}
+        if not windowed:
+            a, h, hib, unit, relabel = fixed_cell(key)
+            label = relabel or label
+            edge = None if context_only else credit(a, h, hib)
+            cell = {"away": {"v": a.get("v"), "rank": a.get("rank")},
+                    "home": {"v": h.get("v"), "rank": h.get("rank")}, "edge": edge}
+            for k in keys:
+                cells[k] = cell
+                if edge:
+                    tallies[k][edge] += 1
         else:
             row = by_key.get(key)
             if not row:
                 continue
-            k = f"SEASON:{adj}"
-            a = row["away"].get(k) or row["away"].get("SEASON:RAW") or {}
-            h = row["home"].get(k) or row["home"].get("SEASON:RAW") or {}
+            hib, unit = True, None
             if not reg.empty and key in reg.index:
                 hib = bool(reg.loc[key].higher_is_better); unit = reg.loc[key].unit
-        av, hv = a.get("v") if a else None, h.get("v") if h else None
-        edge = None
-        ap, hp = (a or {}).get("pct"), (h or {}).get("pct")
-        if ap is not None and hp is not None and abs(hp - ap) >= QUICK_EDGE_PCT_GAP:
-            edge = "home" if hp > ap else "away"
-        elif ap is None and hp is None and av is not None and hv is not None:
-            better_home = (hv > av) if hib else (hv < av)
-            edge = "home" if better_home else "away"
-        if edge:
-            tally[edge] += 1
-        rows.append({"group": group, "label": label, "metric_key": key, "unit": unit, "higher_is_better": hib,
-                     "away": {"v": av, "rank": (a or {}).get("rank")}, "home": {"v": hv, "rank": (h or {}).get("rank")},
-                     "edge": edge})
-    return {"rows": rows, "edge_count": tally, "espn_note": note_missing,
-            "winner": ("home" if tally["home"] > tally["away"] else "away" if tally["away"] > tally["home"] else None),
-            "adjustment": adj, "edge_rule": f"An edge is credited when the two teams differ by at least "
-                                            f"{int(QUICK_EDGE_PCT_GAP*100)} percentile points on that metric."}
+            for k in keys:
+                a = row["away"].get(k) or {}
+                h = row["home"].get(k) or {}
+                edge = None if context_only else credit(a, h, hib)
+                cells[k] = {"away": {"v": a.get("v"), "rank": a.get("rank")},
+                            "home": {"v": h.get("v"), "rank": h.get("rank")}, "edge": edge}
+                if edge:
+                    tallies[k][edge] += 1
+        rows.append({"group": group, "label": label, "metric_key": key, "unit": unit,
+                     "higher_is_better": hib, "context_only": context_only,
+                     "windowed": windowed, "cells": cells})
+    winners = {k: ("home" if t["home"] > t["away"] else "away" if t["away"] > t["home"] else None)
+               for k, t in tallies.items()}
+    return {"rows": rows, "windows": WINDOWS, "default_window": "SEASON",
+            "adjustments": ["OPP_ADJ", "RAW"], "tallies": tallies, "winners": winners,
+            "espn_note": note_missing,
+            "context_rows": sorted({lbl for grp, lbl, _ in QUICK_ROWS if grp in QUICK_CONTEXT_GROUPS}),
+            "unwindowed_rows": sorted({(lbl if grp != "QB" else "QBR")
+                                       for grp, lbl, k in QUICK_ROWS
+                                       if k in ESPN_RANK_COLUMNS or k in ("__qbr", "__sos")}),
+            "edge_rule": f"An edge is credited when the two teams differ by at least "
+                         f"{int(QUICK_EDGE_PCT_GAP*100)} percentile points on that metric. "
+                         f"The ESPN rank rows are shown for context and are not counted: they are "
+                         f"composites of the same evidence the rows above already measure."}
 
 
 def _splits_freshness(S: Season, week: int) -> dict:
@@ -877,7 +940,7 @@ def build_matchup(S: Season, week: int, entry: dict) -> dict:
     return {"game": entry, "status": g.status, "frozen_from_snapshot": bool(snap), "locked_at": snap["locked_at"] if snap else None,
             "teams": {"away": team_block(away, entry["away"]), "home": team_block(home, entry["home"])},
             "metrics": {"windows": WINDOWS, "default_window": "SEASON", "rows": metrics_rows, "quality_flags": qflags},
-            "quick_look": {a: build_quick_look(S, week, gid, home, away, metrics_rows, a) for a in ("OPP_ADJ", "RAW")},
+            "quick_look": build_quick_look(S, week, gid, home, away, metrics_rows),
             "box": (_box_stats(S, gid, home, away) if g.status in ("FINAL", "LOCKED") else None),
             "winprob": (_winprob_block(S, week, gid, home, away,
                                        (entry.get("market") or {}).get("spread_home"))

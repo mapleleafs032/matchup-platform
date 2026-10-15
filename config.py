@@ -86,7 +86,12 @@ CFBD_STATS_CALLS_PER_WEEK = 5     # games/teams, stats/game/advanced, plays, dri
 
 # ---- Analytics layer (pipeline/asof.py, pipeline/ratings.py) -----------------------
 USE_GARBAGE_FILTERED = True          # which team_game_advanced variant feeds the model
-FCS_GAME_WEIGHT = 0.5                # CFB: weight of FBS-vs-FCS games in windows and ridge fits
+# CFB: an FBS-vs-FCS game is not evidence about FBS play. A 49-7 win over an FCS opponent inflates
+# every offensive rate and flatters the defence, and the opponent has no rating, so the
+# opponent-adjustment cannot correct for it either. Excluded outright from windows and ridge fits;
+# the game still counts in the team's record, it just does not contribute a stat.
+FCS_GAMES_IN_METRICS = False         # False = drop them; True = keep at FCS_GAME_WEIGHT
+FCS_GAME_WEIGHT = 0.5                # only used when FCS_GAMES_IN_METRICS is True
 NIGHT_GAME_LOCAL_HOUR = 18           # local kickoff hour >= this -> NIGHT window
 RIDGE_LAMBDA = {"CFB": 3.0, "NFL": 2.0}          # opponent-adjustment shrinkage; tuned in Phase 8 backtest
 RECENCY_WEIGHTS = {"SEASON": 0.5, "LAST5": 0.3, "LAST3": 0.2}   # starting framework (§17); tuned in Phase 8

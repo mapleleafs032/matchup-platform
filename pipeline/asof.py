@@ -53,6 +53,13 @@ def load_team_games(league: str, season: int) -> pd.DataFrame:
     tg["neutral_site"] = tg.neutral_site.fillna(False).astype(bool)
     tg["is_fcs_game"] = tg.is_fcs_game.fillna(False).astype(bool)
     tg["weight"] = np.where(tg.is_fcs_game, config.FCS_GAME_WEIGHT, 1.0)
+    # This is the one place team-game rows are assembled, so it is the only place the exclusion has
+    # to happen: the same frame feeds the metric windows AND the ridge fits in ratings.py. Dropping
+    # rather than zero-weighting matters -- a zero weight still occupies a slot in a LAST3 window and
+    # still counts toward games_n, so the window would quietly average two games and the low-sample
+    # flag would not fire. A team with no FBS games yet ends up with no rows, which yields NULL.
+    if not config.FCS_GAMES_IN_METRICS:
+        tg = tg[~tg.is_fcs_game].copy()
     # derived per-game values
     tg["scoring_margin"] = tg.points - tg.points_allowed
     tg["points_per_game"] = tg.points; tg["points_allowed_per_game"] = tg.points_allowed
@@ -262,6 +269,16 @@ def build_week(league: str, season: int, week: int, tg: pd.DataFrame | None = No
     tg_adj = ratings.adjust_game_values(tg, fits) if not tg.empty else tg
     by_team = {t: sub for t, sub in tg_adj.groupby("team_id")} if not tg_adj.empty else {}
     pw = prior_weight(league, week)
+    # How many FBS-vs-FCS games each team has already played, for the flag below. Counted from the
+    # schedule, because the metric rows no longer contain them.
+    fcs_played: dict = {}
+    if not config.FCS_GAMES_IN_METRICS and "is_fcs_game" in games.columns:
+        done = games[games.is_fcs_game.fillna(False).astype(bool)
+                     & (pd.to_datetime(games.kickoff_utc, utc=True, errors="coerce")
+                        < ratings_cutoff)]
+        for _, x in done.iterrows():
+            for t in (x.home_team_id, x.away_team_id):
+                fcs_played[t] = fcs_played.get(t, 0) + 1
     built_at = datetime.now(timezone.utc).isoformat()
     rows = []
     for _, g in wk.iterrows():
@@ -285,8 +302,14 @@ def build_week(league: str, season: int, week: int, tg: pd.DataFrame | None = No
                     n_games = int(len(window_rows(team_rows, w, cutoff))) if not team_rows.empty else 0
                     if n_games < config.LOW_SAMPLE_GAMES[league]:
                         flags.append("LOW_SAMPLE")
-                    if not team_rows.empty and window_rows(team_rows, w, cutoff).is_fcs_game.any():
-                        flags.append("FCS_OPP_IN_WINDOW")
+                    if config.FCS_GAMES_IN_METRICS:
+                        if not team_rows.empty and window_rows(team_rows, w, cutoff).is_fcs_game.any():
+                            flags.append("FCS_OPP_IN_WINDOW")
+                    elif fcs_played.get(tid):
+                        # The games are gone from the metrics, so the sample is smaller than the
+                        # team's record implies. Saying how many keeps that visible rather than
+                        # looking like missing data.
+                        flags.append(f"FCS_EXCLUDED:{fcs_played[tid]}")
                     rows.append({
                         "team_id": tid, "season": season, "as_of_game_id": g.game_id, "as_of_ts": cutoff.isoformat(),
                         "ratings_cutoff": ratings_cutoff.isoformat(), "window": w, "games_n": n_games,

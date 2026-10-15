@@ -1,3 +1,8 @@
 provider,alias,team_id,note
 vsin,texas-san-antonio-roadrunners,CFB_UTSA,"was wrongly stored as CFB_TEX by the unguarded token trim"
 vsin,la-monroe-warhawks,CFB_ULM,"was wrongly stored as CFB_UL (the Ragin' Cajuns) by the same trim"
+vsin,charleston-southern,IGNORE,"FCS (Big South) -- our teams table is FBS only"
+vsin,citadel,IGNORE,"FCS (Southern Conference)"
+vsin,columbia,IGNORE,"FCS (Ivy League)"
+vsin,elon,IGNORE,"FCS (CAA)"
+vsin,pennsylvania,IGNORE,"FCS (Ivy League)"
