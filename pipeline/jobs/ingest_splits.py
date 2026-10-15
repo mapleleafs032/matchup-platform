@@ -133,23 +133,7 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
     # state of a useful one (appalachian-st-mountaineers, army-black-nights, miami-fl-hurricanes).
     # Slugs no spelling rule can reach (initialisms: UTSA, UL Monroe). Applied before the collision
     # scan so the corrected mapping is in place the moment the wrong one is removed.
-    seeds = config.DATA / "manual" / "vsin_aliases.csv"
-    if seeds.exists():
-        try:
-            sd = pd.read_csv(seeds)
-            have = set(resolver.aliases[resolver.aliases.provider == "vsin"].alias)
-            new_rows = [{"provider": "vsin", "alias": str(r.alias).strip(),
-                         "provider_id": None, "team_id": str(r.team_id).strip(),
-                         "season_from": None, "season_to": None}
-                        for r in sd.itertuples()
-                        if str(r.alias).strip() and str(r.alias).strip() not in have
-                        and str(r.team_id).strip() in set(teams.team_id)]
-            if new_rows:
-                resolver.add(new_rows); resolver.save()
-                print(f"    applied {len(new_rows)} recorded alias(es) from {seeds.name}: "
-                      + ", ".join(r["alias"] for r in new_rows))
-        except (OSError, ValueError) as e:
-            vlog.warn("ALIAS_SEED_FAIL", seeds.name, "file", str(e)[:120], "readable csv")
+    apply_recorded_aliases(resolver, teams, vlog)
     coll = vsin.collisions(resolver, league, teams)
     drop = [s for c in coll for s in c["drop"]]
     if coll:
@@ -183,6 +167,44 @@ def read_vsin(league: str, season: int, resolver: ids.AliasResolver, games: pd.D
         for kind, whys in sorted(by_kind.items(), key=lambda kv: -len(kv[1])):
             print(f"      {kind}: {len(whys)}  e.g. {whys[0][:110]}")
     return recs, problems + probs
+
+
+def apply_recorded_aliases(resolver, teams, vlog) -> None:
+    """
+    Apply data/manual/vsin_aliases.csv, OVERRIDING whatever is stored for those slugs.
+
+    These are the mappings no spelling rule can reach -- initialisms like UTSA and UL Monroe.
+    They must override rather than stand aside: skipping an alias that already existed left
+    la-monroe-warhawks on its wrong CFB_UL row through seeding, and the collision scan then
+    removed it, leaving no mapping at all.
+    """
+    seeds = config.DATA / "manual" / "vsin_aliases.csv"
+    if seeds.exists():
+        try:
+            sd = pd.read_csv(seeds)
+            known_ids = set(teams.team_id)
+            want = {str(r.alias).strip(): str(r.team_id).strip() for r in sd.itertuples()
+                    if str(r.alias).strip() and str(r.team_id).strip() in known_ids}
+            cur = dict(zip(resolver.aliases[resolver.aliases.provider == "vsin"].alias,
+                           resolver.aliases[resolver.aliases.provider == "vsin"].team_id))
+            # A recorded alias OVERRIDES whatever is stored -- it does not stand aside for it. An
+            # earlier version skipped any alias already present, so la-monroe-warhawks kept its wrong
+            # CFB_UL row through seeding, then lost it to the collision scan, and ended up with no
+            # mapping at all. A human wrote this file; it is the authority.
+            changed = {a: t for a, t in want.items() if cur.get(a) != t}
+            if changed:
+                keep = resolver.aliases[~((resolver.aliases.provider == "vsin")
+                                          & (resolver.aliases.alias.isin(changed)))]
+                resolver.aliases = keep
+                resolver.add([{"provider": "vsin", "alias": a, "provider_id": None, "team_id": t,
+                               "season_from": None, "season_to": None} for a, t in changed.items()])
+                resolver.save()
+                print(f"    applied {len(changed)} recorded alias(es) from {seeds.name}: "
+                      + ", ".join(f"{a} -> {t}"
+                                  + (f" (was {cur[a]})" if a in cur else "")
+                                  for a, t in sorted(changed.items())))
+        except (OSError, ValueError) as e:
+            vlog.warn("ALIAS_SEED_FAIL", seeds.name, "file", str(e)[:120], "readable csv")
 
 
 def read_linetracker(league: str, season: int, games: pd.DataFrame, vlog: ValidationLog,

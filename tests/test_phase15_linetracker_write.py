@@ -283,3 +283,43 @@ def test_the_ampersand_is_read_as_a_word():
     """VSiN writes texas-a-and-m-aggies; our table writes Texas A&M Aggies. Dropping & broke both."""
     assert vsin.slug_key("Texas A&M Aggies") == vsin.slug_key("texas a and m aggies")
     assert lt.name_candidates("Texas A&M Aggies", "CFB", _cfb_teams()) == {"CFB_TAM"}
+
+
+# ---- recorded aliases override, they do not stand aside --------------------------------------
+def test_a_recorded_alias_replaces_a_wrong_stored_one(tmp_path, monkeypatch, capsys):
+    """
+    THE ORDERING BUG. The seed skipped any alias already present, so la-monroe-warhawks kept its
+    wrong CFB_UL row through seeding, then lost it to the collision scan, and finished with NO
+    mapping -- worse than where it started. A human wrote the file; it is the authority.
+    """
+    import pandas as _pd
+    from pipeline.jobs import ingest_splits as isp
+    from pipeline import ids
+    monkeypatch.setattr(config, "DATA", tmp_path / "data")
+    (tmp_path / "data" / "manual").mkdir(parents=True)
+    (tmp_path / "data" / "manual" / "vsin_aliases.csv").write_text(
+        "provider,alias,team_id,note\nvsin,la-monroe-warhawks,CFB_ULM,wrong before\n")
+    monkeypatch.setattr(ids, "ALIASES_PATH", tmp_path / "aliases.csv")
+
+    teams = _pd.concat([_cfb_teams(), _pd.DataFrame([
+        {"team_id": "CFB_ULM", "league": "CFB", "abbr": "ULM", "school_or_city": "UL Monroe",
+         "mascot": "Warhawks", "display_name": "UL Monroe Warhawks"},
+        {"team_id": "CFB_UL", "league": "CFB", "abbr": "UL", "school_or_city": "Louisiana",
+         "mascot": "Ragin' Cajuns", "display_name": "Louisiana Ragin' Cajuns"}])],
+        ignore_index=True)
+
+    r = ids.AliasResolver.load()
+    r.add([_alias("la-monroe-warhawks", "CFB_UL")])      # the wrong row, as it was in the repo
+    r.save()
+
+    isp.apply_recorded_aliases(r, teams, _Log())
+    stored = dict(zip(r.aliases[r.aliases.provider == "vsin"].alias,
+                      r.aliases[r.aliases.provider == "vsin"].team_id))
+    assert stored["la-monroe-warhawks"] == "CFB_ULM", stored
+    # and only one row for it, not two
+    assert list(r.aliases.alias).count("la-monroe-warhawks") == 1
+
+
+class _Log:
+    def warn(self, *a, **k):
+        pass
