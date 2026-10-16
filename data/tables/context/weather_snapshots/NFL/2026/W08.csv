@@ -1,3 +1,4 @@
 game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
 2026_NFL_W08_CAR_GB,2026-10-15T15:26:27.216063+00:00,2026-10-30T00:15:00+00:00,344.8,False,False,open_meteo,56.7,54.6,9.3,17.9,156.0,0.13,0.0,97.0,3.0
 2026_NFL_W08_CAR_GB,2026-10-15T20:07:20.288500+00:00,2026-10-30T00:15:00+00:00,340.1,False,False,open_meteo,60.5,54.5,16.4,31.1,264.0,0.19,0.016,77.0,51.0
+2026_NFL_W08_CAR_GB,2026-10-16T00:54:15.656685+00:00,2026-10-30T00:15:00+00:00,335.3,False,False,open_meteo,50.9,45.1,12.0,26.8,262.0,0.19,0.0,86.0,0.0
