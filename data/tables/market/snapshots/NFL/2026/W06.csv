@@ -15405,3 +15405,11 @@ snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_hom
 2026_NFL_W06_WAS_SF_stations_20261019T195641Z,2026_NFL_W06_WAS_SF,2026-10-19T19:56:41.383141+00:00,,stations,-7.5,-105,-115,-405,320,52.0,-110,-110,,,,,,,False,7.5,51.0,vsin_linetracker,subscription
 2026_NFL_W06_WAS_SF_wynn_20261019T195641Z,2026_NFL_W06_WAS_SF,2026-10-19T19:56:41.383141+00:00,,wynn,-7.5,-110,-110,-425,325,52.0,-110,-110,,,,,,,False,8.0,51.0,vsin_linetracker,subscription
 2026_NFL_W06_WAS_SF_draftkings_20261019T195638Z,2026_NFL_W06_WAS_SF,2026-10-19T19:56:38.125205+00:00,,draftkings,-7.5,,,-380.0,300.0,51.5,,,0.66,0.47,0.91,0.7,0.54,0.69,False,,,vsin_dk,free
+2026_NFL_W06_WAS_SF_betmgm_20261019T234126Z,2026_NFL_W06_WAS_SF,2026-10-19T23:41:26.504419+00:00,,betmgm,-7.0,-115,100,-375,300,51.5,-110,-110,,,,,,,False,7.5,50.5,vsin_linetracker,subscription
+2026_NFL_W06_WAS_SF_boomers_20261019T234126Z,2026_NFL_W06_WAS_SF,2026-10-19T23:41:26.504419+00:00,,boomers,-7.0,-120,100,-400,320,51.5,-110,-110,,,,,,,False,8.0,50.5,vsin_linetracker,subscription
+2026_NFL_W06_WAS_SF_caesars_20261019T234126Z,2026_NFL_W06_WAS_SF,2026-10-19T23:41:26.504419+00:00,,caesars,-7.5,-109,-110,-420,320,51.5,-106,-114,,,,,,,False,7.5,49.5,vsin_linetracker,subscription
+2026_NFL_W06_WAS_SF_circa_20261019T234126Z,2026_NFL_W06_WAS_SF,2026-10-19T23:41:26.504419+00:00,,circa,-7.0,-110,-110,-340,280,51.0,-110,-110,,,,,,,False,8.0,49.5,vsin_linetracker,subscription
+2026_NFL_W06_WAS_SF_southpoint_20261019T234126Z,2026_NFL_W06_WAS_SF,2026-10-19T23:41:26.504419+00:00,,southpoint,-7.0,-110,-110,-340,280,51.0,-110,-110,,,,,,,False,8.0,51.0,vsin_linetracker,subscription
+2026_NFL_W06_WAS_SF_stations_20261019T234126Z,2026_NFL_W06_WAS_SF,2026-10-19T23:41:26.504419+00:00,,stations,-7.0,-110,-110,-405,320,51.5,-110,-110,,,,,,,False,7.5,51.0,vsin_linetracker,subscription
+2026_NFL_W06_WAS_SF_wynn_20261019T234126Z,2026_NFL_W06_WAS_SF,2026-10-19T23:41:26.504419+00:00,,wynn,-7.5,100,-120,-425,325,52.0,-110,-110,,,,,,,False,8.0,51.0,vsin_linetracker,subscription
+2026_NFL_W06_WAS_SF_draftkings_20261019T234121Z,2026_NFL_W06_WAS_SF,2026-10-19T23:41:21.363321+00:00,,draftkings,-7.5,,,-395.0,310.0,51.5,,,,0.4,0.88,0.72,0.55,,False,,,vsin_dk,free
