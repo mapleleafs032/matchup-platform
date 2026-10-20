@@ -1,2 +1,3 @@
 close_line,clv_points,clv_prob,beat_close,close_book,close_stale_min,close_note,hours_before_kick,pick_id,game_id,league,season,week,market,side,line,price,tier,score,edge_points,signals,result,profit_units,actual_margin_home,actual_total,graded_at
 55.5,-1.0,,False,draftkings,76,,2.8,2026_NFL_W05_BUF_LAR_TOTAL_Under_NFL_v1.0,2026_NFL_W05_BUF_LAR,NFL,2026,5,TOTAL,Under,54.5,-110,B,3.675,4.68,money_agrees,LOSS,-1.0,-3,71,2026-10-13T19:34:04.957850+00:00
+51.0,0.5,,True,circa,34,,0.3,2026_NFL_W06_WAS_SF_TOTAL_Under_NFL_v1.0,2026_NFL_W06_WAS_SF,NFL,2026,6,TOTAL,Under,51.5,-110,B,3.287,3.66,steam,WIN,0.909,6,40,2026-10-20T17:34:11.941815+00:00
