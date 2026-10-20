@@ -1,3 +1,8 @@
 game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
 2026_CFB_W10_OHIO_AKR,2026-10-20T01:23:11.002004+00:00,2026-11-04T00:00:00+00:00,358.6,False,False,open_meteo,50.0,44.3,10.4,22.6,264.0,0.06,0.004,83.0,51.0
 2026_CFB_W10_BUF_MOH,2026-10-20T01:23:12.417753+00:00,2026-11-04T00:00:00+00:00,358.6,False,False,open_meteo,52.0,44.4,13.2,24.2,320.0,0.16,0.0,68.0,3.0
+2026_CFB_W10_OHIO_AKR,2026-10-20T15:33:15.795086+00:00,2026-11-04T00:00:00+00:00,344.4,False,False,open_meteo,51.8,46.0,6.1,12.5,147.0,0.23,0.0,55.0,3.0
+2026_CFB_W10_BUF_MOH,2026-10-20T15:33:18.359072+00:00,2026-11-04T00:00:00+00:00,344.4,False,False,open_meteo,53.2,47.4,5.8,5.6,148.0,0.1,0.0,50.0,2.0
+2026_CFB_W10_TOL_SAC,2026-10-20T15:33:18.359641+00:00,2026-11-04T05:00:00+00:00,349.4,False,False,open_meteo,63.0,62.0,1.6,0.7,34.0,0.27,0.0,59.0,0.0
+2026_CFB_W10_BALL_MASS,2026-10-20T15:33:20.893345+00:00,2026-11-04T05:00:00+00:00,349.4,False,False,open_meteo,34.9,30.4,1.0,0.9,63.0,0.16,0.0,84.0,0.0
+2026_CFB_W10_CMU_EMU,2026-10-20T15:33:20.893697+00:00,2026-11-04T05:00:00+00:00,349.4,True,False,open_meteo,,,,,,,,,
