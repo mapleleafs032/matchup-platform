@@ -189,3 +189,8 @@ snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_hom
 2026_CFB_W09_OSU_USC_draftkings_20261022T135009Z,2026_CFB_W09_OSU_USC,2026-10-22T13:50:09.419928+00:00,,draftkings,7.0,,,205.0,-250.0,53.5,,,0.55,0.65,0.0,0.0,0.0,0.0,False,,,vsin_dk,free
 2026_CFB_W09_ND_NAVY_draftkings_20261022T135009Z,2026_CFB_W09_ND_NAVY,2026-10-22T13:50:09.419928+00:00,,draftkings,28.5,,,2200.0,-8000.0,53.5,,,0.0,0.0,0.0,0.0,1.0,1.0,False,,,vsin_dk,free
 2026_CFB_W09_FLA_UGA_draftkings_20261022T135009Z,2026_CFB_W09_FLA_UGA,2026-10-22T13:50:09.419928+00:00,,draftkings,-10.5,,,-410.0,320.0,,,,0.23,0.01,0.47,0.43,,,False,,,vsin_dk,free
+2026_CFB_W09_MIA_UNC_draftkings_20261022T141855Z,2026_CFB_W09_MIA_UNC,2026-10-22T14:18:55.619264+00:00,,draftkings,14.5,,,455.0,-625.0,,,,1.0,1.0,1.0,1.0,,,False,,,vsin_dk,free
+2026_CFB_W09_NU_ORE_draftkings_20261022T141855Z,2026_CFB_W09_NU_ORE,2026-10-22T14:18:55.619264+00:00,,draftkings,-7.5,,,,,50.5,,,0.5,0.83,,,1.0,1.0,False,,,vsin_dk,free
+2026_CFB_W09_OSU_USC_draftkings_20261022T141855Z,2026_CFB_W09_OSU_USC,2026-10-22T14:18:55.619264+00:00,,draftkings,7.0,,,205.0,-250.0,53.5,,,0.55,0.65,0.0,0.0,0.0,0.0,False,,,vsin_dk,free
+2026_CFB_W09_ND_NAVY_draftkings_20261022T141855Z,2026_CFB_W09_ND_NAVY,2026-10-22T14:18:55.619264+00:00,,draftkings,28.5,,,2200.0,-8000.0,53.5,,,0.0,0.0,0.0,0.0,1.0,1.0,False,,,vsin_dk,free
+2026_CFB_W09_FLA_UGA_draftkings_20261022T141855Z,2026_CFB_W09_FLA_UGA,2026-10-22T14:18:55.619264+00:00,,draftkings,-10.5,,,-410.0,320.0,,,,0.23,0.01,0.5,0.49,,,False,,,vsin_dk,free
