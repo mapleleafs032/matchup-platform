@@ -1,0 +1,2 @@
+game_id,retrieved_at,forecast_for_utc,hours_to_kickoff,is_indoor,roof_status_unknown,source,temp_f,feels_like_f,wind_mph,wind_gust_mph,wind_dir_deg,precip_prob,precip_in,humidity_pct,condition_code
+2026_NFL_W09_JAX_BAL,2026-10-22T15:46:26.086204+00:00,2026-11-06T01:15:00+00:00,345.5,False,False,open_meteo,44.2,34.7,12.4,27.5,337.0,0.14,0.0,54.0,0.0
