@@ -1,0 +1,3 @@
+snapshot_id,game_id,retrieved_at,provider_updated_at,book,spread_home,spread_home_price,spread_away_price,ml_home,ml_away,total,over_price,under_price,spread_ticket_pct_home,spread_money_pct_home,ml_ticket_pct_home,ml_money_pct_home,total_ticket_pct_over,total_money_pct_over,is_first_snapshot,provider_open_spread_home,provider_open_total,source,plan
+2026_CFB_W10_MSU_MICH_draftkings_20261024T131907Z,2026_CFB_W10_MSU_MICH,2026-10-24T13:19:07.623941+00:00,,draftkings,-16.5,,,-950.0,625.0,,,,0.0,0.0,1.0,1.0,,,True,,,vsin_dk,free
+2026_CFB_W10_BYU_UTAH_draftkings_20261024T131907Z,2026_CFB_W10_BYU_UTAH,2026-10-24T13:19:07.623941+00:00,,draftkings,-3.0,,,-142.0,120.0,,,,0.0,0.0,0.0,0.0,,,False,,,vsin_dk,free
